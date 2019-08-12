@@ -9,8 +9,8 @@ int
 main(void)
 {
 	/*
-	 * ``I gained nothing at all from Supreme Enlightenment, and for that
-	 * very reason it is called Supreme Enlightenment.'' -- Buddha
+	 * "I gained nothing at all from Supreme Enlightenment, and for that
+	 * very reason it is called Supreme Enlightenment." -- Buddha
 	 */
 	for (;;)
 		if (wait(NULL) == -1)

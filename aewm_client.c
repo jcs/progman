@@ -395,7 +395,7 @@ send_config(client_t *c)
 
 /*
  * I've changed this to just clear the window every time. The amount of
- * ``flicker'' is basically imperceptable. Also, we might be drawing an
+ * "flicker" is basically imperceptable. Also, we might be drawing an
  * anti-aliased font with Xft, in which case we always have to clear to draw
  * the text properly. This allows us to simplify handle_property_change as
  * well.
@@ -564,7 +564,7 @@ set_shape(client_t *c)
 		    0, frame_height(c), &temp, 1, ShapeUnion, YXBanded);
 		c->shaped = 1;
 	} else if (c->shaped) {
-		/* I can't find a ``remove all shaping'' function... */
+		/* I can't find a "remove all shaping" function... */
 		temp.x = -BW(c);
 		temp.y = -BW(c);
 		temp.width = c->geom.w + 2 * BW(c);
@@ -578,7 +578,7 @@ set_shape(client_t *c)
 
 /*
  * I've decided to carefully ignore any errors raised by this function, rather
- * that attempt to determine asychronously if a window is ``valid''. Xlib calls
+ * that attempt to determine asychronously if a window is "valid". Xlib calls
  * should only fail here if that a window has removed itself completely before
  * the Unmap and Destroy events get through the queue to us. It's not pretty.
  *

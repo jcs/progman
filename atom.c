@@ -190,8 +190,8 @@ get_wm_name(Window w)
 /*
  * I give up on trying to do this the right way. We'll just request as many
  * elements as possible. If that's not the entire string, we're fucked. In
- * reality this should never happen. (That's the second time I get to say
- * ``this should never happen'' in this file!)
+ * reality this should never happen. (That's the second time I get to say "this
+ * should never happen" in this file!)
  *
  * Standard gripe about casting nonsense applies.
  */

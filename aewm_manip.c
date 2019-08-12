@@ -395,7 +395,7 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 /*
  * If the window in question has a ResizeInc hint, then it wants to be resized
  * in multiples of some (x,y). We constrain the values in c->geom based on that
- * and any min/max size hints, and put the ``human readable'' values back in
+ * and any min/max size hints, and put the "human readable" values back in
  * lw_ret and lh_ret (80x25 for xterm, etc).
  */
 static geom_t
