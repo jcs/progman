@@ -1,0 +1,86 @@
+.\" aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
+.\" This program is free software; please see LICENSE for details.
+.TH AECLIENTS 1x
+.SH "NAME"
+aemenu, aepanel, aesession, switch\-desk \- programs for use with
+.BR aewm (1x)
+.SH "SYNOPSIS"
+.B aemenu
+.I [\-\-config|\-rc <file>] [\-s|\-\-switch]
+.br
+.B aepanel 
+.I [\-\-config|\-rc <file>] [\-b|\-\-bottom]
+.br
+.B aesession
+.br
+.B aedesk
+.I [-n <num>] [[+|-]<num>]
+.SH "DESCRIPTION"
+The programs listed above provide several window and session
+management features to complement
+.BR aewm (1x).
+.B aemenu
+and
+.B aepanel
+launch programs and raise existing windows (or unhide iconified ones).
+.B aemenu
+uses a popup menu to accomplish this (the
+.I \-\-switch
+option changes the function of this menu), while
+.B aepanel
+stays on the screen inbetween uses (launching and switching
+functionality are both always available).
+.PP
+Each program comes in both a GTK+ and a Xaw version;
+.B aemenu
+is actually a symlink to either
+.B aemenu\-gtk
+or
+.B aemenu\-xaw
+(likewise for
+.BR aepanel ).
+.PP
+The list of programs to be run by both clients
+is read from
+.IR $HOME/.aewm/clientsrc .
+There are two kinds of directives that may be used in this file:
+.IP
+.I cmd \(dqDescription\(dq \(dqcommand\(dq
+.PP
+defines a command, which whill be interpreted by
+.BR sh (1).
+.IP
+.I menu \(dqTitle\(dq
+.br
+.I (...)
+.br
+.I end
+.PP
+defines a submenu. The number of submenus that can be nested within
+each other is limited only by stack space. Double quotes may be
+included within quoted strings by escaping them with a blackslash
+.RB ( \e\(dq ),
+and quotes may be omitted around single-word descriptions or
+commands. Blank lines and lines starting with '#' are ignored.
+.PP
+.B aesession
+is a do-nothing program; it will simply reap any children it inherits
+and then sleep. By ending your
+.I $HOME/.xsession
+script with "exec aesession", you can exit and restart
+.BR aewm (1x)
+without killing your X session. The author does not really expect
+anyone except WM hackers to find this useful.
+.PP
+.B aedesk
+changes to a new virtual desktop, specfied by
+.IR num ,
+or sets the number of available desktops, with -n.
+.SH "FILES"
+.I $HOME/.aewm/clientsrc
+.SH "SEE ALSO"
+.BR aewm (1x)
+.SH "AUTHORS"
+Decklin Foster <decklin@red\-bean.com>
+.br
+Adam Sampson <ats@offog.org>

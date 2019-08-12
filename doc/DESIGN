@@ -1,0 +1,115 @@
+Some Notes on Implementing a Window Manager
+Decklin Foster <decklin@red-bean.com>, last revised 2002-11-23
+----------------------------------------------------------------------
+
+0. Introduction
+
+These notes are intended to explain aewm and the ICCCM in general to
+programmers who are already proficient in C, but only have a little
+experience hacking X. Keep the code visible alongside this file as you
+read it; my aim is to explain why the code does what it does, not how.
+
+1. The Window Model
+
+The X Window System itself says nothing about how windows can be
+manipulated by the user. All it provides is a tree of windows, which
+are simply rectangular portions of the display with a geometry
+(position and size), a stacking order (which window, among siblings,
+is "in front"), and a few other attributes. All windows are drawn in
+front of their parent and clipped to their parent's geometry, with the
+exception of the root window, which takes up the entire display and is
+the ancestor of all windows.
+
+Our job is to present the user with the illusion that the root window
+is the "background", and that the top-level windows of clients are
+independent objects which can be moved around, resized, or stacked in
+a different order along the z-axis. In reality, everything the user
+sees is a subwindow of a subwindow (etc.) of the root, maybe
+overlapping other subwindows. How this happens is up to the window
+manager. The X Protocol allows us to manipulate all the various
+attributes of other windows, and be informed of important events,
+using the same interface as any other normal X client.
+
+2. The Window Hierarchy
+
+This is what aewm's window hierarchy looks like (please excuse the
+horrible ASCII art):
+
+ [ root window ]
+               |--> [ aewm frame window ]
+               |                        '--> [ client window ]
+               |
+               |--> [ aewm frame window ]
+               |                        '--> [ client window ]
+               |
+               '--> [ override-redirect window ]
+
+When X clients create their top-level windows, they will inform the X
+server that the root window should be their parent. aewm intercepts
+these requests (By making a special request to the X server to allow
+it to do so; this will be explained in depth shortly) and adds an aewm
+frame window as a new child of the root window instead, and then adds
+the client window as a child of the aewm frame. Some windows set the
+override_redirect flag to avoid being reparented in this manner by the
+WM, so we leave them alone, assuming they can handle any window
+management functions that the user might want by themselves.
+
+All user manipulation of windows, and fonts/graphics drawn by aewm
+(which is very little, of course) happen in the frame window. This
+window is slightly bigger than the client, so that there's a "titlebar"
+space allowing for such interaction. A more complicated WM might have
+several levels of windows inside each frame.
+
+3. Promoting Ourselves to Management
+
+Ordinarily, X clients are not informed when another client asks the
+server to map a window. To make the above possible, aewm must set the
+following masks on the root window during initialization (init.c):
+
+ - SubstructureRedirectMask: this makes the X server send a MapRequest
+   event to us whenever another client tries to create a new child of
+   the root window, instead of actually mapping the window itself.
+   aewm then processes this window as a new client, and maps it if
+   necessary (which is most of the time). Only one client can set this
+   mask simultaneously.
+
+ - SubstructureNotifyMask: this causes the Xserver to send us a
+   message whenever a client manipulates its own window, so that we
+   can keep track of it and/or take action.
+ 
+ - ButtonPressMask and ButtonReleaseMask: aewm also runs programs when
+   the root window is clicked. Technically, evert click is on the root
+   window, but subwindows typically set these masks as well and catch
+   the clicks first. Any click on a client window is also a click on
+   the frame as well -- in particular, with GTK, some parts of the
+   client's window may not set these masks (because they don't need to
+   process mouse clicks), and clicks will "fall through" to the frame.
+
+ - ColormapChangeMask: for 8-bit displays, this lets us keep track of
+   the root window's colormap (we have to manage changing the colormap
+   ourselves). Not very interesting, but I thought I should list all
+   of them.
+
+3. Idling
+
+Once initialization is finished, aewm loops waiting for the X server
+to report one of the events we have requested, and then processes it
+(events.c). The XNextEvent call blocks until there is an event to be
+read, and this is where an aewm process's program counter spends most
+of the time.
+
+3. Client Creation
+
+Now let's assume there are no client windows on the display, and the
+event loop has started. At this point, there only a few events we can
+receive, since we have only (so far) selected for events on the root
+window. Once a client starts and wants to map a window, we get a
+MapRequest event, and then handle actually mapping it. This involves
+a few things (new.c):
+
+ - allocating a new Client structure to keep track of the client
+ - creating a frame window and reparenting the client window into it
+ - deciding if and where to map the frame
+ - select for interesting events on the client window.
+
+[FIXME: Add more stuff here.]
