@@ -364,11 +364,9 @@ reparent(client_t *c, strut_t *s)
 	}
 #endif
 
-#ifdef XFT
 	c->xftdraw = XftDrawCreate(dpy, (Drawable) c->frame,
 	    DefaultVisual(dpy, DefaultScreen(dpy)),
 	    DefaultColormap(dpy, DefaultScreen(dpy)));
-#endif
 
 	XAddToSaveSet(dpy, c->win);
 	XSelectInput(dpy, c->win, ColormapChangeMask | PropertyChangeMask);
@@ -388,7 +386,8 @@ int
 frame_height(client_t *c)
 {
 	if (c && c->decor)
-		return (c->trans ? 0 : ASCENT) + DESCENT + 2 * opt_pad + BW(c);
+		return (c->trans ? 0 : xftfont->ascent) + xftfont->descent +
+		    (2 * opt_pad) + BW(c);
 
 	return 0;
 }
@@ -490,25 +489,10 @@ redraw_frame(client_t *c)
 	    icon_size, x, y, 1);
 
 	if (!c->trans && c->name) {
-		x = opt_pad + DESCENT / 2;
-		y = opt_pad + ASCENT;
-#ifdef XFT
-#ifdef X_HAVE_UTF8_STRING
+		x = opt_pad + (xftfont->descent / 2);
+		y = opt_pad + xftfont->ascent;
 		XftDrawStringUtf8(c->xftdraw, &xft_fg, xftfont, x, y,
 		    (unsigned char *)c->name, strlen(c->name));
-#else
-		XftDrawString8(c->xftdraw, &xft_fg, xftfont, x, y,
-		    (unsigned char *)c->name, strlen(c->name));
-#endif
-#else
-#ifdef X_HAVE_UTF8_STRING
-		Xutf8DrawString(dpy, c->frame, font_set, string_gc, x, y,
-		    c->name, strlen(c->name));
-#else
-		XDrawString(dpy, c->frame, string_gc, x, y, c->name,
-		    strlen(c->name));
-#endif
-#endif
 	}
 }
 
@@ -684,10 +668,8 @@ del_client(client_t *c, int mode)
 	remove_atom(root, net_client_stack, XA_WINDOW, c->win);
 
 	XSetWindowBorderWidth(dpy, c->win, c->old_bw);
-#ifdef XFT
 	if (c->xftdraw)
 		XftDrawDestroy(c->xftdraw);
-#endif
 
 	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
 	XRemoveFromSaveSet(dpy, c->win);

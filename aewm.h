@@ -26,24 +26,23 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#ifdef XFT
 #include <X11/Xft/Xft.h>
-#endif
 #include "common.h"
 #include "atom.h"
 
-/* Default options you may want to change */
+/* Default options */
 
-#define DEF_FONT "fixed"
-#ifdef XFT
-#define DEF_XFTFONT "Sans:size=8"
-#endif
-
+/* Title bars */
 #define DEF_FG "white"
 #define DEF_BG "slategray"
+#define DEF_XFTFONT "monospace:size=12"
+#define DEF_PAD 3
+
+/* Borders */
 #define DEF_BD "black"
 #define DEF_BW 1
-#define DEF_PAD 3
+
+/* Whether to use interactive window mapping */
 #define DEF_IMAP 0
 
 #define DEF_NEW1 "aemenu --switch"
@@ -67,14 +66,6 @@
 #define HAS_DECOR(t) (!CAN_PLACE_SELF(t))
 #define IS_ON_CUR_DESK(c) IS_ON_DESK((c)->desk, cur_desk)
 
-#ifdef XFT
-#define ASCENT (xftfont->ascent)
-#define DESCENT (xftfont->descent)
-#else
-#define ASCENT (font->ascent)
-#define DESCENT (font->descent)
-#endif
-
 #ifdef DEBUG
 #define SHOW_EV(name, memb) \
     case name: ev_type = #name; w = e.memb.window; break;
@@ -96,9 +87,7 @@ struct client {
 	char *name;
 	Window win, frame, trans;
 	geom_t geom, save;
-#ifdef XFT
 	XftDraw *xftdraw;
-#endif
 	XSizeHints size;
 	Colormap cmap;
 	int ignore_unmap;
@@ -139,14 +128,8 @@ extern unsigned long ndesks;
 extern Bool shape;
 extern int shape_event;
 #endif
-extern XFontStruct *font;
-#ifdef X_HAVE_UTF8_STRING
-extern XFontSet font_set;
-#endif
-#ifdef XFT
 extern XftFont *xftfont;
 extern XftColor xft_fg;
-#endif
 extern Colormap cmap;
 extern XColor fg;
 extern XColor bg;
@@ -159,10 +142,7 @@ extern Pixmap minify_pm;
 extern Cursor map_curs;
 extern Cursor move_curs;
 extern Cursor resize_curs;
-extern char *opt_font;
-#ifdef XFT
 extern char *opt_xftfont;
-#endif
 extern char *opt_fg;
 extern char *opt_bg;
 extern char *opt_bd;

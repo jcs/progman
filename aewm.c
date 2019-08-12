@@ -45,14 +45,8 @@ Bool shape;
 int shape_event;
 #endif
 
-XFontStruct *font;
-#ifdef X_HAVE_UTF8_STRING
-XFontSet font_set;
-#endif
-#ifdef XFT
 XftFont *xftfont;
 XftColor xft_fg;
-#endif
 
 Colormap def_cmap;
 XColor fg;
@@ -67,10 +61,7 @@ Cursor map_curs;
 Cursor move_curs;
 Cursor resize_curs;
 
-char *opt_font = DEF_FONT;
-#ifdef XFT
 char *opt_xftfont = DEF_XFTFONT;
-#endif
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
 char *opt_bd = DEF_BD;
@@ -134,14 +125,9 @@ read_config(char *rcfile)
 	while (get_rc_line(buf, sizeof buf, rc)) {
 		p = buf;
 		while (get_token(&p, token)) {
-			if (strcmp(token, "font") == 0) {
-				if (get_token(&p, token))
-					opt_font = strdup(token);
-#ifdef XFT
-			} else if (strcmp(token, "xftfont") == 0) {
+			if (strcmp(token, "xftfont") == 0) {
 				if (get_token(&p, token))
 					opt_xftfont = strdup(token);
-#endif
 			} else if (strcmp(token, "fgcolor") == 0) {
 				if (get_token(&p, token))
 					opt_fg = strdup(token);
@@ -184,11 +170,6 @@ read_config(char *rcfile)
 static void
 setup_display(void)
 {
-#ifdef X_HAVE_UTF8_STRING
-	char **missing;
-	char *def_str;
-	int nmissing;
-#endif
 	XGCValues gv;
 	XColor exact;
 	XSetWindowAttributes sattr;
@@ -221,16 +202,6 @@ setup_display(void)
 	XAllocNamedColor(dpy, def_cmap, opt_bg, &bg, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bd, &bd, &exact);
 
-	font = XLoadQueryFont(dpy, opt_font);
-	if (!font) {
-		fprintf(stderr, "aewm: font '%s' not found\n", opt_font);
-		exit(1);
-	}
-#ifdef X_HAVE_UTF8_STRING
-	font_set = XCreateFontSet(dpy, opt_font, &missing, &nmissing, &def_str);
-#endif
-
-#ifdef XFT
 	xft_fg.color.red = fg.red;
 	xft_fg.color.green = fg.green;
 	xft_fg.color.blue = fg.blue;
@@ -239,16 +210,13 @@ setup_display(void)
 
 	xftfont = XftFontOpenName(dpy, DefaultScreen(dpy), opt_xftfont);
 	if (!xftfont) {
-		fprintf(stderr, "aewm: Xft font '%s' not found\n", opt_font);
+		fprintf(stderr, "aewm: Xft font '%s' not found\n", opt_xftfont);
 		exit(1);
 	}
-#endif
 
 	gv.function = GXcopy;
 	gv.foreground = fg.pixel;
-	gv.font = font->fid;
-	string_gc = XCreateGC(dpy, root, GCFunction | GCForeground | GCFont,
-	    &gv);
+	string_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
 
 	gv.foreground = bd.pixel;
 	gv.line_width = opt_bw;
@@ -258,7 +226,7 @@ setup_display(void)
 	gv.function = GXinvert;
 	gv.subwindow_mode = IncludeInferiors;
 	invert_gc = XCreateGC(dpy, root,
-	    GCFunction | GCSubwindowMode | GCLineWidth | GCFont, &gv);
+	    GCFunction | GCSubwindowMode | GCLineWidth, &gv);
 
 	close_pm = XCreateBitmapFromData(dpy, root, close_icon,
 	    sizeof(close_icon), sizeof(close_icon));
@@ -405,13 +373,7 @@ shutdown(void)
 	}
 	XFree(wins);
 
-	XFreeFont(dpy, font);
-#ifdef X_HAVE_UTF8_STRING
-	XFreeFontSet(dpy, font_set);
-#endif
-#ifdef XFT
 	XftFontClose(dpy, xftfont);
-#endif
 	XFreeCursor(dpy, map_curs);
 	XFreeCursor(dpy, move_curs);
 	XFreeCursor(dpy, resize_curs);

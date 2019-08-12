@@ -24,19 +24,15 @@ DESTDIR =
 XROOT = /usr/X11R6
 
 # Uncomment to enable Shape extension support
-#OPT_WMFLAGS += -DSHAPE
-#OPT_WMLIB += -lXext
-
-# Uncomment to add Xft support
-#OPT_WMFLAGS += -DXFT `pkg-config --cflags xft`
-#OPT_WMLIB += `pkg-config --libs xft` -lXext
+OPT_WMFLAGS += -DSHAPE
+OPT_WMLIB += -lXext
 
 # Uncomment for debugging (abandon all hope, ye who enter here)
 #OPT_WMFLAGS += -DDEBUG
 #OPT_WMLIB += -lefence
 
 CC = gcc
-CFLAGS = -g -O2 -Wall
+CFLAGS = -g -O2 -Wall -I${XROOT}/include
 
 BINDIR = $(DESTDIR)$(XROOT)/bin
 MANDIR = $(DESTDIR)$(XROOT)/man/man1
@@ -63,7 +59,7 @@ aemenu: $(CLIENTOBJ) menu.o parser.o
 aepanel: $(CLIENTOBJ) menu.o parser.o
 
 X11FLAGS = -I$(XROOT)/include
-WMFLAGS = $(X11FLAGS) $(OPT_WMFLAGS)
+WMFLAGS = $(X11FLAGS) `pkg-config --cflags xft` $(OPT_WMFLAGS)
 GTKFLAGS = `pkg-config --cflags gtk+-2.0`
 
 $(PLAINOBJ): %.o: %.c
@@ -79,7 +75,7 @@ $(GTKOBJ): %.o: %.c
 	$(CC) $(CFLAGS) $(GTKFLAGS) -c $< -o $@
 
 X11LIB = -L$(XROOT)/lib -lX11
-WMLIB = $(X11LIB) $(OPT_WMLIB)
+WMLIB = $(X11LIB) `pkg-config --libs xft` -lXext $(OPT_WMLIB)
 GTKLIB = `pkg-config --libs gtk+-2.0`
 
 $(PLAINBIN): %: %.o

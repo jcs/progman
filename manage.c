@@ -473,10 +473,8 @@ fix_size(client_t *c)
 static void
 draw_outline(client_t *c)
 {
-	geom_t adj, f = frame_geom(c);
+	geom_t f = frame_geom(c);
 	int re = f.x + f.w + BW(c);
-	int be = f.y + f.h + BW(c);
-	char buf[256];
 
 	XDrawRectangle(dpy, root, invert_gc, f.x + BW(c) / 2, f.y + BW(c) / 2,
 	    f.w + BW(c), f.h + BW(c));
@@ -488,12 +486,7 @@ draw_outline(client_t *c)
 	    f.y + BW(c), re - frame_height(c) + BW(c) / 2, f.y +
 	    frame_height(c));
 
-	adj = fix_size(c);
-	snprintf(buf, sizeof(buf), "%ldx%ld%+ld%+ld", adj.w, adj.h, c->geom.x,
-	    c->geom.y);
-	XDrawString(dpy, root, invert_gc,
-	    re - opt_pad - font->descent / 2 - XTextWidth(font, buf,
-	    strlen(buf)), be - opt_pad - font->descent, buf, strlen(buf));
+	fix_size(c);
 }
 
 #ifdef DEBUG

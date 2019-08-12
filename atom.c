@@ -163,7 +163,6 @@ char *
 get_wm_name(Window w)
 {
 	char *name;
-#ifdef X_HAVE_UTF8_STRING
 	XTextProperty name_prop;
 	XTextProperty name_prop_converted;
 	char **name_list;
@@ -198,10 +197,6 @@ get_wm_name(Window w)
 	}
 
 	return (char *)name_prop.value;
-#else
-	XFetchName(dpy, w, &name);
-	return name;
-#endif
 }
 
 /*
