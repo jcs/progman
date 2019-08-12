@@ -27,7 +27,7 @@ CFGDIR = $(DESTDIR)/etc/X11/aewm
 PLAINOBJ = aesession.o parser.o
 CLIENTOBJ = common.o atom.o
 X11OBJ = $(CLIENTOBJ) aedesk.o menu.o
-WMOBJ = aewm_client.o aewm_event.o aewm_init.o aewm_manip.o
+WMOBJ = client.o events.o aewm.o manage.o
 GTKOBJ = aemenu.o aepanel.o
 ALLOBJ = $(PLAINOBJ) $(X11OBJ) $(WMOBJ) $(GTKOBJ)
 
