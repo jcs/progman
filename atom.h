@@ -1,5 +1,5 @@
-/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
- * This program is free software; please see LICENSE for details. */
+/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>. This
+ * program is free software; please see LICENSE for details. */
 
 #ifndef AEWM_ATOM_H
 #define AEWM_ATOM_H
@@ -7,10 +7,10 @@
 #include <X11/Xlib.h>
 
 struct strut {
-    unsigned long left;
-    unsigned long right;
-    unsigned long top;
-    unsigned long bottom;
+	unsigned long left;
+	unsigned long right;
+	unsigned long top;
+	unsigned long bottom;
 };
 
 typedef struct strut strut_t;
@@ -55,4 +55,4 @@ extern char *get_wm_name(Window);
 int get_strut(Window, strut_t *);
 extern unsigned long get_wm_state(Window);
 
-#endif /* AEWM_ATOM_H */
+#endif	/* AEWM_ATOM_H */

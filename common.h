@@ -1,5 +1,5 @@
-/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
- * This program is free software; please see LICENSE for details. */
+/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>. This
+ * program is free software; please see LICENSE for details. */
 
 #ifndef AEWM_COMMON_H
 #define AEWM_COMMON_H
@@ -25,4 +25,4 @@ extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Atom, unsigned long, unsigned long);
 
-#endif /* AEWM_COMMON_H */
+#endif	/* AEWM_COMMON_H */

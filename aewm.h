@@ -1,5 +1,5 @@
-/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
- * This program is free software; please see LICENSE for details. */
+/* aewm - Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>. This
+ *program is free software; please see LICENSE for details. */
 
 #ifndef AEWM_H
 #define AEWM_H
@@ -90,39 +90,45 @@
 
 typedef struct geom geom_t;
 struct geom {
-    long x;
-    long y;
-    long w;
-    long h;
+	long x;
+	long y;
+	long w;
+	long h;
 };
 
 typedef struct client client_t;
 struct client {
-    client_t *next;
-    char *name;
-    Window win, frame, trans;
-    geom_t geom, save;
+	client_t *next;
+	char *name;
+	Window win, frame, trans;
+	geom_t geom, save;
 #ifdef XFT
-    XftDraw *xftdraw;
+	XftDraw *xftdraw;
 #endif
-    XSizeHints size;
-    Colormap cmap;
-    int ignore_unmap;
-    unsigned long desk;
+	XSizeHints size;
+	Colormap cmap;
+	int ignore_unmap;
+	unsigned long desk;
 #ifdef SHAPE
-    Bool shaped;
+	Bool shaped;
 #endif
-    Bool shaded;
-    Bool zoomed;
-    Bool decor;
-    int old_bw;
+	Bool shaded;
+	Bool zoomed;
+	Bool decor;
+	int old_bw;
 };
 
 typedef void sweep_func(client_t *, geom_t, int, int, int, int, strut_t *);
 
-enum { MATCH_WINDOW, MATCH_FRAME }; /* find_client */
-enum { DEL_WITHDRAW, DEL_REMAP }; /* del_client */
-enum { SWEEP_UP, SWEEP_DOWN }; /* sweep */
+enum {
+	MATCH_WINDOW, MATCH_FRAME
+};	/* find_client */
+enum {
+	DEL_WITHDRAW, DEL_REMAP
+};	/* del_client */
+enum {
+	SWEEP_UP, SWEEP_DOWN
+};	/* sweep */
 
 /* init.c */
 extern client_t *head;
@@ -203,10 +209,14 @@ extern void unzoom_client(client_t *c);
 extern void send_wm_delete(client_t *c);
 extern void goto_desk(int new_desk);
 extern void map_if_desk(client_t *c);
-extern int sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s);
-extern void recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1, strut_t *s);
-extern void recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1, strut_t *s);
-extern void recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1, strut_t *s);
+extern int sweep(client_t *c, Cursor curs, sweep_func cb, int mode,
+    strut_t *s);
+extern void recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1,
+    int y1, strut_t *s);
+extern void recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1,
+    int y1, strut_t *s);
+extern void recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1,
+    int y1, strut_t *s);
 #ifdef DEBUG
 extern void dump_name(client_t *c, const char *label, char flag);
 extern void dump_win(Window w, const char *label, char flag);
@@ -215,4 +225,4 @@ extern void dump_geom(client_t *c, const char *label);
 extern void dump_removal(client_t *c, int mode);
 extern void dump_clients(void);
 #endif
-#endif /* AEWM_H */
+#endif	/* AEWM_H */
