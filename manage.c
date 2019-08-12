@@ -37,38 +37,57 @@ user_action(client_t *c, int x, int y, int button, int down)
 	if (y > frame_height(c))
 		return;
 
-	switch (down) {
-	case 0:
+	if (x >= c->geom.w - (frame_height(c) * 2)) {
 		/* Only act on title bar buttons upon mouse button release */
-		if (x >= c->geom.w - (frame_height(c) * 2)) {
-			/* Title bar buttons */
+		if (!down) {
 			if (x >= c->geom.w - frame_height(c))
 				send_wm_delete(c);
 			else
 				iconify_client(c);
 		}
 
+		return;
+	}
+
+	if (!down)
+		return;
+
+	switch (button) {
+	case Button1:
+		if (!c->zoomed)
+			move(c, move_curs, NULL);
 		break;
-	case 1:
-		if (x >= c->geom.w - (frame_height(c) * 2))
-			break;
-
-		if (button == Button1) {
-			XRaiseWindow(dpy, c->frame);
-			move_client(c);
-		}
-
+	case Button3:
+		if (c->shaded)
+			unshade_client(c);
+		else
+			shade_client(c);
 		break;
 	}
 }
 
-/* This can't do anything dangerous. See handle_enter_event. */
+/* This can't do anything dangerous. */
 void
 focus_client(client_t *c)
 {
-	set_atoms(root, net_active_window, XA_WINDOW, &c->win, 1);
-	XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-	XInstallColormap(dpy, c->cmap);
+	client_t *oc;
+
+	if (c) {
+		set_atoms(root, net_active_window, XA_WINDOW, &c->win, 1);
+		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
+		XInstallColormap(dpy, c->cmap);
+	}
+
+	if (c != focused) {
+		oc = focused;
+		focused = c;
+		if (c) {
+			c->focus_order = ++focus_order;
+			redraw_frame(c);
+		}
+		if (oc)
+			redraw_frame(oc);
+	}
 }
 
 void

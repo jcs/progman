@@ -118,24 +118,35 @@ event_loop(void)
  * it.
  */
 static void
-handle_button_press(XButtonEvent * e)
+handle_button_press(XButtonEvent *e)
 {
-	client_t *c = find_client(e->window, MATCH_FRAME);
+	client_t *c = find_client(e->window, MATCH_ANY);
 
-	if (c)
-		user_action(c, e->x, e->y, e->button, 1);
-	else if (e->window == root)
+	if (e->window == root)
 		root_button_pressed = 1;
+	else if (c) {
+		focus_client(c);
+
+		if (find_client(e->window, MATCH_FRAME)) {
+			/* raising our frame will also raise the window */
+			XRaiseWindow(dpy, c->frame);
+			user_action(c, e->x, e->y, e->button, 1);
+		} else {
+			if (e->button == 1)
+				XRaiseWindow(dpy, c->frame);
+
+			/* pass button event through */
+			XAllowEvents(dpy, ReplayPointer, CurrentTime);
+		}
+	}
 }
 
 static void
-handle_button_release(XButtonEvent * e)
+handle_button_release(XButtonEvent *e)
 {
-	client_t *c = find_client(e->window, MATCH_FRAME);
+	client_t *c = find_client(e->window, MATCH_ANY);
 
-	if (c) {
-		user_action(c, e->x, e->y, e->button, 0);
-	} else if (e->window == root && root_button_pressed) {
+	if (e->window == root && root_button_pressed) {
 #ifdef DEBUG
 		dump_clients();
 #endif
@@ -158,6 +169,11 @@ handle_button_release(XButtonEvent * e)
 		}
 
 		root_button_pressed = 0;
+	} else if (c) {
+		if (find_client(e->window, MATCH_FRAME))
+			user_action(c, e->x, e->y, e->button, 0);
+
+		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	}
 }
 
@@ -171,7 +187,7 @@ handle_button_release(XButtonEvent * e)
  * are masked in by e->value_mask will be looked at by the X server.
  */
 static void
-handle_configure_request(XConfigureRequestEvent * e)
+handle_configure_request(XConfigureRequestEvent *e)
 {
 	client_t *c;
 	geom_t f;
@@ -240,7 +256,7 @@ handle_configure_request(XConfigureRequestEvent * e)
  * raised or lowered, and so all we have to do is make it so.
  */
 static void
-handle_circulate_request(XCirculateRequestEvent * e)
+handle_circulate_request(XCirculateRequestEvent *e)
 {
 	if (e->parent == root) {
 		if (e->place == PlaceOnBottom)
@@ -258,7 +274,7 @@ handle_circulate_request(XCirculateRequestEvent * e)
  * that window, de-iconify them here.
  */
 static void
-handle_map_request(XMapRequestEvent * e)
+handle_map_request(XMapRequestEvent *e)
 {
 	client_t *c, *p;
 
@@ -283,7 +299,7 @@ handle_map_request(XMapRequestEvent * e)
  * must be extra careful in del_client.
  */
 static void
-handle_unmap_event(XUnmapEvent * e)
+handle_unmap_event(XUnmapEvent *e)
 {
 	client_t *c;
 
@@ -300,7 +316,7 @@ handle_unmap_event(XUnmapEvent * e)
  * no Unmap event.
  */
 static void
-handle_destroy_event(XDestroyWindowEvent * e)
+handle_destroy_event(XDestroyWindowEvent *e)
 {
 	client_t *c;
 
@@ -315,7 +331,7 @@ handle_destroy_event(XDestroyWindowEvent * e)
  * later.
  */
 static void
-handle_client_message(XClientMessageEvent * e)
+handle_client_message(XClientMessageEvent *e)
 {
 	client_t *c;
 
@@ -347,7 +363,7 @@ handle_client_message(XClientMessageEvent * e)
  * because Xft uses alpha rendering.
  */
 static void
-handle_property_change(XPropertyEvent * e)
+handle_property_change(XPropertyEvent *e)
 {
 	client_t *c;
 	long supplied;
@@ -374,27 +390,23 @@ handle_property_change(XPropertyEvent * e)
 	}
 }
 
-/*
- * Lazy focus-follows-mouse and colormap-follows-mouse policy. This does not,
- * however, prevent focus stealing (it's lazy). It is not very efficient
- * either; we can get a lot of enter events at once when flipping through a
- * window stack on startup/desktop change.
- */
+/* Support click-to-focus policy. */
 static void
-handle_enter_event(XCrossingEvent * e)
+handle_enter_event(XCrossingEvent *e)
 {
 	client_t *c;
 
 	if ((c = find_client(e->window, MATCH_FRAME)))
-		focus_client(c);
+		XGrabButton(dpy, AnyButton, AnyModifier, c->win, False,
+		    ButtonMask, GrabModeSync, GrabModeSync, None, None);
 }
 
 /*
- * More colormap policy: when a client installs a new colormap on itself, set
- * the display's colormap to that. We do this even if it's not focused.
+ * Colormap policy: when a client installs a new colormap on itself, set the
+ * display's colormap to that. We do this even if it's not focused.
  */
 static void
-handle_cmap_change(XColormapEvent * e)
+handle_cmap_change(XColormapEvent *e)
 {
 	client_t *c;
 
@@ -410,7 +422,7 @@ handle_cmap_change(XColormapEvent * e)
  * is zero.
  */
 static void
-handle_expose_event(XExposeEvent * e)
+handle_expose_event(XExposeEvent *e)
 {
 	client_t *c;
 
@@ -420,7 +432,7 @@ handle_expose_event(XExposeEvent * e)
 
 #ifdef SHAPE
 static void
-handle_shape_change(XShapeEvent * e)
+handle_shape_change(XShapeEvent *e)
 {
 	client_t *c;
 

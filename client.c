@@ -123,17 +123,41 @@ find_client(Window w, int mode)
 {
 	client_t *c;
 
-	if (mode == MATCH_FRAME) {
-		for (c = head; c; c = c->next)
+	for (c = head; c; c = c->next) {
+		switch (mode) {
+		case MATCH_ANY:
+			if (c->frame == w || c->win == w)
+				return c;
+			break;
+		case MATCH_FRAME:
 			if (c->frame == w)
 				return c;
-	} else {	/* mode == MATCH_WINDOW */
-		for (c = head; c; c = c->next)
+			break;
+		case MATCH_WINDOW:
 			if (c->win == w)
 				return c;
+		}
 	}
 
 	return NULL;
+}
+
+client_t *
+prev_focused(void)
+{
+	client_t *c = head;
+	client_t *prev = NULL;
+	unsigned int high = 0;
+
+	while (c) {
+		if (c->focus_order > high) {
+			high = c->focus_order;
+			prev = c;
+		}
+		c = c->next;
+	}
+
+	return prev;
 }
 
 void
@@ -203,6 +227,7 @@ do_map(client_t *c, int do_raise)
 	XMapWindow(dpy, c->win);
 	if (do_raise) {
 		XMapRaised(dpy, c->frame);
+		focus_client(c);
 	} else {
 		XLowerWindow(dpy, c->frame);
 		XMapWindow(dpy, c->frame);
@@ -679,6 +704,11 @@ del_client(client_t *c, int mode)
 	if (c->name)
 		XFree(c->name);
 	free(c);
+
+	if (c == focused) {
+		focused = NULL;
+		focus_client(prev_focused());
+	}
 
 	XSync(dpy, False);
 	XSetErrorHandler(handle_xerror);

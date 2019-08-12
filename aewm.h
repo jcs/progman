@@ -102,6 +102,7 @@ struct client {
 	XSizeHints size;
 	Colormap cmap;
 	int ignore_unmap;
+	unsigned int focus_order;
 	unsigned long desk;
 #ifdef SHAPE
 	Bool shaped;
@@ -117,6 +118,7 @@ typedef void sweep_func(client_t *, geom_t, int, int, int, int, strut_t *);
 enum {
 	MATCH_WINDOW,
 	MATCH_FRAME,
+	MATCH_ANY,
 };	/* find_client */
 enum {
 	DEL_WITHDRAW,
@@ -128,7 +130,8 @@ enum {
 };	/* sweep */
 
 /* init.c */
-extern client_t *head;
+extern client_t *head, *focused;
+extern unsigned int focus_order;
 extern int screen;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
@@ -180,6 +183,7 @@ extern void show_event(XEvent e);
 /* client.c */
 extern client_t *new_client(Window w);
 extern client_t *find_client(Window w, int mode);
+extern client_t *prev_focused(void);
 extern void map_client(client_t *);
 extern int frame_height(client_t *c);
 extern int set_wm_state(client_t *c, unsigned long state);

@@ -35,10 +35,11 @@
 #include "atom.h"
 #include "parser.h"
 
-client_t *head;
+client_t *head, *focused;
 int screen;
 unsigned long ndesks = 1;
 unsigned long cur_desk = 0;
+unsigned int focus_order = 0;
 #ifdef SHAPE
 Bool shape;
 int shape_event;
