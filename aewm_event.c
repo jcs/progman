@@ -97,8 +97,8 @@ event_loop(void)
  * If it's on a client window, it may still fall through to us if the client
  * doesn't select for mouse-click events. The upshot of this is that you should
  * be able to click on the blank part of a GTK window with Button2 to move
- * it. */
-
+ * it.
+ */
 static void
 handle_button_press(XButtonEvent * e)
 {
@@ -201,6 +201,7 @@ handle_configure_request(XConfigureRequestEvent * e)
 		}
 		send_config(c);
 	}
+
 	wc.x = c ? 0 : e->x;
 	wc.y = c ? frame_height(c) : e->y;
 	wc.width = e->width;
@@ -329,23 +330,24 @@ handle_property_change(XPropertyEvent * e)
 	client_t *c;
 	long supplied;
 
-	if ((c = find_client(e->window, MATCH_WINDOW))) {
-		if (e->atom == XA_WM_NAME || e->atom == net_wm_name) {
-			if (c->name)
-				XFree(c->name);
-			c->name = get_wm_name(c->win);
-			redraw_frame(c);
-		} else if (e->atom == XA_WM_NORMAL_HINTS) {
-			XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
-		} else if (e->atom == net_wm_state) {
-			check_states(c);
-		} else if (e->atom == net_wm_desk) {
-			if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0,
-				&c->desk, 1, NULL)) {
-				if (c->desk == -1)
-					c->desk = DESK_ALL;	/* FIXME */
-				map_if_desk(c);
-			}
+	if (!(c = find_client(e->window, MATCH_WINDOW)))
+		return;
+
+	if (e->atom == XA_WM_NAME || e->atom == net_wm_name) {
+		if (c->name)
+			XFree(c->name);
+		c->name = get_wm_name(c->win);
+		redraw_frame(c);
+	} else if (e->atom == XA_WM_NORMAL_HINTS) {
+		XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
+	} else if (e->atom == net_wm_state) {
+		check_states(c);
+	} else if (e->atom == net_wm_desk) {
+		if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0,
+			&c->desk, 1, NULL)) {
+			if (c->desk == -1)
+				c->desk = DESK_ALL;	/* FIXME */
+			map_if_desk(c);
 		}
 	}
 }

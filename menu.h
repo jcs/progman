@@ -5,7 +5,8 @@
 #define AEWM_CLIENTS_MENU_H
 
 enum {
-	LAUNCH, SWITCH
+	LAUNCH,
+	SWITCH,
 };
 
 typedef void *(*make_item_func) (void *, char *, char *);

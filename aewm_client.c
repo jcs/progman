@@ -168,8 +168,8 @@ map_client(client_t *c)
 
 	XSync(dpy, False);
 	c->name = get_wm_name(c->win);
-	//horrible kludge
-	    XUngrabServer(dpy);
+	/* horrible kludge */
+	XUngrabServer(dpy);
 }
 
 /*
@@ -179,14 +179,15 @@ map_client(client_t *c)
 static void
 do_map(client_t *c, int do_raise)
 {
-	if (IS_ON_CUR_DESK(c)) {
-		XMapWindow(dpy, c->win);
-		if (do_raise) {
-			XMapRaised(dpy, c->frame);
-		} else {
-			XLowerWindow(dpy, c->frame);
-			XMapWindow(dpy, c->frame);
-		}
+	if (!IS_ON_CUR_DESK(c))
+		return;
+
+	XMapWindow(dpy, c->win);
+	if (do_raise) {
+		XMapRaised(dpy, c->frame);
+	} else {
+		XLowerWindow(dpy, c->frame);
+		XMapWindow(dpy, c->frame);
 	}
 }
 
@@ -201,7 +202,7 @@ do_map(client_t *c, int do_raise)
  * c->geom, though, we just leave it.
  */
 static int
-init_geom(client_t * c, strut_t * s)
+init_geom(client_t *c, strut_t *s)
 {
 	Atom win_type, state;
 	int screen_x = DisplayWidth(dpy, screen);
@@ -217,6 +218,7 @@ init_geom(client_t * c, strut_t * s)
 	 */
 	if (c->zoomed)
 		return 1;
+
 	if (get_atoms(c->win, net_wm_state, XA_ATOM, 0, &state, 1, NULL) &&
 	    state == net_wm_state_fs) {
 		c->geom.x = 0;
@@ -225,6 +227,7 @@ init_geom(client_t * c, strut_t * s)
 		c->geom.h = screen_y;
 		return 1;
 	}
+
 	/*
 	 * Here, we merely set the values; they're in the same place regardless
 	 * of whether the user or the program specified them. We'll distinguish
@@ -236,12 +239,14 @@ init_geom(client_t * c, strut_t * s)
 		if (c->size.height > 0)
 			c->geom.h = c->size.height;
 	}
+
 	if (c->size.flags & (USPosition | PPosition)) {
 		if (c->size.x > 0)
 			c->geom.x = c->size.x;
 		if (c->size.y > 0)
 			c->geom.y = c->size.y;
 	}
+
 	/*
 	 * Several types of windows can put themselves wherever they want, but
 	 * we need to read the size hints to get that position before
@@ -341,8 +346,8 @@ frame_height(client_t *c)
 {
 	if (c && c->decor)
 		return (c->trans ? 0 : ASCENT) + DESCENT + 2 * opt_pad + BW(c);
-	else
-		return 0;
+
+	return 0;
 }
 
 int
@@ -361,15 +366,13 @@ check_states(client_t *c)
 	for (i = 0, left = 1; left; i += read) {
 		read = get_atoms(c->win, net_wm_state, XA_ATOM, i, &state, 1,
 		    &left);
-		if (read) {
-			if (state == net_wm_state_shaded)
-				shade_client(c);
-			else if (state == net_wm_state_mh ||
-			    state == net_wm_state_mv)
-				zoom_client(c);
-		} else {
+		if (!read)
 			break;
-		}
+
+		if (state == net_wm_state_shaded)
+			shade_client(c);
+		else if (state == net_wm_state_mh || state == net_wm_state_mv)
+			zoom_client(c);
 	}
 }
 
@@ -411,37 +414,38 @@ redraw_frame(client_t *c)
 {
 	int x, y;
 
-	if (c && c->decor) {
-		XClearWindow(dpy, c->frame);
-		if (!c->shaded)
-			XDrawLine(dpy, c->frame, border_gc,
-			    0, frame_height(c) - BW(c) + BW(c) / 2,
-			    c->geom.w, frame_height(c) - BW(c) + BW(c) / 2);
-		XDrawLine(dpy, c->frame, border_gc,
-		    c->geom.w - frame_height(c) + BW(c) / 2, 0,
-		    c->geom.w - frame_height(c) + BW(c) / 2, frame_height(c));
+	if (!(c && c->decor))
+		return;
 
-		if (!c->trans && c->name) {
-			x = opt_pad + DESCENT / 2;
-			y = opt_pad + ASCENT;
+	XClearWindow(dpy, c->frame);
+	if (!c->shaded)
+		XDrawLine(dpy, c->frame, border_gc, 0,
+		    frame_height(c) - BW(c) + BW(c) / 2,
+		    c->geom.w, frame_height(c) - BW(c) + BW(c) / 2);
+	XDrawLine(dpy, c->frame, border_gc,
+	    c->geom.w - frame_height(c) + BW(c) / 2, 0,
+	    c->geom.w - frame_height(c) + BW(c) / 2, frame_height(c));
+
+	if (!c->trans && c->name) {
+		x = opt_pad + DESCENT / 2;
+		y = opt_pad + ASCENT;
 #ifdef XFT
 #ifdef X_HAVE_UTF8_STRING
-			XftDrawStringUtf8(c->xftdraw, &xft_fg, xftfont, x, y,
-			    (unsigned char *) c->name, strlen(c->name));
+		XftDrawStringUtf8(c->xftdraw, &xft_fg, xftfont, x, y,
+		    (unsigned char *)c->name, strlen(c->name));
 #else
-			XftDrawString8(c->xftdraw, &xft_fg, xftfont, x, y,
-			    (unsigned char *) c->name, strlen(c->name));
+		XftDrawString8(c->xftdraw, &xft_fg, xftfont, x, y,
+		    (unsigned char *)c->name, strlen(c->name));
 #endif
 #else
 #ifdef X_HAVE_UTF8_STRING
-			Xutf8DrawString(dpy, c->frame, font_set, string_gc, x, y,
-			    c->name, strlen(c->name));
+		Xutf8DrawString(dpy, c->frame, font_set, string_gc, x, y,
+		    c->name, strlen(c->name));
 #else
-			XDrawString(dpy, c->frame, string_gc, x, y,
-			    c->name, strlen(c->name));
+		XDrawString(dpy, c->frame, string_gc, x, y, c->name,
+		    strlen(c->name));
 #endif
 #endif
-		}
 	}
 }
 
@@ -516,6 +520,7 @@ collect_struts(client_t *c, strut_t *s)
 	for (p = head; p; p = p->next) {
 		if (!IS_ON_CUR_DESK(p) || p == c)
 			continue;
+
 		XGetWindowAttributes(dpy, p->win, &attr);
 		if (attr.map_state == IsViewable && get_strut(p->win, &temp)) {
 			if (temp.left > s->left)
@@ -537,7 +542,6 @@ collect_struts(client_t *c, strut_t *s)
  * for the name. The bar requires both a bound and a clip because it has a
  * border; the server will paint the border in the region between the two.
  */
-
 #ifdef SHAPE
 void
 set_shape(client_t *c)
@@ -572,6 +576,7 @@ set_shape(client_t *c)
 		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
 		    0, 0, &temp, 1, ShapeSet, YXBanded);
 	}
+
 	XFree(rects);
 }
 #endif
@@ -627,10 +632,11 @@ del_client(client_t *c, int mode)
 
 	if (head == c)
 		head = c->next;
-	else
+	else {
 		for (p = head; p && p->next; p = p->next)
 			if (p->next == c)
 				p->next = c->next;
+	}
 
 	if (c->name)
 		XFree(c->name);

@@ -121,13 +121,16 @@ struct client {
 typedef void sweep_func(client_t *, geom_t, int, int, int, int, strut_t *);
 
 enum {
-	MATCH_WINDOW, MATCH_FRAME
+	MATCH_WINDOW,
+	MATCH_FRAME,
 };	/* find_client */
 enum {
-	DEL_WITHDRAW, DEL_REMAP
+	DEL_WITHDRAW,
+	DEL_REMAP,
 };	/* del_client */
 enum {
-	SWEEP_UP, SWEEP_DOWN
+	SWEEP_UP,
+	SWEEP_DOWN,
 };	/* sweep */
 
 /* init.c */

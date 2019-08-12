@@ -55,7 +55,7 @@ main(int argc, char **argv)
 	GtkWidget *clients_box;
 	struct sigaction act;
 	char *opt_config = NULL;
-	strut_t s = {0, 0, 0, 0};
+	strut_t s = { 0, 0, 0, 0 };
 	client_t *c;
 	int i, rw, rh;
 	unsigned long read, left;
@@ -117,10 +117,10 @@ main(int argc, char **argv)
 	for (i = 0, left = 1; left; i += read) {
 		read = get_atoms(root, net_client_list, XA_WINDOW, i, &w, 1,
 		    &left);
-		if (read)
-			update_clientitem(clients_box, w);
-		else
+		if (!read)
 			break;
+
+		update_clientitem(clients_box, w);
 	}
 
 	for (c = head; c; c = c->next)
@@ -157,6 +157,7 @@ main(int argc, char **argv)
 		s.bottom = toplevel->allocation.height;
 	else
 		s.top = toplevel->allocation.height;
+
 	set_strut(GDK_WINDOW_XID(toplevel->window), &s);
 
 	gtk_main();
@@ -230,17 +231,18 @@ cleanup_clientitem(client_t *c)
 
 	if (c->save) {
 		c->save = 0;
-	} else {
-		gtk_widget_destroy(GTK_WIDGET(c->widget));
-		if (head == c) {
-			head = c->next;
-		} else {
-			for (p = head; p && p->next; p = p->next)
-				if (p->next == c)
-					p->next = c->next;
-		}
-		free(c);
+		return;
 	}
+
+	gtk_widget_destroy(GTK_WIDGET(c->widget));
+	if (head == c) {
+		head = c->next;
+	} else {
+		for (p = head; p && p->next; p = p->next)
+			if (p->next == c)
+				p->next = c->next;
+	}
+	free(c);
 }
 
 GdkFilterReturn
@@ -288,10 +290,10 @@ update_client_list(GtkWidget * container)
 	for (i = 0, left = 1; left; i += read) {
 		read = get_atoms(root, net_client_list, XA_WINDOW, i, &w, 1,
 		    &left);
-		if (read)
-			update_clientitem(container, w);
-		else
+		if (!read)
 			break;
+
+		update_clientitem(container, w);
 	}
 
 	for (c = head; c; c = save_next) {
@@ -365,6 +367,6 @@ set_strut(Window w, strut_t *s)
 	data[2] = s->top;
 	data[3] = s->bottom;
 
-	XChangeProperty(dpy, w, net_wm_strut, XA_CARDINAL,
-	    32, PropModeReplace, (unsigned char *) data, 4);
+	XChangeProperty(dpy, w, net_wm_strut, XA_CARDINAL, 32, PropModeReplace,
+	    (unsigned char *)data, 4);
 }

@@ -47,8 +47,8 @@ static char *get_string_atom(Window, Atom, Atom);
  */
 
 unsigned long
-get_atoms(Window w, Atom a, Atom type, unsigned long off,
-    unsigned long *ret, unsigned long nitems, unsigned long *left)
+get_atoms(Window w, Atom a, Atom type, unsigned long off, unsigned long *ret,
+    unsigned long nitems, unsigned long *left)
 {
 	Atom real_type;
 	int i, real_format = 0;
@@ -57,8 +57,8 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off,
 	unsigned long *p;
 	unsigned char *data;
 
-	XGetWindowProperty(dpy, w, a, off, nitems, False, type,
-	    &real_type, &real_format, &items_read, &bytes_left, &data);
+	XGetWindowProperty(dpy, w, a, off, nitems, False, type, &real_type,
+	    &real_format, &items_read, &bytes_left, &data);
 
 	if (real_format == 32 && items_read) {
 		p = (unsigned long *)data;
@@ -68,9 +68,9 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off,
 		if (left)
 			*left = bytes_left;
 		return items_read;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 unsigned long
@@ -107,7 +107,7 @@ remove_atom(Window w, Atom a, Atom type, unsigned long remove)
 		read = get_atoms(w, a, type, i, &tmp, 1, &left);
 		if (!read)
 			break;
-		else if (tmp != remove)
+		if (tmp != remove)
 			new[j++] = tmp;
 	}
 
@@ -151,36 +151,35 @@ get_wm_name(Window w)
 	char **name_list;
 	int nitems;
 
-	if ((name = get_string_atom(w, net_wm_name, utf8_string))) {
+	if ((name = get_string_atom(w, net_wm_name, utf8_string)))
 		return name;
-	} else if (XGetWMName(dpy, w, &name_prop)) {
-		if (Xutf8TextPropertyToTextList(dpy, &name_prop, &name_list,
-			&nitems) == Success && nitems >= 1) {
-			/*
-			 * Now we've got a freshly allocated XTextList. Since
-			 * it might have multiple items that need to be joined,
-			 * and we need to return something that can be freed by
-			 * XFree, we roll it back up into an XTextProperty.
-			 */
-			if (Xutf8TextListToTextProperty(dpy, name_list, nitems,
-				XUTF8StringStyle, &name_prop_converted) == Success) {
-				XFreeStringList(name_list);
-				return (char *) name_prop_converted.value;
-			} else {
-				/*
-				 * Not much we can do here. This should never
-				 * happen anyway. Famous last words.
-				 */
-				XFreeStringList(name_list);
-				return NULL;
-			}
-		} else {
-			return (char *) name_prop.value;
+
+	if (!XGetWMName(dpy, w, &name_prop))
+		return NULL;
+
+	if (Xutf8TextPropertyToTextList(dpy, &name_prop, &name_list,
+	    &nitems) == Success && nitems >= 1) {
+		/*
+		 * Now we've got a freshly allocated XTextList. Since
+		 * it might have multiple items that need to be joined,
+		 * and we need to return something that can be freed by
+		 * XFree, we roll it back up into an XTextProperty.
+		 */
+		if (Xutf8TextListToTextProperty(dpy, name_list, nitems,
+			XUTF8StringStyle, &name_prop_converted) == Success) {
+			XFreeStringList(name_list);
+			return (char *)name_prop_converted.value;
 		}
-	} else {
-		/* There is no prop. There is only NULL! */
+
+		/*
+		 * Not much we can do here. This should never
+		 * happen anyway. Famous last words.
+		 */
+		XFreeStringList(name_list);
 		return NULL;
 	}
+
+	return (char *)name_prop.value;
 #else
 	XFetchName(dpy, w, &name);
 	return name;
@@ -211,9 +210,9 @@ get_string_atom(Window w, Atom a, Atom type)
 	 * someone wants to store a >4gb string on the server */
 
 	if (real_format == 8 && items_read >= 1)
-		return (char *) data;
-	else
-		return NULL;
+		return (char *)data;
+
+	return NULL;
 }
 
 /*
@@ -252,13 +251,14 @@ get_strut(Window w, strut_t *s)
 		s->bottom = strut_data[3];
 		XFree(data);
 		return 1;
-	} else {
-		s->left = 0;
-		s->right = 0;
-		s->top = 0;
-		s->bottom = 0;
-		return 0;
 	}
+
+	s->left = 0;
+	s->right = 0;
+	s->top = 0;
+	s->bottom = 0;
+
+	return 0;
 }
 
 unsigned long
@@ -268,6 +268,6 @@ get_wm_state(Window w)
 
 	if (get_atoms(w, wm_state, wm_state, 0, &state, 1, NULL))
 		return state;
-	else
-		return WithdrawnState;
+
+	return WithdrawnState;
 }

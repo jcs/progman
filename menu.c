@@ -16,7 +16,7 @@
 #include "menu.h"
 
 void
-setup_switch_atoms()
+setup_switch_atoms(void)
 {
 	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 	wm_state = XInternAtom(dpy, "WM_STATE", False);
@@ -66,8 +66,8 @@ is_on_cur_desk(Window w)
 	if (get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL) &&
 	    (get_atoms(w, net_wm_desk, XA_CARDINAL, 0, &w_desk, 1, NULL)))
 		return IS_ON_DESK(w_desk, cur_desk);
-	else
-		return 1;
+
+	return 1;
 }
 
 int
@@ -111,15 +111,17 @@ raise_win(Window w)
  * with some fantastically ugly way of doing it ourselves.
  */
 static void
-do_launch_menu(FILE * rc, void *menu, make_item_func make_item_cb)
+do_launch_menu(FILE *rc, void *menu, make_item_func make_item_cb)
 {
+	FILE *f;
 	char buf[BUF_SIZE], token[BUF_SIZE], *p;
+	char *label;
+	void *newmenu;
 
 	while (get_rc_line(buf, sizeof buf, rc)) {
 		p = buf;
 		while (get_token(&p, token)) {
 			if (strcmp(token, "menu") == 0) {
-				void *newmenu;
 				if (get_token(&p, token)) {
 					newmenu = make_item_cb(menu, token,
 					    NULL);
@@ -129,7 +131,7 @@ do_launch_menu(FILE * rc, void *menu, make_item_func make_item_cb)
 			}
 			if (strcmp(token, "cmd") == 0) {
 				if (get_token(&p, token)) {
-					char *label = strdup(token);
+					label = strdup(token);
 					if (get_token(&p, token))
 						make_item_cb(menu, label,
 						    strdup(token));
@@ -138,8 +140,7 @@ do_launch_menu(FILE * rc, void *menu, make_item_func make_item_cb)
 			}
 			if (strcmp(token, "include") == 0) {
 				if (get_token(&p, token)) {
-					FILE *f = fopen(token, "r");
-					if (f) {
+					if ((f = fopen(token, "r"))) {
 						do_launch_menu(f, menu,
 						    make_item_cb);
 						fclose(f);

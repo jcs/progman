@@ -55,7 +55,7 @@ char *opt_bd = DEF_BD;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_imap = DEF_IMAP;
-char *opt_new[] = {DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5};
+char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
 
 static void shutdown(void);
 static void read_config(char *);
@@ -125,6 +125,7 @@ main(int argc, char **argv)
 
 	setup_display();
 	event_loop();
+
 	return 0;
 }
 
@@ -140,6 +141,7 @@ read_config(char *rcfile)
 			    rcfile);
 		return;
 	}
+
 	while (get_rc_line(buf, sizeof buf, rc)) {
 		p = buf;
 		while (get_token(&p, token)) {
@@ -216,6 +218,7 @@ setup_display(void)
 		    getenv("DISPLAY"));
 		exit(1);
 	}
+
 	XSetErrorHandler(handle_xerror);
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
@@ -360,6 +363,8 @@ sig_handler(int signum)
 int
 handle_xerror(Display * dpy, XErrorEvent * e)
 {
+	char msg[255];
+
 #ifdef DEBUG
 	client_t *c = find_client(e->resourceid, MATCH_WINDOW);
 #endif
@@ -367,20 +372,15 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 	if (e->error_code == BadAccess && e->resourceid == root) {
 		fprintf(stderr, "aewm: root window unavailable\n");
 		exit(1);
-	} else {
-		char msg[255];
-		XGetErrorText(dpy, e->error_code, msg, sizeof msg);
-		fprintf(stderr, "aewm: X error (%#lx): %s\n", e->resourceid,
-		    msg);
-#ifdef DEBUG
-		if (c)
-			dump_info(c);
-#endif
 	}
 
+	XGetErrorText(dpy, e->error_code, msg, sizeof msg);
+	fprintf(stderr, "aewm: X error (%#lx): %s\n", e->resourceid, msg);
 #ifdef DEBUG
-	if (c)
+	if (c) {
+		dump_info(c);
 		del_client(c, DEL_WITHDRAW);
+	}
 #endif
 	return 0;
 }

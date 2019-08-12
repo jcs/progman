@@ -27,6 +27,7 @@ main(int argc, char **argv)
 		fprintf(stderr, "usage: aedesk [+-]<integer>|-n <integer>\n");
 		exit(2);
 	}
+
 	dpy = XOpenDisplay(NULL);
 	root = DefaultRootWindow(dpy);
 	net_cur_desk = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
@@ -37,6 +38,7 @@ main(int argc, char **argv)
 		    getenv("DISPLAY"));
 		exit(1);
 	}
+
 	for (i = 1; i < argc; i++) {
 		if (ARG("setn", "n", 1)) {
 			desk = atol(argv[++i]);
@@ -62,10 +64,10 @@ parse_desk(char *spec)
 		    NULL) && get_atoms(root, net_num_desks, XA_CARDINAL, 0,
 		    &ndesks, 1, NULL)) {
 			return UMOD(cur_desk + atol(spec), ndesks);
-		} else {
-			return 0;
 		}
-	} else {
-		return atol(spec);
+
+		return 0;
 	}
+
+	return atol(spec);
 }

@@ -18,17 +18,15 @@ open_rc(char *rcfile, char *def)
 	FILE *rc;
 	char buf[BUF_SIZE];
 
-	if (rcfile) {
+	if (rcfile)
 		return fopen(rcfile, "r");
-	} else {
-		snprintf(buf, sizeof buf, "%s/.aewm/%s", getenv("HOME"), def);
-		if ((rc = fopen(buf, "r"))) {
-			return rc;
-		} else {
-			snprintf(buf, sizeof buf, "%s/%s", SYS_RC_DIR, def);
-			return fopen(buf, "r");
-		}
-	}
+
+	snprintf(buf, sizeof buf, "%s/.aewm/%s", getenv("HOME"), def);
+	if ((rc = fopen(buf, "r")))
+		return rc;
+
+	snprintf(buf, sizeof buf, "%s/%s", SYS_RC_DIR, def);
+	return fopen(buf, "r");
 }
 
 char *
@@ -37,9 +35,10 @@ get_rc_line(char *s, int size, FILE * stream)
 	while (fgets(s, size, stream)) {
 		if (s[0] == '#' || s[0] == '\n')
 			continue;
-		else
-			return s;
+
+		return s;
 	}
+
 	return NULL;
 }
 

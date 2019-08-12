@@ -18,7 +18,8 @@ user_action(client_t *c, int x, int y, int button)
 {
 	if (x >= c->geom.w - frame_height(c) && y <= frame_height(c)) {
 		switch (button) {
-		case Button1:iconify_client(c);
+		case Button1:
+			iconify_client(c);
 			break;
 		case Button2:
 			resize_client(c);
@@ -68,12 +69,13 @@ move_client(client_t *c)
 {
 	geom_t f;
 
-	if (!c->zoomed) {
-		sweep(c, move_curs, recalc_move, SWEEP_UP, NULL);
-		f = frame_geom(c);
-		XMoveWindow(dpy, c->frame, f.x, f.y);
-		send_config(c);
-	}
+	if (c->zoomed)
+		return;
+
+	sweep(c, move_curs, recalc_move, SWEEP_UP, NULL);
+	f = frame_geom(c);
+	XMoveWindow(dpy, c->frame, f.x, f.y);
+	send_config(c);
 }
 
 /*
@@ -134,22 +136,23 @@ uniconify_client(client_t *c)
 void
 shade_client(client_t *c)
 {
-	if (!c->shaded) {
-		c->shaded = 1;
-		append_atoms(c->win, net_wm_state, XA_ATOM,
-		    &net_wm_state_shaded, 1);
-		do_shade(c);
-	}
+	if (c->shaded)
+		return;
+
+	c->shaded = 1;
+	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_shaded, 1);
+	do_shade(c);
 }
 
 void
 unshade_client(client_t *c)
 {
-	if (c->shaded) {
-		c->shaded = 0;
-		remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
-		do_shade(c);
-	}
+	if (!c->shaded)
+		return;
+
+	c->shaded = 0;
+	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
+	do_shade(c);
 }
 
 static void
@@ -176,33 +179,31 @@ zoom_client(client_t *c)
 {
 	strut_t s = {0, 0, 0, 0};
 
-	if (!c->zoomed) {
-		c->save = c->geom;
-		c->shaded = 0;
-		c->zoomed = 1;
+	if (c->zoomed)
+		return;
 
-		collect_struts(c, &s);
-		c->geom.x = s.left;
-		c->geom.y = s.top;
-		c->geom.w = DisplayWidth(dpy, screen) - 2 * BW(c) - s.left -
-		    s.right;
-		c->geom.h = DisplayHeight(dpy, screen) - 2 * BW(c) -
-		    frame_height(c) - s.top - s.bottom;
-		fix_size(c);
+	c->save = c->geom;
+	c->shaded = 0;
+	c->zoomed = 1;
 
-		if (c->frame) {
-			XMoveResizeWindow(dpy, c->frame, c->geom.x, c->geom.y,
-			    c->geom.w, c->geom.h + frame_height(c));
-			XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
-			redraw_frame(c);
-		}
-		remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
-		append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv,
-		    1);
-		append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh,
-		    1);
-		send_config(c);
+	collect_struts(c, &s);
+	c->geom.x = s.left;
+	c->geom.y = s.top;
+	c->geom.w = DisplayWidth(dpy, screen) - 2 * BW(c) - s.left - s.right;
+	c->geom.h = DisplayHeight(dpy, screen) - 2 * BW(c) - frame_height(c) -
+	    s.top - s.bottom;
+	fix_size(c);
+
+	if (c->frame) {
+		XMoveResizeWindow(dpy, c->frame, c->geom.x, c->geom.y,
+		    c->geom.w, c->geom.h + frame_height(c));
+		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		redraw_frame(c);
 	}
+	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
+	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
+	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
+	send_config(c);
 }
 
 void
@@ -210,20 +211,22 @@ unzoom_client(client_t *c)
 {
 	geom_t f;
 
-	if (c->zoomed) {
-		c->geom = c->save;
-		c->zoomed = 0;
+	if (!c->zoomed)
+		return;
 
-		if (c->frame) {
-			f = frame_geom(c);
-			XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
-			XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
-			redraw_frame(c);
-		}
-		remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mv);
-		remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mh);
-		send_config(c);
+	c->geom = c->save;
+	c->zoomed = 0;
+
+	if (c->frame) {
+		f = frame_geom(c);
+		XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
+		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		redraw_frame(c);
 	}
+
+	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mv);
+	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mh);
+	send_config(c);
 }
 
 /*
@@ -277,7 +280,7 @@ sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
 	XEvent ev;
 
 	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
-		GrabModeAsync, None, curs, CurrentTime) != GrabSuccess)
+	    GrabModeAsync, None, curs, CurrentTime) != GrabSuccess)
 		return 0;
 
 	XGrabServer(dpy);
@@ -460,7 +463,7 @@ draw_outline(client_t *c)
 	    frame_height(c));
 
 	adj = fix_size(c);
-	snprintf(buf, sizeof buf, "%ldx%ld%+ld%+ld", adj.w, adj.h, c->geom.x,
+	snprintf(buf, sizeof(buf), "%ldx%ld%+ld%+ld", adj.w, adj.h, c->geom.x,
 	    c->geom.y);
 	XDrawString(dpy, root, invert_gc,
 	    re - opt_pad - font->descent / 2 - XTextWidth(font, buf,
