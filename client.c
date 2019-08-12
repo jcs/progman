@@ -325,8 +325,8 @@ reparent(client_t *c, strut_t *s)
 	pattr.override_redirect = True;
 	pattr.background_pixel = bg.pixel;
 	pattr.border_pixel = bd.pixel;
-	pattr.event_mask = SubMask | ButtonPressMask | ExposureMask |
-	    EnterWindowMask;
+	pattr.event_mask = SubMask | ButtonPressMask | ButtonReleaseMask |
+	    ExposureMask | EnterWindowMask;
 	c->frame = XCreateWindow(dpy, root, f.x, f.y, f.w, f.h, BW(c),
 	    DefaultDepth(dpy, screen), CopyFromParent, DefaultVisual(dpy,
 	    screen), CWOverrideRedirect | CWBackPixel | CWBorderPixel |
@@ -436,13 +436,33 @@ redraw_frame(client_t *c)
 		return;
 
 	XClearWindow(dpy, c->frame);
+
 	if (!c->shaded)
 		XDrawLine(dpy, c->frame, border_gc, 0,
 		    frame_height(c) - BW(c) + BW(c) / 2,
 		    c->geom.w, frame_height(c) - BW(c) + BW(c) / 2);
+
+	/* close box and its icon */
 	XDrawLine(dpy, c->frame, border_gc,
-	    c->geom.w - frame_height(c) + BW(c) / 2, 0,
-	    c->geom.w - frame_height(c) + BW(c) / 2, frame_height(c));
+	    c->geom.w - frame_height(c) + (BW(c) / 2), 0,
+	    c->geom.w - frame_height(c) + (BW(c) / 2), frame_height(c));
+	x = c->geom.w - ((frame_height(c) - BW(c)) / 2) - (icon_size / 2);
+	y = (frame_height(c) - icon_size - BW(c)) / 2;
+	XSetClipMask(dpy, string_gc, close_pm);
+	XSetClipOrigin(dpy, string_gc, x, y);
+	XCopyPlane(dpy, close_pm, c->frame, string_gc, 0, 0, icon_size,
+	    icon_size, x, y, 1);
+
+	/* minify box */
+	XDrawLine(dpy, c->frame, border_gc,
+	    c->geom.w - (frame_height(c) * 2) + (BW(c) / 2), 0,
+	    c->geom.w - (frame_height(c) * 2) + (BW(c) / 2), frame_height(c));
+	x = c->geom.w - frame_height(c) - ((frame_height(c) - BW(c)) / 2) -
+	    (icon_size / 2);
+	XSetClipMask(dpy, string_gc, minify_pm);
+	XSetClipOrigin(dpy, string_gc, x, y);
+	XCopyPlane(dpy, minify_pm, c->frame, string_gc, 0, 0, icon_size,
+	    icon_size, x, y, 1);
 
 	if (!c->trans && c->name) {
 		x = opt_pad + DESCENT / 2;

@@ -120,10 +120,10 @@ event_loop(void)
 static void
 handle_button_press(XButtonEvent * e)
 {
-	client_t *c;
+	client_t *c = find_client(e->window, MATCH_FRAME);
 
-	if ((c = find_client(e->window, MATCH_FRAME)))
-		user_action(c, e->x, e->y, e->button);
+	if (c)
+		user_action(c, e->x, e->y, e->button, 1);
 	else if (e->window == root)
 		root_button_pressed = 1;
 }
@@ -131,7 +131,11 @@ handle_button_press(XButtonEvent * e)
 static void
 handle_button_release(XButtonEvent * e)
 {
-	if (e->window == root && root_button_pressed) {
+	client_t *c = find_client(e->window, MATCH_FRAME);
+
+	if (c) {
+		user_action(c, e->x, e->y, e->button, 0);
+	} else if (e->window == root && root_button_pressed) {
 #ifdef DEBUG
 		dump_clients();
 #endif

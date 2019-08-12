@@ -60,6 +60,8 @@ XColor bd;
 GC invert_gc;
 GC string_gc;
 GC border_gc;
+Pixmap close_pm;
+Pixmap minify_pm;
 Cursor map_curs;
 Cursor move_curs;
 Cursor resize_curs;
@@ -257,6 +259,11 @@ setup_display(void)
 	invert_gc = XCreateGC(dpy, root,
 	    GCFunction | GCSubwindowMode | GCLineWidth | GCFont, &gv);
 
+	close_pm = XCreateBitmapFromData(dpy, root, close_icon,
+	    sizeof(close_icon), sizeof(close_icon));
+	minify_pm = XCreateBitmapFromData(dpy, root, minify_icon,
+	    sizeof(minify_icon), sizeof(minify_icon));
+
 	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
 	wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -410,6 +417,8 @@ shutdown(void)
 	XFreeGC(dpy, invert_gc);
 	XFreeGC(dpy, border_gc);
 	XFreeGC(dpy, string_gc);
+	XFreePixmap(dpy, close_pm);
+	XFreePixmap(dpy, minify_pm);
 
 	XInstallColormap(dpy, DefaultColormap(dpy, screen));
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
