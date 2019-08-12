@@ -54,30 +54,6 @@
 
 /* End of options */
 
-#ifdef XFT
-#define XFT_USAGE "            [--xftfont|-fa <font>]\n"
-#else
-#define XFT_USAGE ""
-#endif
-
-#define USAGE \
-    "usage: aewm [--config|-rc <file>]\n" \
-                 XFT_USAGE \
-    "            [--font|-fn <font>]\n" \
-    "            [--fgcolor|-fg <color>]\n" \
-    "            [--bgcolor|-bg <color>]\n" \
-    "            [--bdcolor|-bd <color>]\n" \
-    "            [--bdwidth|-bw <integer>]\n" \
-    "            [--padding|-p <integer>]\n" \
-    "            [--imap|-i] [--no-imap|-n]\n" \
-    "            [--new1|-1 <command>]\n" \
-    "            [--new2|-2 <command>]\n" \
-    "            [--new3|-3 <command>]\n" \
-    "            [--new4|-4 <command>]\n" \
-    "            [--new5|-5 <command>]\n" \
-    "            [--help|-h]\n" \
-    "            [--version|-v]\n"
-
 #define SubMask (SubstructureRedirectMask|SubstructureNotifyMask)
 #define ButtonMask (ButtonPressMask|ButtonReleaseMask)
 #define MouseMask (ButtonMask|PointerMotionMask)
