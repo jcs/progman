@@ -51,6 +51,7 @@ setup_switch_atoms(void)
 	net_wm_type_dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
 	net_wm_type_desk = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP",
 	    False);
+	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 }
 
 void
@@ -117,6 +118,7 @@ raise_win(Window w)
 {
 	XMapRaised(dpy, w);
 	XSync(dpy, False);
+	send_xmessage(root, w, net_active_window, 0, SubstructureNotifyMask);
 }
 
 /*

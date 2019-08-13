@@ -58,6 +58,7 @@ Atom net_wm_strut;
 Atom net_wm_strut_partial;
 Atom net_wm_wintype;
 Atom net_wm_wintype_dock;
+Atom net_active_window;
 
 #define NAME_SIZE 48
 
@@ -264,8 +265,7 @@ cleanup_clientitem(client_t *c)
 }
 
 GdkFilterReturn
-check_event(GdkXEvent * gdk_xevent, GdkEvent * event,
-    gpointer container)
+check_event(GdkXEvent * gdk_xevent, GdkEvent * event, gpointer container)
 {
 	XEvent *e = gdk_xevent;
 	client_t *c;
@@ -366,6 +366,7 @@ setup_panel_atoms()
 	net_wm_wintype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	net_wm_wintype_dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK",
 	    False);
+	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 }
 
 void
