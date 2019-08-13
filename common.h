@@ -41,6 +41,6 @@ extern Window root;
 
 extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
-extern int send_xmessage(Window, Atom, unsigned long, unsigned long);
+extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
 
 #endif	/* AEWM_COMMON_H */

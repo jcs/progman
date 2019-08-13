@@ -56,7 +56,7 @@ get_pointer(int *x, int *y)
 }
 
 int
-send_xmessage(Window w, Atom a, unsigned long x, unsigned long mask)
+send_xmessage(Window t, Window w, Atom a, unsigned long x, unsigned long mask)
 {
 	XClientMessageEvent e;
 
@@ -67,5 +67,5 @@ send_xmessage(Window w, Atom a, unsigned long x, unsigned long mask)
 	e.data.l[0] = x;
 	e.data.l[1] = CurrentTime;
 
-	return XSendEvent(dpy, w, False, mask, (XEvent *)&e);
+	return XSendEvent(dpy, t, False, mask, (XEvent *)&e);
 }

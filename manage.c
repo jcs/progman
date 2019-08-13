@@ -272,7 +272,8 @@ send_wm_delete(client_t *c)
 		XFree(protocols);
 	}
 	if (found)
-		send_xmessage(c->win, wm_protos, wm_delete, NoEventMask);
+		send_xmessage(c->win, c->win, wm_protos, wm_delete,
+		    NoEventMask);
 	else
 		XKillClient(dpy, c->win);
 }

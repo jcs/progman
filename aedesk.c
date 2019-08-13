@@ -63,7 +63,7 @@ main(int argc, char **argv)
 			set_atoms(root, net_num_desks, XA_CARDINAL, &desk, 1);
 		} else {
 			desk = parse_desk(argv[i]);
-			send_xmessage(root, net_cur_desk, desk,
+			send_xmessage(root, root, net_cur_desk, desk,
 			    SubstructureNotifyMask);
 		}
 	}
