@@ -350,6 +350,7 @@ handle_client_message(XClientMessageEvent *e)
 			map_if_desk(c);
 			uniconify_client(c);
 			XRaiseWindow(dpy, c->frame);
+			focus_client(c);
 		} else if (e->message_type == net_close_window &&
 		    e->format == 32) {
 			send_wm_delete(c);
