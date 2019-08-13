@@ -117,8 +117,8 @@ read_config(char *rcfile)
 
 	if (!(rc = open_rc(rcfile, "aewmrc"))) {
 		if (rcfile)
-			fprintf(stderr, "aewm: rc file '%s' not found\n",
-			    rcfile);
+			fprintf(stderr, "%s: rc file '%s' not found\n",
+			    __progname, rcfile);
 		return;
 	}
 
@@ -184,7 +184,7 @@ setup_display(void)
 	dpy = XOpenDisplay(NULL);
 
 	if (!dpy) {
-		fprintf(stderr, "aewm: can't open $DISPLAY '%s'\n",
+		fprintf(stderr, "%s: can't open $DISPLAY \"%s\"\n", __progname,
 		    getenv("DISPLAY"));
 		exit(1);
 	}
@@ -210,7 +210,8 @@ setup_display(void)
 
 	xftfont = XftFontOpenName(dpy, DefaultScreen(dpy), opt_xftfont);
 	if (!xftfont) {
-		fprintf(stderr, "aewm: Xft font '%s' not found\n", opt_xftfont);
+		fprintf(stderr, "%s: Xft font \"%s\" not found\n", __progname,
+		    opt_xftfont);
 		exit(1);
 	}
 
@@ -332,12 +333,13 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 #endif
 
 	if (e->error_code == BadAccess && e->resourceid == root) {
-		fprintf(stderr, "aewm: root window unavailable\n");
+		fprintf(stderr, "%s: root window unavailable\n", __progname);
 		exit(1);
 	}
 
 	XGetErrorText(dpy, e->error_code, msg, sizeof msg);
-	fprintf(stderr, "aewm: X error (%#lx): %s\n", e->resourceid, msg);
+	fprintf(stderr, "%s: X error (%#lx): %s\n", __progname, e->resourceid,
+	    msg);
 #ifdef DEBUG
 	if (c) {
 		dump_info(c);
