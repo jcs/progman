@@ -42,9 +42,6 @@
 #define DEF_BD "black"
 #define DEF_BW 1
 
-/* Whether to use interactive window mapping */
-#define DEF_IMAP 0
-
 #define DEF_NEW1 "aemenu --switch"
 #define DEF_NEW2 "xterm"
 #define DEF_NEW3 "aemenu --launch"
@@ -148,7 +145,6 @@ extern char *opt_bg;
 extern char *opt_bd;
 extern int opt_bw;
 extern int opt_pad;
-extern int opt_imap;
 extern char *opt_new[];
 extern void sig_handler(int signum);
 

@@ -166,7 +166,7 @@ map_client(client_t *c)
 	XWindowAttributes attr;
 	strut_t s = {0, 0, 0, 0};
 	XWMHints *hints;
-	int btn, want_raise = 1;
+	int want_raise = 1;
 
 	XGrabServer(dpy);
 
@@ -191,14 +191,7 @@ map_client(client_t *c)
 		} else {
 			set_wm_state(c, NormalState);
 		}
-		if (!init_geom(c, &s) && opt_imap) {
-			btn = sweep(c, map_curs, recalc_map, SWEEP_DOWN, &s);
-			if (btn == Button2)
-				btn = sweep(c, resize_curs, recalc_resize,
-				    SWEEP_UP, &s);
-			if (btn == Button3)
-				want_raise = 0;
-		}
+		init_geom(c, &s);
 #ifdef DEBUG
 		dump_geom(c, "set to");
 		dump_info(c);

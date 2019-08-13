@@ -67,7 +67,6 @@ char *opt_bg = DEF_BG;
 char *opt_bd = DEF_BD;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
-int opt_imap = DEF_IMAP;
 char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
 
 static void shutdown(void);
@@ -143,9 +142,6 @@ read_config(char *rcfile)
 			} else if (strcmp(token, "padding") == 0) {
 				if (get_token(&p, token))
 					opt_pad = atoi(token);
-			} else if (strcmp(token, "imap") == 0) {
-				if (get_token(&p, token))
-					opt_imap = atoi(token);
 			} else if (strcmp(token, "button1") == 0) {
 				if (get_token(&p, token))
 					opt_new[0] = strdup(token);
