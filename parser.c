@@ -39,7 +39,7 @@ open_rc(char *rcfile, char *def)
 	if (rcfile)
 		return fopen(rcfile, "r");
 
-	snprintf(buf, sizeof buf, "%s/.aewm/%s", getenv("HOME"), def);
+	snprintf(buf, sizeof buf, "%s/.config/aewm/%s", getenv("HOME"), def);
 	if ((rc = fopen(buf, "r")))
 		return rc;
 
