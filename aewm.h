@@ -147,6 +147,7 @@ extern int opt_bw;
 extern int opt_pad;
 extern char *opt_new[];
 extern void sig_handler(int signum);
+extern int exitmsg[2];
 
 /* event.c */
 extern void event_loop(void);

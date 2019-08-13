@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <poll.h>
 #include <X11/Xatom.h>
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
@@ -52,8 +53,25 @@ void
 event_loop(void)
 {
 	XEvent ev;
+	struct pollfd pfd[2];
+
+	memset(&pfd, 0, sizeof(pfd));
+	pfd[0].fd = ConnectionNumber(dpy);
+	pfd[0].events = POLLIN;
+	pfd[1].fd = exitmsg[0];
+	pfd[1].events = POLLIN;
 
 	for (;;) {
+		if (!XPending(dpy)) {
+			poll(pfd, 2, INFTIM);
+			if (pfd[1].revents)
+				/* exitmsg */
+				break;
+
+			if (!XPending(dpy))
+				continue;
+		}
+
 		XNextEvent(dpy, &ev);
 #ifdef DEBUG
 		show_event(ev);

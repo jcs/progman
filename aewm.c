@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <locale.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
@@ -61,6 +63,8 @@ Cursor map_curs;
 Cursor move_curs;
 Cursor resize_curs;
 
+int exitmsg[2];
+
 char *opt_xftfont = DEF_XFTFONT;
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
@@ -69,7 +73,7 @@ int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
 
-static void shutdown(void);
+static void cleanup(void);
 static void read_config(char *);
 static void setup_display(void);
 
@@ -91,9 +95,11 @@ main(int argc, char **argv)
 			break;
 		default:
 			printf("usage: %s [-c <config file>]\n", __progname);
-			exit(0);
+			exit(1);
 		}
 	}
+
+	pipe2(exitmsg, O_CLOEXEC);
 
 	act.sa_handler = sig_handler;
 	act.sa_flags = 0;
@@ -104,6 +110,7 @@ main(int argc, char **argv)
 
 	setup_display();
 	event_loop();
+	cleanup();
 
 	return 0;
 }
@@ -307,14 +314,19 @@ setup_display(void)
 void
 sig_handler(int signum)
 {
+	pid_t pid;
+	int status;
+
 	switch (signum) {
 	case SIGINT:
 	case SIGTERM:
 	case SIGHUP:
-		shutdown();
+		write(exitmsg[1], &exitmsg, 1);
 		break;
 	case SIGCHLD:
-		wait(NULL);
+		while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0 ||
+		    (pid < 0 && errno == EINTR))
+			;
 		break;
 	}
 }
@@ -357,7 +369,7 @@ ignore_xerror(Display * dpy, XErrorEvent * e)
  * order in our linked list is different.
  */
 static void
-shutdown(void)
+cleanup(void)
 {
 	unsigned int nwins, i;
 	Window qroot, qparent, *wins;
