@@ -38,13 +38,11 @@ user_action(client_t *c, int x, int y, int button, int down)
 		return;
 
 	if (x >= c->geom.w - (frame_height(c) * 2)) {
-		/* Only act on title bar buttons upon mouse button release */
-		if (!down) {
-			if (x >= c->geom.w - frame_height(c))
+		if (x >= c->geom.w - frame_height(c)) {
+			if (!down)
 				send_wm_delete(c);
-			else
-				iconify_client(c);
-		}
+		} else if (down)
+			resize_client(c);
 
 		return;
 	}
@@ -55,7 +53,7 @@ user_action(client_t *c, int x, int y, int button, int down)
 	switch (button) {
 	case Button1:
 		if (!c->zoomed)
-			move(c, move_curs, NULL);
+			move_client(c);
 		break;
 	case Button3:
 		if (c->shaded)
@@ -93,15 +91,10 @@ focus_client(client_t *c)
 void
 move_client(client_t *c)
 {
-	geom_t f;
-
 	if (c->zoomed)
 		return;
 
-	sweep(c, move_curs, recalc_move, SWEEP_UP, NULL);
-	f = frame_geom(c);
-	XMoveWindow(dpy, c->frame, f.x, f.y);
-	send_config(c);
+	sweep(c, move_curs, recalc_move, SWEEP_LIVE, NULL);
 }
 
 /*
@@ -120,7 +113,8 @@ resize_client(client_t *c)
 		c->save = c->geom;
 	unzoom_client(c);
 
-	sweep(c, resize_curs, recalc_resize, SWEEP_UP, &hold);
+	sweep(c, resize_curs, recalc_resize, SWEEP_OUTLINE, &hold);
+
 	f = frame_geom(c);
 	XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
 	XMoveResizeWindow(dpy, c->win, 0, frame_height(c), c->geom.w,
@@ -302,39 +296,76 @@ map_if_desk(client_t *c)
 int
 sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
 {
-	int x0, y0, mask;
-	geom_t orig = c->geom;
+	Window bounds = 0;
 	XEvent ev;
-
-	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
-	    GrabModeAsync, None, curs, CurrentTime) != GrabSuccess)
-		return 0;
-
-	XGrabServer(dpy);
+	XSetWindowAttributes pattr;
+	geom_t orig = c->geom, br;
+	client_t *ec;
+	strut_t as = { 0, 0, 0, 0 };
+	int x0, y0, mask, done = 0;
 
 	mask = get_pointer(&x0, &y0);
-	cb(c, orig, x0, y0, x0, y0, s);
-	draw_outline(c);
 
-	/* XXX: Ugh */
-	if (!(mode == SWEEP_DOWN && (mask & ButtonPressMask))) {
-		for (;;) {
-			XMaskEvent(dpy, MouseMask, &ev);
-			if (ev.type == MotionNotify) {
+	if (mode == SWEEP_OUTLINE)
+		XGrabServer(dpy);
+	else if (mode == SWEEP_LIVE) {
+		collect_struts(c, &as);
+
+		br.x = as.left + (x0 - c->geom.x);
+		br.w = DisplayWidth(dpy, screen) - as.right - c->geom.w -
+		    (BW(c) * 2) + 1;
+		br.y = as.top + y0 - c->geom.y;
+		br.h = DisplayHeight(dpy, screen) - as.bottom - c->geom.h -
+		    as.top - (frame_geom(c).h - c->geom.h) - (BW(c) * 2) + 1;
+
+		bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
+		    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
+		XMapWindow(dpy, bounds);
+	}
+
+	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
+	    GrabModeAsync, (mode == SWEEP_LIVE ? bounds : None), curs,
+	    CurrentTime) != GrabSuccess) {
+		if (bounds)
+			XDestroyWindow(dpy, bounds);
+		return 0;
+	}
+
+	cb(c, orig, x0, y0, x0, y0, s);
+
+	if (mode == SWEEP_OUTLINE)
+		draw_outline(c);
+
+	while (!done) {
+		XMaskEvent(dpy, ExposureMask|MouseMask, &ev);
+
+		switch (ev.type) {
+		case Expose:
+			if ((ec = find_client(ev.xexpose.window, MATCH_FRAME)))
+				redraw_frame(ec);
+			break;
+		case MotionNotify:
+			if (mode == SWEEP_OUTLINE)
 				draw_outline(c);
-				cb(c, orig, x0, y0, ev.xmotion.x, ev.xmotion.y,
-				    s);
+			cb(c, orig, x0, y0, ev.xmotion.x, ev.xmotion.y, s);
+			if (mode == SWEEP_OUTLINE)
 				draw_outline(c);
-			} else if ((mode == SWEEP_UP &&
-			    ev.type == ButtonRelease) ||
-			    (mode == SWEEP_DOWN && ev.type == ButtonPress)) {
+			break;
+		case ButtonRelease:
+			if (mode == SWEEP_OUTLINE)
 				draw_outline(c);
-				break;
-			}
+			done = 1;
+			break;
 		}
 	}
-	XUngrabServer(dpy);
+
+	if (mode == SWEEP_OUTLINE)
+		XUngrabServer(dpy);
+
 	XUngrabPointer(dpy, CurrentTime);
+
+	if (bounds)
+		XDestroyWindow(dpy, bounds);
 
 	return ev.xbutton.button;
 }
@@ -362,8 +393,14 @@ void
 recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
     strut_t *s)
 {
+	geom_t f;
+
 	c->geom.x = orig.x + x1 - x0;
 	c->geom.y = orig.y + y1 - y0;
+
+	f = frame_geom(c);
+	XMoveWindow(dpy, c->frame, f.x, f.y);
+	send_config(c);
 }
 
 /*

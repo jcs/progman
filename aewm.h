@@ -114,9 +114,9 @@ enum {
 	DEL_REMAP,
 };	/* del_client */
 enum {
-	SWEEP_UP,
-	SWEEP_DOWN,
-};	/* sweep */
+	SWEEP_LIVE,
+	SWEEP_OUTLINE,
+};     /* sweep */
 
 /* init.c */
 extern client_t *head, *focused;
