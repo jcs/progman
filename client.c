@@ -66,6 +66,7 @@ new_client(Window w)
 	c->shaded = 0;
 	c->zoomed = 0;
 	c->decor = 1;
+	c->dock = 0;
 
 	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
 	XGetTransientForHint(dpy, c->win, &c->trans);
@@ -88,7 +89,10 @@ new_client(Window w)
 	XAllocNamedColor(dpy, c->cmap, opt_bd, &bd, &exact);
 
 	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &win_type, 1, NULL))
+	{
 		c->decor = HAS_DECOR(win_type);
+		c->dock = (win_type == net_wm_type_dock);
+	}
 
 	if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0, &c->desk, 1, NULL)) {
 		if (c->desk == -1)
@@ -166,7 +170,7 @@ map_client(client_t *c)
 	XWindowAttributes attr;
 	strut_t s = {0, 0, 0, 0};
 	XWMHints *hints;
-	int want_raise = 1;
+	int want_raise = !c->dock;
 
 	XGrabServer(dpy);
 

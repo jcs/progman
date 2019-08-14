@@ -96,6 +96,7 @@ struct client {
 	Bool shaded;
 	Bool zoomed;
 	Bool decor;
+	Bool dock;
 	int old_bw;
 };
 
