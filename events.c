@@ -265,6 +265,9 @@ handle_configure_request(XConfigureRequestEvent *e)
 	wc.sibling = e->above;
 	wc.stack_mode = e->detail;
 	XConfigureWindow(dpy, e->window, e->value_mask, &wc);
+
+	if ((c = top_client()))
+		focus_client(c);
 }
 
 /*
@@ -276,11 +279,17 @@ handle_configure_request(XConfigureRequestEvent *e)
 static void
 handle_circulate_request(XCirculateRequestEvent *e)
 {
+	client_t *c;
+
 	if (e->parent == root) {
-		if (e->place == PlaceOnBottom)
+		if (e->place == PlaceOnBottom) {
 			XLowerWindow(dpy, e->window);
-		else	/* e->place == PlaceOnTop */
+			focus_client(prev_focused());
+		} else {
 			XRaiseWindow(dpy, e->window);
+			if ((c = find_client(e->window, MATCH_ANY)))
+				focus_client(c);
+		}
 	}
 }
 

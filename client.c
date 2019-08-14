@@ -149,6 +149,25 @@ find_client(Window w, int mode)
 }
 
 client_t *
+top_client(void)
+{
+	unsigned int nwins, i;
+	Window qroot, qparent, *wins;
+	XWindowAttributes attr;
+	client_t *c;
+
+	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
+	for (i = nwins - 1; i > 0; i--) {
+		XGetWindowAttributes(dpy, wins[i], &attr);
+		if ((c = find_client(wins[i], MATCH_FRAME)))
+			return c;
+	}
+	XFree(wins);
+
+	return NULL;
+}
+
+client_t *
 prev_focused(void)
 {
 	client_t *c = head;

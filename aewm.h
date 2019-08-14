@@ -169,6 +169,7 @@ extern void show_event(XEvent e);
 /* client.c */
 extern client_t *new_client(Window w);
 extern client_t *find_client(Window w, int mode);
+extern client_t *top_client(void);
 extern client_t *prev_focused(void);
 extern void map_client(client_t *);
 extern int frame_height(client_t *c);
