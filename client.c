@@ -154,7 +154,7 @@ prev_focused(void)
 	unsigned int high = 0;
 
 	while (c) {
-		if (c->focus_order > high) {
+		if (c->focus_order > high && !c->dock) {
 			high = c->focus_order;
 			prev = c;
 		}
