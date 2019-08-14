@@ -35,6 +35,8 @@
 /* Title bars */
 #define DEF_FG "white"
 #define DEF_BG "slategray"
+#define DEF_FG_UNFOCUSED "gray70"
+#define DEF_BG_UNFOCUSED "#5a6773"
 #define DEF_XFTFONT "monospace:size=12"
 #define DEF_PAD 3
 
@@ -128,12 +130,16 @@ extern int shape_event;
 #endif
 extern XftFont *xftfont;
 extern XftColor xft_fg;
+extern XftColor xft_fg_unfocused;
 extern Colormap cmap;
 extern XColor fg;
 extern XColor bg;
+extern XColor fg_unfocused;
+extern XColor bg_unfocused;
 extern XColor bd;
 extern GC invert_gc;
 extern GC string_gc;
+extern GC string_unfocused_gc;
 extern GC border_gc;
 extern Pixmap close_pm;
 extern Pixmap minify_pm;
@@ -143,6 +149,8 @@ extern Cursor resize_curs;
 extern char *opt_xftfont;
 extern char *opt_fg;
 extern char *opt_bg;
+extern char *opt_fg_unfocused;
+extern char *opt_bg_unfocused;
 extern char *opt_bd;
 extern int opt_bw;
 extern int opt_pad;

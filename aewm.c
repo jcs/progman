@@ -49,12 +49,16 @@ int shape_event;
 
 XftFont *xftfont;
 XftColor xft_fg;
+XftColor xft_fg_unfocused;
 
 Colormap def_cmap;
 XColor fg;
 XColor bg;
+XColor fg_unfocused;
+XColor bg_unfocused;
 XColor bd;
 GC invert_gc;
+GC string_unfocused_gc;
 GC string_gc;
 GC border_gc;
 Pixmap close_pm;
@@ -68,6 +72,8 @@ int exitmsg[2];
 char *opt_xftfont = DEF_XFTFONT;
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
+char *opt_fg_unfocused = DEF_FG_UNFOCUSED;
+char *opt_bg_unfocused = DEF_BG_UNFOCUSED;
 char *opt_bd = DEF_BD;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
@@ -140,6 +146,12 @@ read_config(char *rcfile)
 			} else if (strcmp(token, "bgcolor") == 0) {
 				if (get_token(&p, token))
 					opt_bg = strdup(token);
+			} else if (strcmp(token, "fgcolor_unfocused") == 0) {
+				if (get_token(&p, token))
+					opt_fg_unfocused = strdup(token);
+			} else if (strcmp(token, "bgcolor_unfocused") == 0) {
+				if (get_token(&p, token))
+					opt_bg_unfocused = strdup(token);
 			} else if (strcmp(token, "bdcolor") == 0) {
 				if (get_token(&p, token))
 					opt_bd = strdup(token);
@@ -203,6 +215,10 @@ setup_display(void)
 	def_cmap = DefaultColormap(dpy, screen);
 	XAllocNamedColor(dpy, def_cmap, opt_fg, &fg, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bg, &bg, &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_fg_unfocused, &fg_unfocused,
+	    &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_bg_unfocused, &bg_unfocused,
+	    &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bd, &bd, &exact);
 
 	xft_fg.color.red = fg.red;
@@ -210,6 +226,12 @@ setup_display(void)
 	xft_fg.color.blue = fg.blue;
 	xft_fg.color.alpha = 0xffff;
 	xft_fg.pixel = fg.pixel;
+
+	xft_fg_unfocused.color.red = fg_unfocused.red;
+	xft_fg_unfocused.color.green = fg_unfocused.green;
+	xft_fg_unfocused.color.blue = fg_unfocused.blue;
+	xft_fg_unfocused.color.alpha = 0xffff;
+	xft_fg_unfocused.pixel = fg_unfocused.pixel;
 
 	xftfont = XftFontOpenName(dpy, DefaultScreen(dpy), opt_xftfont);
 	if (!xftfont) {
@@ -221,6 +243,10 @@ setup_display(void)
 	gv.function = GXcopy;
 	gv.foreground = fg.pixel;
 	string_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
+
+	gv.foreground = fg_unfocused.pixel;
+	string_unfocused_gc = XCreateGC(dpy, root, GCFunction | GCForeground,
+	    &gv);
 
 	gv.foreground = bd.pixel;
 	gv.line_width = opt_bw;

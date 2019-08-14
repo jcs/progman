@@ -86,6 +86,8 @@ new_client(Window w)
 
 	XAllocNamedColor(dpy, c->cmap, opt_fg, &fg, &exact);
 	XAllocNamedColor(dpy, c->cmap, opt_bg, &bg, &exact);
+	XAllocNamedColor(dpy, c->cmap, opt_fg_unfocused, &fg_unfocused, &exact);
+	XAllocNamedColor(dpy, c->cmap, opt_bg_unfocused, &bg_unfocused, &exact);
 	XAllocNamedColor(dpy, c->cmap, opt_bd, &bd, &exact);
 
 	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &win_type, 1, NULL))
@@ -452,9 +454,21 @@ void
 redraw_frame(client_t *c)
 {
 	int x, y;
+	GC tgc;
+	XftColor txft;
 
 	if (!(c && c->decor))
 		return;
+
+	if (c == focused) {
+		tgc = string_gc;
+		txft = xft_fg;
+		XSetWindowBackground(dpy, c->frame, bg.pixel);
+	} else {
+		tgc = string_unfocused_gc;
+		txft = xft_fg_unfocused;
+		XSetWindowBackground(dpy, c->frame, bg_unfocused.pixel);
+	}
 
 	XClearWindow(dpy, c->frame);
 
@@ -469,10 +483,11 @@ redraw_frame(client_t *c)
 	    c->geom.w - frame_height(c) + (BW(c) / 2), frame_height(c));
 	x = c->geom.w - ((frame_height(c) - BW(c)) / 2) - (icon_size / 2);
 	y = (frame_height(c) - icon_size - BW(c)) / 2;
-	XSetClipMask(dpy, string_gc, close_pm);
-	XSetClipOrigin(dpy, string_gc, x, y);
-	XCopyPlane(dpy, close_pm, c->frame, string_gc, 0, 0, icon_size,
-	    icon_size, x, y, 1);
+
+	XSetClipMask(dpy, tgc, close_pm);
+	XSetClipOrigin(dpy, tgc, x, y);
+	XCopyPlane(dpy, close_pm, c->frame, tgc, 0, 0, icon_size, icon_size, x,
+	    y, 1);
 
 	/* minify box */
 	XDrawLine(dpy, c->frame, border_gc,
@@ -480,15 +495,16 @@ redraw_frame(client_t *c)
 	    c->geom.w - (frame_height(c) * 2) + (BW(c) / 2), frame_height(c));
 	x = c->geom.w - frame_height(c) - ((frame_height(c) - BW(c)) / 2) -
 	    (icon_size / 2);
-	XSetClipMask(dpy, string_gc, minify_pm);
-	XSetClipOrigin(dpy, string_gc, x, y);
-	XCopyPlane(dpy, minify_pm, c->frame, string_gc, 0, 0, icon_size,
-	    icon_size, x, y, 1);
+
+	XSetClipMask(dpy, tgc, minify_pm);
+	XSetClipOrigin(dpy, tgc, x, y);
+	XCopyPlane(dpy, minify_pm, c->frame, tgc, 0, 0, icon_size, icon_size,
+	    x, y, 1);
 
 	if (!c->trans && c->name) {
 		x = opt_pad + (xftfont->descent / 2);
 		y = opt_pad + xftfont->ascent;
-		XftDrawStringUtf8(c->xftdraw, &xft_fg, xftfont, x, y,
+		XftDrawStringUtf8(c->xftdraw, &txft, xftfont, x, y,
 		    (unsigned char *)c->name, strlen(c->name));
 	}
 }
