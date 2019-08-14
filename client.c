@@ -473,21 +473,26 @@ void
 redraw_frame(client_t *c)
 {
 	int x, y;
-	GC tgc;
-	XftColor txft;
+	XftColor *txft;
+	XGCValues gcv;
 
 	if (!(c && c->decor))
 		return;
 
 	if (c == focused) {
-		tgc = string_gc;
-		txft = xft_fg;
+		gcv.foreground = fg.pixel;
+		txft = &xft_fg;
 		XSetWindowBackground(dpy, c->frame, bg.pixel);
+		XSetForeground(dpy, string_gc, bg.pixel);
+		XSetBackground(dpy, string_gc, fg.pixel);
 	} else {
-		tgc = string_unfocused_gc;
-		txft = xft_fg_unfocused;
+		gcv.foreground = fg_unfocused.pixel;
+		txft = &xft_fg_unfocused;
 		XSetWindowBackground(dpy, c->frame, bg_unfocused.pixel);
+		XSetForeground(dpy, string_gc, bg_unfocused.pixel);
+		XSetBackground(dpy, string_gc, fg_unfocused.pixel);
 	}
+	XChangeGC(dpy, string_gc, GCForeground, &gcv);
 
 	XClearWindow(dpy, c->frame);
 
@@ -496,36 +501,45 @@ redraw_frame(client_t *c)
 		    frame_height(c) - BW(c) + BW(c) / 2,
 		    c->geom.w, frame_height(c) - BW(c) + BW(c) / 2);
 
+	if (!c->trans && c->name) {
+		x = opt_pad + (xftfont->descent / 2);
+		y = opt_pad + xftfont->ascent;
+		XftDrawStringUtf8(c->xftdraw, txft, xftfont, x, y,
+		    (unsigned char *)c->name, strlen(c->name));
+	}
+
+	/* in case the title was too long, re-paint the button area first */
+	gcv.foreground = (c == focused ? bg : bg_unfocused).pixel;
+	XChangeGC(dpy, titlebar_gc, GCForeground, &gcv);
+	XFillRectangle(dpy, c->frame, titlebar_gc, c->geom.w -
+	    (frame_height(c) * 2) - BW(c) - opt_pad, 0,
+	    (frame_height(c) * 2) + BW(c) + opt_pad, frame_height(c) - BW(c));
+
 	/* close box and its icon */
 	XDrawLine(dpy, c->frame, border_gc,
 	    c->geom.w - frame_height(c) + (BW(c) / 2), 0,
 	    c->geom.w - frame_height(c) + (BW(c) / 2), frame_height(c));
-	x = c->geom.w - ((frame_height(c) - BW(c)) / 2) - (icon_size / 2);
-	y = (frame_height(c) - icon_size - BW(c)) / 2;
+	x = c->geom.w - ((frame_height(c) - BW(c)) / 2) -
+	    (close_pm_attrs.width / 2);
+	y = (frame_height(c) - close_pm_attrs.height - BW(c)) / 2;
 
-	XSetClipMask(dpy, tgc, close_pm);
-	XSetClipOrigin(dpy, tgc, x, y);
-	XCopyPlane(dpy, close_pm, c->frame, tgc, 0, 0, icon_size, icon_size, x,
-	    y, 1);
+	XSetClipMask(dpy, string_gc, close_pm_mask);
+	XSetClipOrigin(dpy, string_gc, x, y);
+	XCopyPlane(dpy, close_pm, c->frame, string_gc, 0, 0,
+	    close_pm_attrs.width, close_pm_attrs.height, x, y, 1);
 
-	/* minify box */
+	/* resize box */
 	XDrawLine(dpy, c->frame, border_gc,
 	    c->geom.w - (frame_height(c) * 2) + (BW(c) / 2), 0,
 	    c->geom.w - (frame_height(c) * 2) + (BW(c) / 2), frame_height(c));
 	x = c->geom.w - frame_height(c) - ((frame_height(c) - BW(c)) / 2) -
-	    (icon_size / 2);
+	    (resize_pm_attrs.width / 2);
+	y = (frame_height(c) - resize_pm_attrs.height - BW(c)) / 2;
 
-	XSetClipMask(dpy, tgc, minify_pm);
-	XSetClipOrigin(dpy, tgc, x, y);
-	XCopyPlane(dpy, minify_pm, c->frame, tgc, 0, 0, icon_size, icon_size,
-	    x, y, 1);
-
-	if (!c->trans && c->name) {
-		x = opt_pad + (xftfont->descent / 2);
-		y = opt_pad + xftfont->ascent;
-		XftDrawStringUtf8(c->xftdraw, &txft, xftfont, x, y,
-		    (unsigned char *)c->name, strlen(c->name));
-	}
+	XSetClipMask(dpy, string_gc, resize_pm_mask);
+	XSetClipOrigin(dpy, string_gc, x, y);
+	XCopyPlane(dpy, resize_pm, c->frame, string_gc, 0, 0,
+	    resize_pm_attrs.width, resize_pm_attrs.height, x, y, 1);
 }
 
 /*

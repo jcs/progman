@@ -36,6 +36,7 @@
 #include "aewm.h"
 #include "atom.h"
 #include "parser.h"
+#include "icons.h"
 
 client_t *head, *focused;
 int screen;
@@ -58,11 +59,15 @@ XColor fg_unfocused;
 XColor bg_unfocused;
 XColor bd;
 GC invert_gc;
-GC string_unfocused_gc;
 GC string_gc;
 GC border_gc;
+GC titlebar_gc;
 Pixmap close_pm;
-Pixmap minify_pm;
+Pixmap close_pm_mask;
+XpmAttributes close_pm_attrs;
+Pixmap resize_pm;
+Pixmap resize_pm_mask;
+XpmAttributes resize_pm_attrs;
 Cursor map_curs;
 Cursor move_curs;
 Cursor resize_curs;
@@ -244,24 +249,23 @@ setup_display(void)
 	gv.foreground = fg.pixel;
 	string_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
 
-	gv.foreground = fg_unfocused.pixel;
-	string_unfocused_gc = XCreateGC(dpy, root, GCFunction | GCForeground,
-	    &gv);
-
 	gv.foreground = bd.pixel;
 	gv.line_width = opt_bw;
 	border_gc = XCreateGC(dpy, root,
 	    GCFunction | GCForeground | GCLineWidth, &gv);
+
+	gv.foreground = bg.pixel;
+	titlebar_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
 
 	gv.function = GXinvert;
 	gv.subwindow_mode = IncludeInferiors;
 	invert_gc = XCreateGC(dpy, root,
 	    GCFunction | GCSubwindowMode | GCLineWidth, &gv);
 
-	close_pm = XCreateBitmapFromData(dpy, root, close_icon,
-	    sizeof(close_icon), sizeof(close_icon));
-	minify_pm = XCreateBitmapFromData(dpy, root, minify_icon,
-	    sizeof(minify_icon), sizeof(minify_icon));
+	XpmCreatePixmapFromData(dpy, root, close_xpm, &close_pm, &close_pm_mask,
+	    &close_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, resize_xpm, &resize_pm,
+	    &resize_pm_mask, &resize_pm_attrs);
 
 	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -416,8 +420,11 @@ cleanup(void)
 	XFreeGC(dpy, invert_gc);
 	XFreeGC(dpy, border_gc);
 	XFreeGC(dpy, string_gc);
+	XFreeGC(dpy, titlebar_gc);
 	XFreePixmap(dpy, close_pm);
-	XFreePixmap(dpy, minify_pm);
+	XFreePixmap(dpy, close_pm_mask);
+	XFreePixmap(dpy, resize_pm);
+	XFreePixmap(dpy, resize_pm_mask);
 
 	XInstallColormap(dpy, DefaultColormap(dpy, screen));
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);

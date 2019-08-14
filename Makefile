@@ -59,7 +59,7 @@ aemenu: $(CLIENTOBJ) menu.o parser.o
 aepanel: $(CLIENTOBJ) menu.o parser.o
 
 X11FLAGS = -I$(XROOT)/include
-WMFLAGS = $(X11FLAGS) `pkg-config --cflags xft` $(OPT_WMFLAGS)
+WMFLAGS = $(X11FLAGS) `pkg-config --cflags xft xpm` $(OPT_WMFLAGS)
 GTKFLAGS = `pkg-config --cflags gtk+-2.0`
 
 $(PLAINOBJ): %.o: %.c
@@ -75,7 +75,7 @@ $(GTKOBJ): %.o: %.c
 	$(CC) $(CFLAGS) $(GTKFLAGS) -c $< -o $@
 
 X11LIB = -L$(XROOT)/lib -lX11
-WMLIB = $(X11LIB) `pkg-config --libs xft` -lXext $(OPT_WMLIB)
+WMLIB = $(X11LIB) `pkg-config --libs xft xpm` -lXext $(OPT_WMLIB)
 GTKLIB = `pkg-config --libs gtk+-2.0`
 
 $(PLAINBIN): %: %.o

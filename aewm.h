@@ -27,6 +27,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
+#include <X11/xpm.h>
 #include "common.h"
 #include "atom.h"
 
@@ -139,10 +140,14 @@ extern XColor bg_unfocused;
 extern XColor bd;
 extern GC invert_gc;
 extern GC string_gc;
-extern GC string_unfocused_gc;
 extern GC border_gc;
+extern GC titlebar_gc;
 extern Pixmap close_pm;
-extern Pixmap minify_pm;
+extern Pixmap close_pm_mask;
+extern XpmAttributes close_pm_attrs;
+extern Pixmap resize_pm;
+extern Pixmap resize_pm_mask;
+extern XpmAttributes resize_pm_attrs;
 extern Cursor map_curs;
 extern Cursor move_curs;
 extern Cursor resize_curs;
@@ -184,29 +189,6 @@ extern void collect_struts(client_t *, strut_t *);
 extern void set_shape(client_t *c);
 #endif
 extern void del_client(client_t *c, int mode);
-
-static const unsigned char close_icon[] = {
-	0b00000000,
-	0b11000011,
-	0b01100110,
-	0b00111100,
-	0b00111100,
-	0b01100110,
-	0b11000011,
-	0b00000000,
-};
-static const int icon_size = sizeof(close_icon);
-
-static const unsigned char minify_icon[] = {
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b00000000,
-	0b11111111,
-	0b11111111,
-};
 
 /* ui.c */
 extern void user_action(client_t *c, int x, int y, int button, int down);
