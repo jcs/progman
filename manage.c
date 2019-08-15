@@ -312,11 +312,10 @@ sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
 		collect_struts(c, &as);
 
 		br.x = as.left + (x0 - c->geom.x);
-		br.w = DisplayWidth(dpy, screen) - as.right - c->geom.w -
-		    (BW(c) * 2) + 1;
+		/* Keep a little bit on the screen so we can always reach it */
+		br.w = DisplayWidth(dpy, screen) - as.left - frame_height(c);
 		br.y = as.top + y0 - c->geom.y;
-		br.h = DisplayHeight(dpy, screen) - as.bottom - c->geom.h -
-		    as.top - (frame_geom(c).h - c->geom.h) - (BW(c) * 2) + 1;
+		br.h = DisplayHeight(dpy, screen) - as.top - frame_height(c);
 
 		bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
 		    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
