@@ -476,6 +476,7 @@ show_event(XEvent e)
 	char *ev_type;
 	Window w;
 	client_t *c;
+	int m = 0;
 
 	switch (e.type) {
 	SHOW_EV(ButtonPress, xbutton)
@@ -505,7 +506,9 @@ show_event(XEvent e)
 			break;
 		}
 #endif
-		ev_type = "unknown event";
+		ev_type = malloc(128);
+		snprintf(ev_type, 128, "unknown event %d", e.type);
+		m = 1;
 		w = None;
 		break;
 	}
@@ -519,5 +522,8 @@ show_event(XEvent e)
 	else
 		/* something we are not managing */
 		dump_win(w, ev_type, 'u');
+
+	if (m)
+		free(ev_type);
 }
 #endif

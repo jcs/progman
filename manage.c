@@ -565,37 +565,37 @@ show_grav(client_t *c)
 void
 dump_name(client_t *c, const char *label, char flag)
 {
-	printf("%15.15s: %#010lx [%c] %-47.47s\n", label, c->win, flag,
+	printf("%18.18s: %#010lx [%c] %-44.44s\n", label, c->win, flag,
 	    c->name);
 }
 
 void
 dump_win(Window w, const char *label, char flag)
 {
-	printf("%15.15s: %#010lx [%c] %-47.47s\n", label, w, flag,
+	printf("%18.18s: %#010lx [%c] %-44.44s\n", label, w, flag,
 	    w == root ? "(root window)" : "(unknown window)");
 }
 
 void
 dump_info(client_t *c)
 {
-	printf("%28s[i] frame %#0lx, ignore_unmap %d\n", "",
+	printf("%31s[i] frame %#0lx, ignore_unmap %d\n", "",
 	    c->frame, c->ignore_unmap);
-	printf("%28s[i] desk %ld, %s, %s\n", "",
+	printf("%31s[i] desk %ld, %s, %s\n", "",
 	    c->desk, show_state(c), show_grav(c));
 }
 
 void
 dump_geom(client_t *c, const char *label)
 {
-	printf("%28s[g] %s %ldx%ld+%ld+%ld\n", "",
+	printf("%31s[g] %s %ldx%ld+%ld+%ld\n", "",
 	    label, c->geom.w, c->geom.h, c->geom.x, c->geom.y);
 }
 
 void
 dump_removal(client_t *c, int mode)
 {
-	printf("%28s[r] %s, %d pending\n", "",
+	printf("%31s[r] %s, %d pending\n", "",
 	    mode == DEL_WITHDRAW ? "withdraw" : "remap", XPending(dpy));
 }
 
