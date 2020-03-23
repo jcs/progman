@@ -148,7 +148,7 @@ handle_button_press(XButtonEvent *e)
 		if (find_client(e->window, MATCH_FRAME)) {
 			/* raising our frame will also raise the window */
 			XRaiseWindow(dpy, c->frame);
-			user_action(c, e->x, e->y, e->button, 1);
+			user_action(c, e->window, e->x, e->y, e->button, 1);
 		} else {
 			if (e->button == 1)
 				XRaiseWindow(dpy, c->frame);
@@ -189,7 +189,7 @@ handle_button_release(XButtonEvent *e)
 		root_button_pressed = 0;
 	} else if (c) {
 		if (find_client(e->window, MATCH_FRAME))
-			user_action(c, e->x, e->y, e->button, 0);
+			user_action(c, e->window, e->x, e->y, e->button, 0);
 
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	}
@@ -207,36 +207,26 @@ handle_button_release(XButtonEvent *e)
 static void
 handle_configure_request(XConfigureRequestEvent *e)
 {
-	client_t *c;
-	geom_t f;
+	client_t *c = NULL;
 	XWindowChanges wc;
 
 	if ((c = find_client(e->window, MATCH_WINDOW))) {
-		if (GRAV(c) == NorthWestGravity) {
-			if (e->value_mask & CWX)
-				c->geom.x = e->x - BW(c);
-			if (e->value_mask & CWY)
-				c->geom.y = e->y - BW(c);
-			if (e->value_mask & CWWidth)
-				c->geom.w = e->width;
-			if (e->value_mask & CWHeight)
-				c->geom.h = e->height;
-		} else {
-			if (e->value_mask & CWX)
-				c->geom.x = e->x;
-			if (e->value_mask & CWY)
-				c->geom.y = e->y;
-			if (e->value_mask & CWWidth)
-				c->geom.w = e->width;
-			if (e->value_mask & CWHeight)
-				c->geom.h = e->height;
-		}
-		f = frame_geom(c);
-		wc.x = f.x;
-		wc.y = f.y;
-		wc.width = f.w;
-		wc.height = f.h;
-		wc.border_width = BW(c);
+		if (e->value_mask & CWX)
+			c->geom.x = e->x;
+		if (e->value_mask & CWY)
+			c->geom.y = e->y;
+		if (e->value_mask & CWWidth)
+			c->geom.w = e->width;
+		if (e->value_mask & CWHeight)
+			c->geom.h = e->height;
+
+		recalc_frame(c);
+
+		wc.x = c->frame_geom.x;
+		wc.y = c->frame_geom.y;
+		wc.width = c->frame_geom.w;
+		wc.height = c->frame_geom.h;
+		wc.border_width = 0;
 		wc.sibling = e->above;
 		wc.stack_mode = e->detail;
 #ifdef DEBUG
@@ -258,8 +248,13 @@ handle_configure_request(XConfigureRequestEvent *e)
 		send_config(c);
 	}
 
-	wc.x = c ? 0 : e->x;
-	wc.y = c ? frame_height(c) : e->y;
+	if (c) {
+		wc.x = c->geom.x - c->frame_geom.x;
+		wc.y = c->geom.y - c->frame_geom.y;
+	} else {
+		wc.x = e->x;
+		wc.y = e->y;
+	}
 	wc.width = e->width;
 	wc.height = e->height;
 	wc.sibling = e->above;
@@ -493,7 +488,6 @@ show_event(XEvent e)
 	SHOW_EV(MapNotify, xmap)
 	SHOW_EV(MapRequest, xmaprequest)
 	SHOW_EV(MappingNotify, xmapping)
-	SHOW_EV(MotionNotify, xmotion)
 	SHOW_EV(PropertyNotify, xproperty)
 	SHOW_EV(ReparentNotify, xreparent)
 	SHOW_EV(ResizeRequest, xresizerequest)
@@ -519,9 +513,11 @@ show_event(XEvent e)
 		dump_name(c, ev_type, 'f');
 	else if (w == root)
 		dump_win(w, ev_type, 'r');
+#if 0
 	else
 		/* something we are not managing */
 		dump_win(w, ev_type, 'u');
+#endif
 
 	if (m)
 		free(ev_type);

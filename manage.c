@@ -19,49 +19,80 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
+#include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <time.h>
 #include <X11/Xatom.h>
 #include "aewm.h"
 #include "atom.h"
 
 static void do_iconify(client_t *);
 static void do_shade(client_t *);
-static void draw_outline(client_t *);
 static geom_t fix_size(client_t *);
 
+static struct timespec last_close_click = { 0, 0 };
+
 void
-user_action(client_t *c, int x, int y, int button, int down)
+user_action(client_t *c, Window win, int x, int y, int button, int down)
 {
-	if (y > frame_height(c))
-		return;
+	struct timespec now;
+	long long tdiff;
 
-	if (x >= c->geom.w - (frame_height(c) * 2)) {
-		if (x >= c->geom.w - frame_height(c)) {
-			if (!down)
-				send_wm_delete(c);
-		} else if (down)
-			resize_client(c);
+	if (win == c->titlebar && button == 1 && down)
+		move_client(c);
+	else if (win == c->close && button == 1 && !down) {
+		clock_gettime(CLOCK_MONOTONIC, &now);
 
-		return;
+		tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
+		    ((last_close_click.tv_sec * 1000000000) +
+		    last_close_click.tv_nsec)) / 1000000;
+
+		if (tdiff <= DOUBLE_CLICK_MSEC)
+			send_wm_delete(c);
+
+		last_close_click.tv_sec = now.tv_sec;
+		last_close_click.tv_nsec = now.tv_nsec;
 	}
-
-	if (!down)
-		return;
-
-	switch (button) {
-	case Button1:
-		if (!c->zoomed)
-			move_client(c);
-		break;
-	case Button3:
+	else if (IS_RESIZE_WIN(c, win) && button == 1 && down && !c->shaded)
+		resize_client(c, win);
+	else if (((win == c->shade && button == 1) ||
+	    (win == c->titlebar && button == 3)) && !down) {
 		if (c->shaded)
 			unshade_client(c);
 		else
 			shade_client(c);
-		break;
+	} else if (win == c->zoom && button == 1 && !down) {
+		if (c->zoomed)
+			unzoom_client(c);
+		else
+			zoom_client(c);
 	}
+}
+
+Cursor
+cursor_for_resize_win(client_t *c, Window win)
+{
+	if (win == c->resize_nw)
+		return resize_nw_curs;
+	else if (win == c->resize_w)
+		return resize_w_curs;
+	else if (win == c->resize_sw)
+		return resize_sw_curs;
+	else if (win == c->resize_s)
+		return resize_s_curs;
+	else if (win == c->resize_se)
+		return resize_se_curs;
+	else if (win == c->resize_e)
+		return resize_e_curs;
+	else if (win == c->resize_ne)
+		return resize_ne_curs;
+	else if (win == c->resize_n)
+		return resize_n_curs;
+	else
+		return None;
 }
 
 /* This can't do anything dangerous. */
@@ -94,7 +125,7 @@ move_client(client_t *c)
 	if (c->zoomed)
 		return;
 
-	sweep(c, move_curs, recalc_move, SWEEP_LIVE, NULL);
+	sweep(c, move_curs, recalc_move, NULL, NULL);
 }
 
 /*
@@ -104,22 +135,24 @@ move_client(client_t *c)
  * this by blatantly cheating.
  */
 void
-resize_client(client_t *c)
+resize_client(client_t *c, Window resize_win)
 {
-	geom_t f;
-	strut_t hold = {0, 0, 0, 0};
+	strut_t hold = { 0, 0, 0, 0 };
 
 	if (c->zoomed)
 		c->save = c->geom;
 	unzoom_client(c);
 
-	sweep(c, resize_curs, recalc_resize, SWEEP_OUTLINE, &hold);
+	sweep(c, cursor_for_resize_win(c, resize_win), recalc_resize,
+	    &resize_win, &hold);
 
+#if 0
 	f = frame_geom(c);
 	XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
-	XMoveResizeWindow(dpy, c->win, 0, frame_height(c), c->geom.w,
-	    c->geom.h);
+	XMoveResizeWindow(dpy, c->win, BW(c), BW(c) + titlebar_height(c) + 1,
+	    c->geom.w, c->geom.h);
 	send_config(c);
+#endif
 }
 
 /* Transients will be iconified when their owner is iconified. */
@@ -178,11 +211,26 @@ unshade_client(client_t *c)
 static void
 do_shade(client_t *c)
 {
-	geom_t f;
-
 	if (c->frame) {
-		f = frame_geom(c);
-		XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
+		recalc_frame(c);
+		XMoveResizeWindow(dpy, c->frame,
+		    c->frame_geom.x, c->frame_geom.y, c->frame_geom.w,
+		    c->frame_geom.h);
+
+		if (c->shaded) {
+			XMoveWindow(dpy, c->win, c->geom.x, c->frame_geom.h);
+			XUndefineCursor(dpy, c->resize_nw);
+			XUndefineCursor(dpy, c->resize_n);
+			XUndefineCursor(dpy, c->resize_ne);
+			XUndefineCursor(dpy, c->resize_s);
+		} else {
+			XMoveWindow(dpy, c->win, c->resize_w_geom.w,
+			    c->titlebar_geom.y + c->titlebar_geom.h + 1);
+			XDefineCursor(dpy, c->resize_nw, resize_nw_curs);
+			XDefineCursor(dpy, c->resize_n, resize_n_curs);
+			XDefineCursor(dpy, c->resize_ne, resize_ne_curs);
+			XDefineCursor(dpy, c->resize_s, resize_s_curs);
+		}
 	}
 	send_config(c);
 }
@@ -197,7 +245,7 @@ do_shade(client_t *c)
 void
 zoom_client(client_t *c)
 {
-	strut_t s = {0, 0, 0, 0};
+	strut_t s = { 0, 0, 0, 0 };
 
 	if (c->zoomed)
 		return;
@@ -207,16 +255,27 @@ zoom_client(client_t *c)
 	c->zoomed = 1;
 
 	collect_struts(c, &s);
+	recalc_frame(c);
+
 	c->geom.x = s.left;
+	if (c->decor)
+		c->geom.x += c->resize_w_geom.w;
 	c->geom.y = s.top;
-	c->geom.w = DisplayWidth(dpy, screen) - 2 * BW(c) - s.left - s.right;
-	c->geom.h = DisplayHeight(dpy, screen) - 2 * BW(c) - frame_height(c) -
-	    s.top - s.bottom;
+	if (c->decor)
+		c->geom.y += c->titlebar_geom.y + c->titlebar_geom.h + 1;
+	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
+	if (c->decor)
+		c->geom.w -= c->resize_w_geom.w + c->resize_e_geom.w;
+	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom;
+	if (c->decor)
+		c->geom.h -= c->geom.y + c->resize_s_geom.h;
+
 	fix_size(c);
 
 	if (c->frame) {
-		XMoveResizeWindow(dpy, c->frame, c->geom.x, c->geom.y,
-		    c->geom.w, c->geom.h + frame_height(c));
+		recalc_frame(c);
+		XMoveResizeWindow(dpy, c->frame, c->frame_geom.x,
+		    c->frame_geom.y, c->frame_geom.w, c->frame_geom.h);
 		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
 		redraw_frame(c);
 	}
@@ -229,8 +288,6 @@ zoom_client(client_t *c)
 void
 unzoom_client(client_t *c)
 {
-	geom_t f;
-
 	if (!c->zoomed)
 		return;
 
@@ -238,8 +295,10 @@ unzoom_client(client_t *c)
 	c->zoomed = 0;
 
 	if (c->frame) {
-		f = frame_geom(c);
-		XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
+		recalc_frame(c);
+		XMoveResizeWindow(dpy, c->frame,
+		    c->frame_geom.x, c->frame_geom.y,
+		    c->frame_geom.w, c->frame_geom.h);
 		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
 		redraw_frame(c);
 	}
@@ -294,7 +353,7 @@ map_if_desk(client_t *c)
 }
 
 int
-sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
+sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
 	Window bounds = 0;
 	XEvent ev;
@@ -302,41 +361,38 @@ sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
 	geom_t orig = c->geom, br;
 	client_t *ec;
 	strut_t as = { 0, 0, 0, 0 };
-	int x0, y0, mask, done = 0;
+	int x0, y0, done = 0;
 
-	mask = get_pointer(&x0, &y0);
+	get_pointer(&x0, &y0);
+	collect_struts(c, &as);
+	recalc_frame(c);
 
-	if (mode == SWEEP_OUTLINE)
-		XGrabServer(dpy);
-	else if (mode == SWEEP_LIVE) {
-		collect_struts(c, &as);
+	/*
+	 * Build a container window to constraint movement and resizing to
+	 * prevent the top of the window from going negative x/y, and to keep
+	 * the title bar on screen when moving beyond the bottom of the screen.
+	 */
+	br.x = as.left + x0 - orig.x + c->resize_w_geom.w;
+	br.y = as.top + y0 - orig.y + c->titlebar_geom.y +
+	    c->titlebar_geom.h + 1;
+	br.w = DisplayWidth(dpy, screen) - as.left;
+	br.h = DisplayHeight(dpy, screen) - as.top - c->titlebar_geom.h -
+	    c->titlebar_geom.y;
 
-		br.x = as.left + (x0 - c->geom.x);
-		/* Keep a little bit on the screen so we can always reach it */
-		br.w = DisplayWidth(dpy, screen) - as.left - frame_height(c);
-		br.y = as.top + y0 - c->geom.y;
-		br.h = DisplayHeight(dpy, screen) - as.top - frame_height(c);
-
-		bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
-		    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
-		XMapWindow(dpy, bounds);
-	}
+	bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
+	    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
+	XMapWindow(dpy, bounds);
 
 	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
-	    GrabModeAsync, (mode == SWEEP_LIVE ? bounds : None), curs,
-	    CurrentTime) != GrabSuccess) {
-		if (bounds)
-			XDestroyWindow(dpy, bounds);
+	    GrabModeAsync, bounds, curs, CurrentTime) != GrabSuccess) {
+		XDestroyWindow(dpy, bounds);
 		return 0;
 	}
 
-	cb(c, orig, x0, y0, x0, y0, s);
-
-	if (mode == SWEEP_OUTLINE)
-		draw_outline(c);
+	cb(c, orig, x0, y0, x0, y0, s, cb_arg);
 
 	while (!done) {
-		XMaskEvent(dpy, ExposureMask|MouseMask, &ev);
+		XMaskEvent(dpy, ExposureMask|MouseMask|PointerMotionMask, &ev);
 
 		switch (ev.type) {
 		case Expose:
@@ -344,27 +400,17 @@ sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
 				redraw_frame(ec);
 			break;
 		case MotionNotify:
-			if (mode == SWEEP_OUTLINE)
-				draw_outline(c);
-			cb(c, orig, x0, y0, ev.xmotion.x, ev.xmotion.y, s);
-			if (mode == SWEEP_OUTLINE)
-				draw_outline(c);
+			cb(c, orig, x0, y0, ev.xmotion.x, ev.xmotion.y, s,
+			    cb_arg);
 			break;
 		case ButtonRelease:
-			if (mode == SWEEP_OUTLINE)
-				draw_outline(c);
 			done = 1;
 			break;
 		}
 	}
 
-	if (mode == SWEEP_OUTLINE)
-		XUngrabServer(dpy);
-
 	XUngrabPointer(dpy, CurrentTime);
-
-	if (bounds)
-		XDestroyWindow(dpy, bounds);
+	XDestroyWindow(dpy, bounds);
 
 	return ev.xbutton.button;
 }
@@ -375,7 +421,8 @@ sweep(client_t *c, Cursor curs, sweep_func cb, int mode, strut_t *s)
  * the top left. As you go between, and to other edges, scale it.
  */
 void
-recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1, strut_t *s)
+recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
+    strut_t *s, void *arg)
 {
 	int screen_x = DisplayWidth(dpy, screen);
 	int screen_y = DisplayHeight(dpy, screen);
@@ -385,49 +432,48 @@ recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1, strut_t *s)
 	c->geom.x = s->left + ((float) x1 / (float) screen_x) *
 	    (wmax + 1 - c->geom.w - 2 * BW(c));
 	c->geom.y = s->top + ((float) y1 / (float) screen_y) *
-	    (hmax + 1 - c->geom.h - frame_height(c) - 2 * BW(c));
+	    (hmax + 1 - c->geom.h - titlebar_height(c) - 2 * BW(c));
 }
 
 void
 recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
-    strut_t *s)
+    strut_t *s, void *arg)
 {
-	geom_t f;
-
 	c->geom.x = orig.x + x1 - x0;
 	c->geom.y = orig.y + y1 - y0;
 
-	f = frame_geom(c);
-	XMoveWindow(dpy, c->frame, f.x, f.y);
+	recalc_frame(c);
+	XMoveWindow(dpy, c->frame, c->frame_geom.x, c->frame_geom.y);
 	send_config(c);
 }
 
 /*
- * When considering the distance from the mouse to the center point of the
- * window (which remains fixed), we actually have to look at the top right
- * corner of the window (which remains a constant offset from wherever we
- * clicked in the box relative to the root, but not relative to the window,
- * because the distance can be negative). After that we just center the new
- * size.
+ * orig is the geometry of the window, but our x0/y0 are in the frame where our
+ * resize handles are.  We have to calculate the difference and apply it to the
+ * window, then fix_size() it, then resize the frame to match the window.
  */
 void
 recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
-    strut_t *hold)
+    strut_t *hold, void *arg)
 {
-	client_t fake = *c;	/* FIXME */
-	geom_t frig;
+	Window resize_pos = *(Window *)arg;
 
-	fake.geom = orig;
-	frig = frame_geom(&fake);
-
-	if (x1 <= frig.x)
+	if (resize_pos == c->resize_nw)
+		hold->top = hold->left = 1;
+	else if (resize_pos == c->resize_w)
 		hold->left = 1;
-	if (y1 <= frig.y)
-		hold->top = 1;
-	if (x1 >= frig.x + frig.w)
-		hold->right = 1;
-	if (y1 >= frig.y + frig.h)
+	else if (resize_pos == c->resize_sw)
+		hold->bottom = hold->left = 1;
+	else if (resize_pos == c->resize_s)
 		hold->bottom = 1;
+	else if (resize_pos == c->resize_se)
+		hold->right = hold->bottom = 1;
+	else if (resize_pos == c->resize_e)
+		hold->right = 1;
+	else if (resize_pos == c->resize_ne)
+		hold->top = hold->right = 1;
+	else if (resize_pos == c->resize_n)
+		hold->top = 1;
 
 	if (hold->left)
 		c->geom.w = orig.x + orig.w - x1;
@@ -438,16 +484,8 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	if (hold->bottom)
 		c->geom.h = y1 - orig.y;
 
-	if (x1 > frig.x + frig.w)
-		hold->left = 0;
-	if (y1 > frig.y + frig.h)
-		hold->top = 0;
-	if (x1 < frig.x)
-		hold->right = 0;
-	if (y1 < frig.y)
-		hold->bottom = 0;
-
 	fix_size(c);
+
 	if (hold->left)
 		c->geom.x = orig.x + orig.w - c->geom.w;
 	if (hold->top)
@@ -456,6 +494,18 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		c->geom.x = orig.x;
 	if (hold->bottom)
 		c->geom.y = orig.y;
+
+	if (orig.w != c->geom.w || orig.h != c->geom.h) {
+		recalc_frame(c);
+		XMoveResizeWindow(dpy, c->frame,
+		    c->frame_geom.x, c->frame_geom.y,
+		    c->frame_geom.w, c->frame_geom.h);
+		XMoveResizeWindow(dpy, c->titlebar,
+		    c->frame_geom.x, c->frame_geom.y,
+		    c->frame_geom.w, c->frame_geom.h);
+		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		send_config(c);
+	}
 }
 
 /*
@@ -469,7 +519,7 @@ fix_size(client_t *c)
 {
 	int width_inc, height_inc;
 	int base_width, base_height;
-	geom_t adj = {0, 0, 0, 0};
+	geom_t adj = { 0, 0, 0, 0 };
 
 	if (c->size.flags & PMinSize) {
 		if (c->geom.w < c->size.min_width)
@@ -501,29 +551,6 @@ fix_size(client_t *c)
 	}
 
 	return adj;
-}
-
-/*
- * Match the calculations we use to draw the frames, and also the spacing of
- * text from the opposite corner.
- */
-static void
-draw_outline(client_t *c)
-{
-	geom_t f = frame_geom(c);
-	int re = f.x + f.w + BW(c);
-
-	XDrawRectangle(dpy, root, invert_gc, f.x + BW(c) / 2, f.y + BW(c) / 2,
-	    f.w + BW(c), f.h + BW(c));
-	if (!c->shaded)
-		XDrawLine(dpy, root, invert_gc, f.x + BW(c),
-		    f.y + frame_height(c) + BW(c) / 2, re, f.y +
-		    frame_height(c) + BW(c) / 2);
-	XDrawLine(dpy, root, invert_gc, re - frame_height(c) + BW(c) / 2,
-	    f.y + BW(c), re - frame_height(c) + BW(c) / 2, f.y +
-	    frame_height(c));
-
-	fix_size(c);
 }
 
 #ifdef DEBUG

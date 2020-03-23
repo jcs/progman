@@ -36,7 +36,18 @@
 #include "aewm.h"
 #include "atom.h"
 #include "parser.h"
-#include "icons.h"
+
+#ifdef HIDPI
+#include "close_hidpi.xpm"
+#include "shade_hidpi.xpm"
+#include "zoom_hidpi.xpm"
+#include "unzoom_hidpi.xpm"
+#else
+#include "close.xpm"
+#include "shade.xpm"
+#include "zoom.xpm"
+#include "unzoom.xpm"
+#endif
 
 client_t *head, *focused;
 int screen;
@@ -57,20 +68,34 @@ XColor fg;
 XColor bg;
 XColor fg_unfocused;
 XColor bg_unfocused;
+XColor button_bg;
+XColor bevel_dark;
+XColor bevel_light;
 XColor bd;
+GC pixmap_gc;
 GC invert_gc;
-GC string_gc;
-GC border_gc;
-GC titlebar_gc;
 Pixmap close_pm;
 Pixmap close_pm_mask;
 XpmAttributes close_pm_attrs;
-Pixmap resize_pm;
-Pixmap resize_pm_mask;
-XpmAttributes resize_pm_attrs;
+Pixmap shade_pm;
+Pixmap shade_pm_mask;
+XpmAttributes shade_pm_attrs;
+Pixmap zoom_pm;
+Pixmap zoom_pm_mask;
+XpmAttributes zoom_pm_attrs;
+Pixmap unzoom_pm;
+Pixmap unzoom_pm_mask;
+XpmAttributes unzoom_pm_attrs;
 Cursor map_curs;
 Cursor move_curs;
-Cursor resize_curs;
+Cursor resize_n_curs;
+Cursor resize_s_curs;
+Cursor resize_e_curs;
+Cursor resize_w_curs;
+Cursor resize_nw_curs;
+Cursor resize_sw_curs;
+Cursor resize_ne_curs;
+Cursor resize_se_curs;
 
 int exitmsg[2];
 
@@ -79,9 +104,13 @@ char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
 char *opt_fg_unfocused = DEF_FG_UNFOCUSED;
 char *opt_bg_unfocused = DEF_BG_UNFOCUSED;
+char *opt_button_bg = DEF_BUTTON_BG;
+char *opt_bevel_dark = DEF_BEVEL_DARK;
+char *opt_bevel_light = DEF_BEVEL_LIGHT;
 char *opt_bd = DEF_BD;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
+int opt_bevel = DEF_BEVEL;
 char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
 
 static void cleanup(void);
@@ -157,6 +186,9 @@ read_config(char *rcfile)
 			} else if (strcmp(token, "bgcolor_unfocused") == 0) {
 				if (get_token(&p, token))
 					opt_bg_unfocused = strdup(token);
+			} else if (strcmp(token, "button_bgcolor") == 0) {
+				if (get_token(&p, token))
+					opt_button_bg = strdup(token);
 			} else if (strcmp(token, "bdcolor") == 0) {
 				if (get_token(&p, token))
 					opt_bd = strdup(token);
@@ -215,7 +247,14 @@ setup_display(void)
 
 	map_curs = XCreateFontCursor(dpy, XC_dotbox);
 	move_curs = XCreateFontCursor(dpy, XC_fleur);
-	resize_curs = XCreateFontCursor(dpy, XC_sizing);
+	resize_n_curs = XCreateFontCursor(dpy, XC_top_side);
+	resize_s_curs = XCreateFontCursor(dpy, XC_bottom_side);
+	resize_e_curs = XCreateFontCursor(dpy, XC_right_side);
+	resize_w_curs = XCreateFontCursor(dpy, XC_left_side);
+	resize_nw_curs = XCreateFontCursor(dpy, XC_top_left_corner);
+	resize_sw_curs = XCreateFontCursor(dpy, XC_bottom_left_corner);
+	resize_ne_curs = XCreateFontCursor(dpy, XC_top_right_corner);
+	resize_se_curs = XCreateFontCursor(dpy, XC_bottom_right_corner);
 
 	def_cmap = DefaultColormap(dpy, screen);
 	XAllocNamedColor(dpy, def_cmap, opt_fg, &fg, &exact);
@@ -224,7 +263,14 @@ setup_display(void)
 	    &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bg_unfocused, &bg_unfocused,
 	    &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_button_bg, &button_bg, &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_bevel_dark, &bevel_dark, &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_bevel_light, &bevel_light, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bd, &bd, &exact);
+
+	XSetLineAttributes(dpy, DefaultGC(dpy, screen), 1, LineSolid, CapButt,
+	    JoinBevel);
+	XSetFillStyle(dpy, DefaultGC(dpy, screen), FillSolid);
 
 	xft_fg.color.red = fg.red;
 	xft_fg.color.green = fg.green;
@@ -245,17 +291,7 @@ setup_display(void)
 		exit(1);
 	}
 
-	gv.function = GXcopy;
-	gv.foreground = fg.pixel;
-	string_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
-
-	gv.foreground = bd.pixel;
-	gv.line_width = opt_bw;
-	border_gc = XCreateGC(dpy, root,
-	    GCFunction | GCForeground | GCLineWidth, &gv);
-
-	gv.foreground = bg.pixel;
-	titlebar_gc = XCreateGC(dpy, root, GCFunction | GCForeground, &gv);
+	pixmap_gc = XCreateGC(dpy, root, 0, &gv);
 
 	gv.function = GXinvert;
 	gv.subwindow_mode = IncludeInferiors;
@@ -264,8 +300,12 @@ setup_display(void)
 
 	XpmCreatePixmapFromData(dpy, root, close_xpm, &close_pm, &close_pm_mask,
 	    &close_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, resize_xpm, &resize_pm,
-	    &resize_pm_mask, &resize_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, shade_xpm, &shade_pm, &shade_pm_mask,
+	    &shade_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, zoom_xpm, &zoom_pm, &zoom_pm_mask,
+	    &zoom_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, unzoom_xpm, &unzoom_pm,
+	    &unzoom_pm_mask, &unzoom_pm_attrs);
 
 	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -332,6 +372,7 @@ setup_display(void)
 		XGetWindowAttributes(dpy, wins[i], &attr);
 		if (!attr.override_redirect && attr.map_state == IsViewable) {
 			c = new_client(wins[i]);
+			c->placed = 1;
 			map_client(c);
 		}
 	}
@@ -380,10 +421,13 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 	    msg);
 #ifdef DEBUG
 	if (c) {
+#if 0 /* these can introduce additional xerrors so don't call them from here */
 		dump_info(c);
 		del_client(c, DEL_WITHDRAW);
+#endif
 	}
 #endif
+
 	return 0;
 }
 
@@ -416,15 +460,24 @@ cleanup(void)
 	XftFontClose(dpy, xftfont);
 	XFreeCursor(dpy, map_curs);
 	XFreeCursor(dpy, move_curs);
-	XFreeCursor(dpy, resize_curs);
+	XFreeCursor(dpy, resize_n_curs);
+	XFreeCursor(dpy, resize_s_curs);
+	XFreeCursor(dpy, resize_e_curs);
+	XFreeCursor(dpy, resize_w_curs);
+	XFreeCursor(dpy, resize_nw_curs);
+	XFreeCursor(dpy, resize_sw_curs);
+	XFreeCursor(dpy, resize_ne_curs);
+	XFreeCursor(dpy, resize_se_curs);
+	XFreeGC(dpy, pixmap_gc);
 	XFreeGC(dpy, invert_gc);
-	XFreeGC(dpy, border_gc);
-	XFreeGC(dpy, string_gc);
-	XFreeGC(dpy, titlebar_gc);
 	XFreePixmap(dpy, close_pm);
 	XFreePixmap(dpy, close_pm_mask);
-	XFreePixmap(dpy, resize_pm);
-	XFreePixmap(dpy, resize_pm_mask);
+	XFreePixmap(dpy, shade_pm);
+	XFreePixmap(dpy, shade_pm_mask);
+	XFreePixmap(dpy, zoom_pm);
+	XFreePixmap(dpy, zoom_pm_mask);
+	XFreePixmap(dpy, unzoom_pm);
+	XFreePixmap(dpy, unzoom_pm_mask);
 
 	XInstallColormap(dpy, DefaultColormap(dpy, screen));
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);

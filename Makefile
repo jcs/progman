@@ -28,7 +28,7 @@ OPT_WMFLAGS += -DSHAPE
 OPT_WMLIB += -lXext
 
 # Uncomment for debugging (abandon all hope, ye who enter here)
-#OPT_WMFLAGS += -DDEBUG
+OPT_WMFLAGS += -DDEBUG
 #OPT_WMLIB += -lefence
 
 CC = gcc
