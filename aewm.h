@@ -142,6 +142,8 @@ struct client {
 #endif
 	Bool shaded;
 	Bool zoomed;
+	Bool fullscreen;
+	int state;
 	Bool decor;
 	Bool dock;
 	int old_bw;
@@ -261,6 +263,8 @@ extern void iconify_client(client_t *c);
 extern void uniconify_client(client_t *c);
 extern void shade_client(client_t *c);
 extern void unshade_client(client_t *c);
+extern void fullscreen_client(client_t *c);
+extern void unfullscreen_client(client_t *c);
 extern void zoom_client(client_t *c);
 extern void unzoom_client(client_t *c);
 extern void send_wm_delete(client_t *c);

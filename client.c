@@ -53,6 +53,7 @@ new_client(Window w)
 	Atom win_type;
 
 	c = malloc(sizeof *c);
+	memset(c, 0, sizeof(*c));
 	c->next = head;
 	head = c;
 
@@ -71,16 +72,7 @@ new_client(Window w)
 	c->close = None;
 	c->shade = None;
 	c->zoom = None;
-	c->size.flags = 0;
-	c->ignore_unmap = 0;
-#ifdef SHAPE
-	c->shaped = 0;
-#endif
-	c->shaded = 0;
-	c->zoomed = 0;
 	c->decor = 1;
-	c->dock = 0;
-	c->placed = 0;
 
 	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
 	XGetTransientForHint(dpy, c->win, &c->trans);
@@ -235,8 +227,13 @@ map_client(client_t *c)
 		}
 	} else {
 		if ((hints = XGetWMHints(dpy, c->win))) {
+#if 0
 			if (hints->flags & StateHint)
 				set_wm_state(c, hints->initial_state);
+#else
+			/* XXX: do not let clients start iconified */
+			set_wm_state(c, NormalState);
+#endif
 			XFree(hints);
 		} else {
 			set_wm_state(c, NormalState);
@@ -356,10 +353,7 @@ init_geom(client_t *c, strut_t *s)
 
 	if (get_atoms(c->win, net_wm_state, XA_ATOM, 0, &state, 1, NULL) &&
 	    state == net_wm_state_fs) {
-		c->geom.x = 0;
-		c->geom.y = 0;
-		c->geom.w = screen_x;
-		c->geom.h = screen_y;
+		fullscreen_client(c);
 		return 1;
 	}
 
@@ -403,16 +397,6 @@ init_geom(client_t *c, strut_t *s)
 	}
 
 	/*
-	 * And now, wherever the client thought it was going, that's where the
-	 * frame is going, so adjust the client accordingly.
-	 */
-	if (!c->placed && !c->trans && c->decor) {
-		recalc_frame(c);
-		c->geom.x += (c->geom.x - c->frame_geom.x);
-		c->geom.y += (c->geom.y - c->frame_geom.y);
-	}
-
-	/*
 	 * In any case, if we got this far, we need to do a further sanity
 	 * check and make sure that the window isn't overlapping any struts --
 	 * except for transients, because they might be a panel-type client
@@ -427,6 +411,20 @@ init_geom(client_t *c, strut_t *s)
 			c->geom.x = s->left;
 		if (c->geom.y < s->top || c->geom.h > hmax)
 			c->geom.y = s->top;
+	}
+
+	/*
+	 * And now, wherever the client thought it was going, that's where the
+	 * frame is going, so adjust the client accordingly.
+	 */
+	if (!c->trans && c->decor) {
+		recalc_frame(c);
+
+		/* only move already-placed windows if they're off-screen */
+		if (!c->placed || (c->frame_geom.x < 0 || c->geom.y <= 0)) {
+			c->geom.x += (c->geom.x - c->frame_geom.x);
+			c->geom.y += (c->geom.y - c->frame_geom.y);
+		}
 	}
 
 	/*
@@ -655,6 +653,8 @@ check_states(client_t *c)
 			shade_client(c);
 		else if (state == net_wm_state_mh || state == net_wm_state_mv)
 			zoom_client(c);
+		else if (state == net_wm_state_fs)
+			fullscreen_client(c);
 	}
 }
 
@@ -693,6 +693,7 @@ redraw_frame(client_t *c)
 	XMoveResizeWindow(dpy, c->frame,
 	    c->frame_geom.x, c->frame_geom.y,
 	    c->frame_geom.w, c->frame_geom.h);
+	XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
 
 	/* title bar */
 	if (c == focused) {

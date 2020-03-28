@@ -328,6 +328,9 @@ setup_display(void)
 	net_wm_state_mh = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ",
 	    False);
 	net_wm_state_fs = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+	net_wm_state_rm = 0;
+	net_wm_state_add = 1;
+	net_wm_state_toggle = 2;
 	net_wm_strut = XInternAtom(dpy, "_NET_WM_STRUT", False);
 	net_wm_strut_partial = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
 	net_wm_wintype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);

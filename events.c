@@ -362,21 +362,32 @@ handle_client_message(XClientMessageEvent *e)
 			goto_desk(e->data.l[0]);
 		else if (e->message_type == net_num_desks && e->format == 32)
 			ndesks = e->data.l[0];
-	} else if ((c = find_client(e->window, MATCH_WINDOW))) {
-		if (e->message_type == wm_change_state && e->format == 32 &&
-		    e->data.l[0] == IconicState) {
-			iconify_client(c);
-		} else if (e->message_type == net_active_window &&
-		    e->format == 32) {
-			c->desk = cur_desk;
-			map_if_desk(c);
-			uniconify_client(c);
-			XRaiseWindow(dpy, c->frame);
-			focus_client(c);
-		} else if (e->message_type == net_close_window &&
-		    e->format == 32) {
-			send_wm_delete(c);
-		}
+		return;
+	}
+
+	c = find_client(e->window, MATCH_WINDOW);
+	if (!c)
+		return;
+	if (e->format != 32)
+		return;
+
+	if (e->message_type == wm_change_state && e->data.l[0] == IconicState)
+		iconify_client(c);
+	else if (e->message_type == net_close_window)
+		send_wm_delete(c);
+	else if (e->message_type == net_active_window) {
+		c->desk = cur_desk;
+		map_if_desk(c);
+		uniconify_client(c);
+		XRaiseWindow(dpy, c->frame);
+		focus_client(c);
+	} else if (e->message_type == net_wm_state &&
+	    e->data.l[1] == net_wm_state_fs) {
+		if (e->data.l[0] == net_wm_state_add ||
+		    (e->data.l[0] == net_wm_state_toggle && !c->fullscreen))
+			fullscreen_client(c);
+		else
+			unfullscreen_client(c);
 	}
 }
 
@@ -411,6 +422,12 @@ handle_property_change(XPropertyEvent *e)
 			map_if_desk(c);
 		}
 	}
+#ifdef DEBUG
+	else {
+		printf("%s: unknown atom %ld (%s)\n", __func__, (long)e->atom,
+		    XGetAtomName(dpy, e->atom));
+	}
+#endif
 }
 
 /* Support click-to-focus policy. */

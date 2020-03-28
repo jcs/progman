@@ -41,7 +41,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 	struct timespec now;
 	long long tdiff;
 
-	if (win == c->titlebar && button == 1 && down)
+	if (win == c->titlebar && button == 1 && down && !c->zoomed)
 		move_client(c);
 	else if (win == c->close && button == 1 && !down) {
 		clock_gettime(CLOCK_MONOTONIC, &now);
@@ -235,6 +235,34 @@ do_shade(client_t *c)
 	send_config(c);
 }
 
+void
+fullscreen_client(client_t *c)
+{
+	int screen_x = DisplayWidth(dpy, screen);
+	int screen_y = DisplayHeight(dpy, screen);
+
+	c->save = c->geom;
+	c->geom.x = 0;
+	c->geom.y = 0;
+	c->geom.w = screen_x;
+	c->geom.h = screen_y;
+	c->fullscreen = 1;
+	redraw_frame(c);
+	send_config(c);
+}
+
+void
+unfullscreen_client(client_t *c)
+{
+	if (!c->fullscreen)
+		return;
+
+	c->geom = c->save;
+	c->fullscreen = 0;
+	redraw_frame(c);
+	send_config(c);
+}
+
 /*
  * When zooming a window, the old geom gets stuffed into c->save. Once we
  * unzoom, this should be considered garbage. Despite the existence of vertical
@@ -258,27 +286,19 @@ zoom_client(client_t *c)
 	recalc_frame(c);
 
 	c->geom.x = s.left;
-	if (c->decor)
-		c->geom.x += c->resize_w_geom.w;
 	c->geom.y = s.top;
 	if (c->decor)
-		c->geom.y += c->titlebar_geom.y + c->titlebar_geom.h + 1;
+		c->geom.y += c->titlebar_geom.h + 1;
 	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
-	if (c->decor)
-		c->geom.w -= c->resize_w_geom.w + c->resize_e_geom.w;
 	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom;
 	if (c->decor)
-		c->geom.h -= c->geom.y + c->resize_s_geom.h;
+		c->geom.h -= c->geom.y;
 
 	fix_size(c);
 
-	if (c->frame) {
-		recalc_frame(c);
-		XMoveResizeWindow(dpy, c->frame, c->frame_geom.x,
-		    c->frame_geom.y, c->frame_geom.w, c->frame_geom.h);
-		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+	if (c->frame)
 		redraw_frame(c);
-	}
+
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
