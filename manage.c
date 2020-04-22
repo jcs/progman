@@ -467,55 +467,57 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	send_config(c);
 }
 
-/*
- * orig is the geometry of the window, but our x0/y0 are in the frame where our
- * resize handles are.  We have to calculate the difference and apply it to the
- * window, then fix_size() it, then resize the frame to match the window.
- */
 void
 recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
-    strut_t *hold, void *arg)
+    strut_t *move, void *arg)
 {
 	Window resize_pos = *(Window *)arg;
+	geom_t now = { c->geom.x, c->geom.y, c->geom.w, c->geom.h };
 
 	if (resize_pos == c->resize_nw)
-		hold->top = hold->left = 1;
-	else if (resize_pos == c->resize_w)
-		hold->left = 1;
-	else if (resize_pos == c->resize_sw)
-		hold->bottom = hold->left = 1;
-	else if (resize_pos == c->resize_s)
-		hold->bottom = 1;
-	else if (resize_pos == c->resize_se)
-		hold->right = hold->bottom = 1;
-	else if (resize_pos == c->resize_e)
-		hold->right = 1;
-	else if (resize_pos == c->resize_ne)
-		hold->top = hold->right = 1;
+		move->top = move->left = 1;
 	else if (resize_pos == c->resize_n)
-		hold->top = 1;
+		move->top = 1;
+	else if (resize_pos == c->resize_ne)
+		move->top = move->right = 1;
+	else if (resize_pos == c->resize_e)
+		move->right = 1;
+	else if (resize_pos == c->resize_se)
+		move->right = move->bottom = 1;
+	else if (resize_pos == c->resize_s)
+		move->bottom = 1;
+	else if (resize_pos == c->resize_sw)
+		move->bottom = move->left = 1;
+	else if (resize_pos == c->resize_w)
+		move->left = 1;
 
-	if (hold->left)
-		c->geom.w = orig.x + orig.w - x1;
-	if (hold->top)
-		c->geom.h = orig.y + orig.h - y1;
-	if (hold->right)
-		c->geom.w = x1 - orig.x;
-	if (hold->bottom)
-		c->geom.h = y1 - orig.y;
+	if (move->left)
+		c->geom.w = orig.w + (x0 - x1);
+	if (move->top)
+		c->geom.h = orig.h + (y0 - y1);
+	if (move->right) {
+		c->geom.w = orig.w - (x0 - x1);
+		c->geom.x = orig.x - (x0 - x1);
+	}
+	if (move->bottom) {
+		c->geom.h = orig.h - (y0 - y1);
+		c->geom.y = orig.y - (y0 - y1);
+	}
 
 	fix_size(c);
 
-	if (hold->left)
+	if (move->left)
 		c->geom.x = orig.x + orig.w - c->geom.w;
-	if (hold->top)
+	if (move->top)
 		c->geom.y = orig.y + orig.h - c->geom.h;
-	if (hold->right)
+	if (move->right)
 		c->geom.x = orig.x;
-	if (hold->bottom)
+	if (move->bottom)
 		c->geom.y = orig.y;
 
-	if (orig.w != c->geom.w || orig.h != c->geom.h) {
+	fix_size(c);
+
+	if (c->geom.w != now.w || c->geom.h != now.h) {
 		recalc_frame(c);
 		XMoveResizeWindow(dpy, c->frame,
 		    c->frame_geom.x, c->frame_geom.y,
