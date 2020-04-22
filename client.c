@@ -32,7 +32,7 @@
 #include "atom.h"
 
 static void do_map(client_t *, int);
-static int init_geom(client_t *, strut_t *);
+static void init_geom(client_t *, strut_t *);
 static void reparent(client_t *, strut_t *);
 static void bevel(Window win);
 
@@ -333,7 +333,7 @@ do_map(client_t *c, int do_raise)
  * recommended method, and takes precedence. If there is already something in
  * c->geom, though, we just leave it.
  */
-static int
+static void
 init_geom(client_t *c, strut_t *s)
 {
 	Atom win_type, state;
@@ -349,12 +349,12 @@ init_geom(client_t *c, strut_t *s)
 	 * means we've already set things up, but otherwise, we do it here.
 	 */
 	if (c->zoomed)
-		return 1;
+		return;
 
 	if (get_atoms(c->win, net_wm_state, XA_ATOM, 0, &state, 1, NULL) &&
 	    state == net_wm_state_fs) {
 		fullscreen_client(c);
-		return 1;
+		return;
 	}
 
 	/*
@@ -383,7 +383,7 @@ init_geom(client_t *c, strut_t *s)
 	 */
 	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &win_type, 1, NULL) &&
 	    CAN_PLACE_SELF(win_type))
-		return 1;
+		return;
 
 	/*
 	 * At this point, maybe nothing was set, or something went horribly
@@ -417,22 +417,16 @@ init_geom(client_t *c, strut_t *s)
 	 * And now, wherever the client thought it was going, that's where the
 	 * frame is going, so adjust the client accordingly.
 	 */
-	if (!c->trans && c->decor) {
+	if (c->decor) {
 		recalc_frame(c);
 
 		/* only move already-placed windows if they're off-screen */
 		if (!c->placed || (c->frame_geom.x < 0 || c->geom.y <= 0)) {
 			c->geom.x += (c->geom.x - c->frame_geom.x);
 			c->geom.y += (c->geom.y - c->frame_geom.y);
+			recalc_frame(c);
 		}
 	}
-
-	/*
-	 * Finally, we decide if we were ultimately satisfied with the position
-	 * given, or if we had to make something up, so that the caller can
-	 * consider using some other method.
-	 */
-	return c->trans || c->size.flags & USPosition;
 }
 
 /*
@@ -531,19 +525,11 @@ reparent(client_t *c, strut_t *s)
 	send_config(c);
 }
 
-/*
- * For a regular window, c->trans is None (false), and we include enough space
- * to draw the name. For a transient window we just make a small strip (based
- * on the font height).
- */
+/* TODO: replace callers with macro */
 int
 titlebar_height(client_t *c)
 {
-	if (c && c->decor)
-		return (c->trans ? 0 : xftfont->ascent) + xftfont->descent +
-		    (2 * opt_pad);
-
-	return 0;
+	return TITLEBAR_HEIGHT(c);
 }
 
 void
@@ -675,7 +661,7 @@ send_config(client_t *c)
 	ce.above = None;
 	ce.override_redirect = 0;
 
-	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *) & ce);
+	XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
 }
 
 void
@@ -708,7 +694,7 @@ redraw_frame(client_t *c)
 	    c->titlebar_geom.w, c->titlebar_geom.h);
 	XClearWindow(dpy, c->titlebar);
 
-	if (!c->trans && c->name) {
+	if (c->name) {
 		XftTextExtentsUtf8(dpy, xftfont, (FcChar8 *)c->name,
 		    strlen(c->name), &extents);
 		tw = extents.xOff;
@@ -760,6 +746,7 @@ redraw_frame(client_t *c)
 	/* zoom box */
 	XMoveResizeWindow(dpy, c->zoom,
 	    c->zoom_geom.x, c->zoom_geom.y, c->zoom_geom.w, c->zoom_geom.h);
+	XClearWindow(dpy, c->zoom);
 	if (c->zoomed) {
 		x = (c->zoom_geom.w / 2) - (unzoom_pm_attrs.width / 2) -
 		    (opt_bevel / 2);

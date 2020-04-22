@@ -72,6 +72,8 @@
 #define MouseMask (ButtonMask|PointerMotionMask)
 
 #define BW(c) ((c)->decor ? (opt_bw + 2) : 0)
+#define TITLEBAR_HEIGHT(c) ((c) && (c)->decor ? xftfont->ascent + \
+    xftfont->descent + (2 * opt_pad) : 0)
 #define GRAV(c) ((c->size.flags & PWinGravity) ? c->size.win_gravity : \
     NorthWestGravity)
 #define CAN_PLACE_SELF(t) ((t) == net_wm_type_dock || \

@@ -211,16 +211,29 @@ handle_configure_request(XConfigureRequestEvent *e)
 	XWindowChanges wc;
 
 	if ((c = find_client(e->window, MATCH_WINDOW))) {
+		recalc_frame(c);
+
 		if (e->value_mask & CWX)
-			c->geom.x = e->x;
+			c->geom.x = e->x +
+			    (c->decor ? c->geom.x - c->frame_geom.x : 0);
 		if (e->value_mask & CWY)
-			c->geom.y = e->y;
+			c->geom.y = e->y +
+			    (c->decor ? c->geom.y - c->frame_geom.y : 0);
 		if (e->value_mask & CWWidth)
 			c->geom.w = e->width;
 		if (e->value_mask & CWHeight)
 			c->geom.h = e->height;
 
 		recalc_frame(c);
+
+		if (c->decor && (c->frame_geom.x < 0 || c->frame_geom.y < 0)) {
+			if (c->frame_geom.x < 0)
+				c->geom.x = (c->geom.x - c->frame_geom.x);
+			if (c->frame_geom.y < 0)
+				c->geom.y = (c->geom.y - c->frame_geom.y);
+
+			recalc_frame(c);
+		}
 
 		wc.x = c->frame_geom.x;
 		wc.y = c->frame_geom.y;
