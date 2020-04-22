@@ -126,6 +126,10 @@ new_client(Window w)
 	append_atoms(root, net_client_list, XA_WINDOW, &c->win, 1);
 	append_atoms(root, net_client_stack, XA_WINDOW, &c->win, 1);
 
+	XGrabButton(dpy, Button1, Mod1Mask, c->win, True,
+	    ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync,
+	    None, move_curs);
+
 	return c;
 }
 

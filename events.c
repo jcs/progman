@@ -145,7 +145,11 @@ handle_button_press(XButtonEvent *e)
 	else if (c) {
 		focus_client(c);
 
-		if (find_client(e->window, MATCH_FRAME)) {
+		if (e->button == 1 && e->state & Mod1Mask) {
+			/* alt+click, begin moving */
+			XRaiseWindow(dpy, c->frame);
+			move_client(c);
+		} else if (find_client(e->window, MATCH_FRAME)) {
 			/* raising our frame will also raise the window */
 			XRaiseWindow(dpy, c->frame);
 			user_action(c, e->window, e->x, e->y, e->button, 1);
