@@ -454,7 +454,7 @@ handle_enter_event(XCrossingEvent *e)
 	client_t *c;
 
 	if ((c = find_client(e->window, MATCH_FRAME)))
-		XGrabButton(dpy, AnyButton, AnyModifier, c->win, False,
+		XGrabButton(dpy, Button1, AnyModifier, c->win, False,
 		    ButtonMask, GrabModeSync, GrabModeSync, None, None);
 }
 
