@@ -29,7 +29,7 @@ enum {
 
 typedef void *(*make_item_func) (void *, char *, char *);
 
-extern void setup_switch_atoms();
+extern void setup_switch_atoms(void);
 extern void snprint_wm_name(char *, size_t, Window);
 extern int is_on_cur_desk(Window);
 extern int is_skip(Window);
