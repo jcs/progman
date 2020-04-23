@@ -542,6 +542,17 @@ recalc_frame(client_t *c)
 	int th = titlebar_height(c);
 	int bw = BW(c);
 
+	if (!c->decor) {
+		c->frame_geom.x = c->geom.x;
+		c->frame_geom.y = c->geom.y;
+		c->frame_geom.w = c->geom.w;
+		c->frame_geom.h = c->geom.h;
+		return;
+	}
+
+	if (c->zoomed)
+		bw = 1;
+
 	c->resize_nw_geom.x = 0;
 	c->resize_nw_geom.y = 0;
 	c->resize_nw_geom.w = bw + th;
@@ -675,7 +686,7 @@ redraw_frame(client_t *c)
 	XGlyphInfo extents;
 	int x, y, tw;
 
-	if (!(c && c->decor))
+	if (!(c && c->decor && c->frame))
 		return;
 
 	recalc_frame(c);
@@ -730,9 +741,11 @@ redraw_frame(client_t *c)
 	    c->resize_nw_geom.h - c->close_geom.h - 1,
 	    c->resize_nw_geom.w, c->resize_nw_geom.h);
 
-	/* separator between close and zoom boxes and titlebar */
+	/* separators between titlebar and boxes */
 	XDrawRectangle(dpy, c->titlebar, DefaultGC(dpy, screen),
 	    0, -1, c->titlebar_geom.w - 1, c->titlebar_geom.h + 1);
+	XDrawRectangle(dpy, c->resize_n, DefaultGC(dpy, screen),
+	    0, 0, c->resize_n_geom.w - 1, c->resize_n_geom.h);
 
 	/* shade box */
 	XMoveResizeWindow(dpy, c->shade,

@@ -302,19 +302,16 @@ zoom_client(client_t *c)
 	collect_struts(c, &s);
 	recalc_frame(c);
 
-	c->geom.x = s.left;
-	c->geom.y = s.top;
-	if (c->decor)
-		c->geom.y += c->titlebar_geom.h + 1;
-	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
-	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom;
-	if (c->decor)
-		c->geom.h -= c->geom.y;
+	c->geom.x = s.left + 1;
+	c->geom.y = s.top + 1 + (c->decor ? c->titlebar_geom.h + 1 : 0);
+	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right - 2;
+	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom - 2 -
+	    (c->decor ? c->titlebar_geom.h + 1 : 0);
 
-	fix_size(c);
-
-	if (c->frame)
+	if (c->decor) {
+		XMoveWindow(dpy, c->win, c->geom.x, c->geom.y);
 		redraw_frame(c);
+	}
 
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
@@ -333,10 +330,8 @@ unzoom_client(client_t *c)
 
 	if (c->frame) {
 		recalc_frame(c);
-		XMoveResizeWindow(dpy, c->frame,
-		    c->frame_geom.x, c->frame_geom.y,
-		    c->frame_geom.w, c->frame_geom.h);
-		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		XMoveWindow(dpy, c->win, c->resize_e_geom.w,
+		    c->resize_n_geom.h + c->titlebar_geom.h + 1);
 		redraw_frame(c);
 	}
 
