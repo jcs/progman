@@ -34,6 +34,7 @@ static void do_shade(client_t *);
 static geom_t fix_size(client_t *);
 
 static struct timespec last_close_click = { 0, 0 };
+static struct timespec last_titlebar_click = { 0, 0 };
 
 void
 user_action(client_t *c, Window win, int x, int y, int button, int down)
@@ -41,11 +42,28 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 	struct timespec now;
 	long long tdiff;
 
-	if (win == c->titlebar && button == 1 && down && !c->zoomed)
-		move_client(c);
-	else if (win == c->close && button == 1 && !down) {
-		clock_gettime(CLOCK_MONOTONIC, &now);
+	clock_gettime(CLOCK_MONOTONIC, &now);
 
+	if (win == c->titlebar && button == 1 && down && !c->zoomed) {
+		move_client(c);
+		/* sweep() steals the ButtonRelease event, so fake one */
+		get_pointer(&x, &y);
+		user_action(c, win, x, y, button, 0);
+	} else if (win == c->titlebar && button == 1 && !down) {
+		tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
+		    ((last_titlebar_click.tv_sec * 1000000000) +
+		    last_titlebar_click.tv_nsec)) / 1000000;
+
+		if (tdiff <= DOUBLE_CLICK_MSEC) {
+			if (c->zoomed)
+				unzoom_client(c);
+			else
+				zoom_client(c);
+		}
+
+		last_titlebar_click.tv_sec = now.tv_sec;
+		last_titlebar_click.tv_nsec = now.tv_nsec;
+	} else if (win == c->close && button == 1 && !down) {
 		tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
 		    ((last_close_click.tv_sec * 1000000000) +
 		    last_close_click.tv_nsec)) / 1000000;
@@ -55,10 +73,9 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 
 		last_close_click.tv_sec = now.tv_sec;
 		last_close_click.tv_nsec = now.tv_nsec;
-	}
-	else if (IS_RESIZE_WIN(c, win) && button == 1 && down && !c->shaded)
+	} else if (IS_RESIZE_WIN(c, win) && button == 1 && down && !c->shaded) {
 		resize_client(c, win);
-	else if (((win == c->shade && button == 1) ||
+	} else if (((win == c->shade && button == 1) ||
 	    (win == c->titlebar && button == 3)) && !down) {
 		if (c->shaded)
 			unshade_client(c);
