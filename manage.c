@@ -400,16 +400,21 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	recalc_frame(c);
 
 	/*
-	 * Build a container window to constraint movement and resizing to
-	 * prevent the top of the window from going negative x/y, and to keep
+	 * Build a container window to constrain movement and resizing to
+	 * prevent the top of the title bar from going negative y, and to keep
 	 * the title bar on screen when moving beyond the bottom of the screen.
 	 */
-	br.x = as.left + x0 - orig.x + c->resize_w_geom.w;
-	br.y = as.top + y0 - orig.y + c->titlebar_geom.y +
-	    c->titlebar_geom.h + 1;
+	br.x = 0;
 	br.w = DisplayWidth(dpy, screen) - as.left;
-	br.h = DisplayHeight(dpy, screen) - as.top - c->titlebar_geom.h -
-	    c->titlebar_geom.y;
+	if (cb == recalc_resize) {
+		br.y = as.top;
+		br.h = DisplayHeight(dpy, screen) - as.top;
+	} else {
+		br.y = as.top + y0 - orig.y + c->titlebar_geom.y +
+		    c->titlebar_geom.h + 1;
+		br.h = DisplayHeight(dpy, screen) - as.top -
+		    c->titlebar_geom.h - c->titlebar_geom.y;
+	}
 
 	bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
 	    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
