@@ -30,9 +30,7 @@
 #include <sys/wait.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
-#ifdef SHAPE
 #include <X11/extensions/shape.h>
-#endif
 #include "progman.h"
 #include "atom.h"
 #include "parser.h"
@@ -54,10 +52,8 @@ int screen;
 unsigned long ndesks = 1;
 unsigned long cur_desk = 0;
 unsigned int focus_order = 0;
-#ifdef SHAPE
 Bool shape;
 int shape_event;
-#endif
 
 XftFont *xftfont;
 XftColor xft_fg;
@@ -226,9 +222,7 @@ setup_display(void)
 	XColor exact;
 	XSetWindowAttributes sattr;
 	XWindowAttributes attr;
-#ifdef SHAPE
 	int shape_err;
-#endif
 	Window qroot, qparent, *wins;
 	unsigned int nwins, i;
 	client_t *c;
@@ -366,9 +360,7 @@ setup_display(void)
 	get_atoms(root, net_num_desks, XA_CARDINAL, 0, &ndesks, 1, NULL);
 	get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL);
 
-#ifdef SHAPE
 	shape = XShapeQueryExtension(dpy, &shape_event, &shape_err);
-#endif
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = 0; i < nwins; i++) {

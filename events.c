@@ -23,9 +23,7 @@
 #include <stdio.h>
 #include <poll.h>
 #include <X11/Xatom.h>
-#ifdef SHAPE
 #include <X11/extensions/shape.h>
-#endif
 #include "progman.h"
 #include "atom.h"
 
@@ -41,9 +39,7 @@ static void handle_property_change(XPropertyEvent *);
 static void handle_enter_event(XCrossingEvent *);
 static void handle_cmap_change(XColormapEvent *);
 static void handle_expose_event(XExposeEvent *);
-#ifdef SHAPE
 static void handle_shape_change(XShapeEvent *);
-#endif
 
 static int root_button_pressed = 0;
 
@@ -113,11 +109,9 @@ event_loop(void)
 		case Expose:
 			handle_expose_event(&ev.xexpose);
 			break;
-#ifdef SHAPE
 		default:
 			if (shape && ev.type == shape_event)
 				handle_shape_change((XShapeEvent *) & ev);
-#endif
 		}
 	}
 }
@@ -250,10 +244,8 @@ handle_configure_request(XConfigureRequestEvent *e)
 		dump_geom(c, "moving to");
 #endif
 		XConfigureWindow(dpy, c->frame, e->value_mask, &wc);
-#ifdef SHAPE
 		if (e->value_mask & (CWWidth | CWHeight))
 			set_shape(c);
-#endif
 		if (c->zoomed && e->value_mask & (CWX | CWY | CWWidth |
 		    CWHeight)) {
 			c->zoomed = 0;
@@ -487,7 +479,6 @@ handle_expose_event(XExposeEvent *e)
 		redraw_frame(c);
 }
 
-#ifdef SHAPE
 static void
 handle_shape_change(XShapeEvent *e)
 {
@@ -496,7 +487,6 @@ handle_shape_change(XShapeEvent *e)
 	if ((c = find_client(e->window, MATCH_WINDOW)))
 		set_shape(c);
 }
-#endif
 
 #ifdef DEBUG
 void
@@ -527,13 +517,11 @@ show_event(XEvent e)
 	SHOW_EV(ResizeRequest, xresizerequest)
 	SHOW_EV(UnmapNotify, xunmap)
 	default:
-#ifdef SHAPE
 		if (shape && e.type == shape_event) {
 			ev_type = "ShapeNotify";
 			w = ((XShapeEvent *) & e)->window;
 			break;
 		}
-#endif
 		ev_type = malloc(128);
 		snprintf(ev_type, 128, "unknown event %d", e.type);
 		m = 1;

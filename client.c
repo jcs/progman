@@ -25,9 +25,7 @@
 #endif
 #include <string.h>
 #include <X11/Xatom.h>
-#ifdef SHAPE
 #include <X11/extensions/shape.h>
-#endif
 #include "progman.h"
 #include "atom.h"
 
@@ -512,12 +510,10 @@ reparent(client_t *c, strut_t *s)
 		    DefaultColormap(dpy, DefaultScreen(dpy)));
 	}
 
-#ifdef SHAPE
 	if (shape) {
 		XShapeSelectInput(dpy, c->win, ShapeNotifyMask);
 		set_shape(c);
 	}
-#endif
 
 	XAddToSaveSet(dpy, c->win);
 	XSelectInput(dpy, c->win, ColormapChangeMask | PropertyChangeMask);
@@ -929,7 +925,6 @@ collect_struts(client_t *c, strut_t *s)
  * for the name. The bar requires both a bound and a clip because it has a
  * border; the server will paint the border in the region between the two.
  */
-#ifdef SHAPE
 void
 set_shape(client_t *c)
 {
@@ -966,7 +961,6 @@ set_shape(client_t *c)
 
 	XFree(rects);
 }
-#endif
 
 /*
  * I've decided to carefully ignore any errors raised by this function, rather

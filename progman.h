@@ -139,9 +139,7 @@ struct client {
 	unsigned int focus_order;
 	unsigned long desk;
 	Bool placed;
-#ifdef SHAPE
 	Bool shaped;
-#endif
 	Bool shaded;
 	Bool zoomed;
 	Bool fullscreen;
@@ -170,10 +168,8 @@ extern unsigned int focus_order;
 extern int screen;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
-#ifdef SHAPE
 extern Bool shape;
 extern int shape_event;
-#endif
 extern XftFont *xftfont;
 extern XftColor xft_fg;
 extern XftColor xft_fg_unfocused;
@@ -248,9 +244,7 @@ extern void parse_state_atom(client_t *, Atom);
 extern void send_config(client_t *c);
 extern void redraw_frame(client_t *c);
 extern void collect_struts(client_t *, strut_t *);
-#ifdef SHAPE
 extern void set_shape(client_t *c);
-#endif
 extern void del_client(client_t *c, int mode);
 
 /* ui.c */
