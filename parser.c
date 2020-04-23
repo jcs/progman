@@ -39,12 +39,11 @@ open_rc(char *rcfile, char *def)
 	if (rcfile)
 		return fopen(rcfile, "r");
 
-	snprintf(buf, sizeof buf, "%s/.config/aewm/%s", getenv("HOME"), def);
+	snprintf(buf, sizeof buf, "%s/.config/progman/%s", getenv("HOME"), def);
 	if ((rc = fopen(buf, "r")))
 		return rc;
 
-	snprintf(buf, sizeof buf, "%s/%s", SYS_RC_DIR, def);
-	return fopen(buf, "r");
+	return NULL;
 }
 
 char *

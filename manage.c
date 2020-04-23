@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <X11/Xatom.h>
-#include "aewm.h"
+#include "progman.h"
 #include "atom.h"
 
 static void do_iconify(client_t *);

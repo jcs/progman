@@ -19,8 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AEWM_ATOM_H
-#define AEWM_ATOM_H
+#ifndef PROGMAN_ATOM_H
+#define PROGMAN_ATOM_H
 
 #include <X11/Xlib.h>
 
@@ -76,4 +76,4 @@ extern char *get_wm_name(Window);
 int get_strut(Window, strut_t *);
 extern unsigned long get_wm_state(Window);
 
-#endif	/* AEWM_ATOM_H */
+#endif	/* PROGMAN_ATOM_H */

@@ -19,8 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AEWM_CLIENTS_MENU_H
-#define AEWM_CLIENTS_MENU_H
+#ifndef PROGMAN_MENU_H
+#define PROGMAN_MENU_H
 
 enum {
 	LAUNCH,
@@ -36,4 +36,4 @@ extern int is_skip(Window);
 extern void raise_win(Window);
 extern void make_launch_menu(char *, void *, make_item_func);
 
-#endif	/* AEWM_CLIENTS_MENU_H */
+#endif	/* PROGMAN_MENU_H */

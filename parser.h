@@ -19,8 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AEWM_PARSER_H
-#define AEWM_PARSER_H
+#ifndef PROGMAN_PARSER_H
+#define PROGMAN_PARSER_H
 
 #include <stdio.h>
 
@@ -28,4 +28,4 @@ FILE *open_rc(char *, char *);
 char *get_rc_line(char *, int, FILE *);
 int get_token(char **, char *);
 
-#endif	/* AEWM_PARSER_H */
+#endif	/* PROGMAN_PARSER_H */

@@ -33,7 +33,7 @@
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
 #endif
-#include "aewm.h"
+#include "progman.h"
 #include "atom.h"
 #include "parser.h"
 
@@ -161,7 +161,7 @@ read_config(char *rcfile)
 	FILE *rc;
 	char buf[BUF_SIZE], token[BUF_SIZE], *p;
 
-	if (!(rc = open_rc(rcfile, "aewmrc"))) {
+	if (!(rc = open_rc(rcfile, "progmanrc"))) {
 		if (rcfile)
 			fprintf(stderr, "%s: rc file '%s' not found\n",
 			    __progname, rcfile);

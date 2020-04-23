@@ -19,12 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AEWM_COMMON_H
-#define AEWM_COMMON_H
+#ifndef PROGMAN_COMMON_H
+#define PROGMAN_COMMON_H
 
 #include <X11/Xlib.h>
-
-#define SYS_RC_DIR "/etc/X11/aewm"
 
 /* Hooray for magic numbers */
 
@@ -43,4 +41,4 @@ extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
 
-#endif	/* AEWM_COMMON_H */
+#endif	/* PROGMAN_COMMON_H */

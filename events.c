@@ -26,7 +26,7 @@
 #ifdef SHAPE
 #include <X11/extensions/shape.h>
 #endif
-#include "aewm.h"
+#include "progman.h"
 #include "atom.h"
 
 static void handle_button_press(XButtonEvent *);

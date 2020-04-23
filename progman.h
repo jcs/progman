@@ -19,10 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef AEWM_H
-#define AEWM_H
+#ifndef PROGMAN_H
+#define PROGMAN_H
 
-#define VERSION "1.3.12"
+#define VERSION "3.11.1"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -164,7 +164,7 @@ enum {
 	DEL_REMAP,
 };	/* del_client */
 
-/* aewm.c */
+/* progman.c */
 extern client_t *head, *focused;
 extern unsigned int focus_order;
 extern int screen;
@@ -288,4 +288,5 @@ extern void dump_geom(client_t *c, const char *label);
 extern void dump_removal(client_t *c, int mode);
 extern void dump_clients(void);
 #endif
-#endif	/* AEWM_H */
+
+#endif	/* PROGMAN_H */
