@@ -139,10 +139,13 @@ focus_client(client_t *c)
 void
 move_client(client_t *c)
 {
+	strut_t s;
+
 	if (c->zoomed)
 		return;
 
-	sweep(c, move_curs, recalc_move, NULL, NULL);
+	collect_struts(c, &s);
+	sweep(c, move_curs, recalc_move, NULL, &s);
 }
 
 /*
@@ -387,10 +390,8 @@ map_if_desk(client_t *c)
 int
 sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
-	Window bounds = 0;
 	XEvent ev;
-	XSetWindowAttributes pattr;
-	geom_t orig = c->geom, br;
+	geom_t orig = c->geom;
 	client_t *ec;
 	strut_t as = { 0, 0, 0, 0 };
 	int x0, y0, done = 0;
@@ -399,32 +400,9 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	collect_struts(c, &as);
 	recalc_frame(c);
 
-	/*
-	 * Build a container window to constrain movement and resizing to
-	 * prevent the top of the title bar from going negative y, and to keep
-	 * the title bar on screen when moving beyond the bottom of the screen.
-	 */
-	br.x = 0;
-	br.w = DisplayWidth(dpy, screen) - as.left;
-	if (cb == recalc_resize) {
-		br.y = as.top;
-		br.h = DisplayHeight(dpy, screen) - as.top;
-	} else {
-		br.y = as.top + y0 - orig.y + c->titlebar_geom.y +
-		    c->titlebar_geom.h + 1;
-		br.h = DisplayHeight(dpy, screen) - as.top -
-		    c->titlebar_geom.h - c->titlebar_geom.y;
-	}
-
-	bounds = XCreateWindow(dpy, root, br.x, br.y, br.w, br.h, 0,
-	    CopyFromParent, InputOnly, CopyFromParent, 0, &pattr);
-	XMapWindow(dpy, bounds);
-
 	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
-	    GrabModeAsync, bounds, curs, CurrentTime) != GrabSuccess) {
-		XDestroyWindow(dpy, bounds);
+	    GrabModeAsync, root, curs, CurrentTime) != GrabSuccess)
 		return 0;
-	}
 
 	cb(c, orig, x0, y0, x0, y0, s, cb_arg);
 
@@ -447,7 +425,6 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	}
 
 	XUngrabPointer(dpy, CurrentTime);
-	XDestroyWindow(dpy, bounds);
 
 	return ev.xbutton.button;
 }
@@ -476,8 +453,43 @@ void
 recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
     strut_t *s, void *arg)
 {
-	c->geom.x = orig.x + x1 - x0;
-	c->geom.y = orig.y + y1 - y0;
+	int newx = orig.x + x1 - x0;
+	int newy = orig.y + y1 - y0;
+	int sw = DisplayWidth(dpy, screen);
+	int sh = DisplayHeight(dpy, screen);
+
+	sw -= s->right;
+	sh -= s->bottom;
+
+	/* provide some resistance at screen edges */
+	if (x1 < x0) {
+		/* left edge */
+		if (newx - c->resize_w_geom.w >= (long)s->left ||
+		    newx - c->resize_w_geom.w < (long)s->left -
+		    opt_edge_resist)
+			c->geom.x = newx;
+	} else {
+		/* right edge */
+		if (newx + c->geom.w + c->resize_e_geom.w <= sw ||
+		    newx + c->geom.w + c->resize_e_geom.w > sw +
+		    opt_edge_resist)
+			c->geom.x = newx;
+	}
+
+	if (y1 < y0) {
+		/* top edge */
+		if (newy - c->resize_n_geom.h - c->titlebar_geom.h >=
+		    (long)s->top ||
+		    newy - c->resize_n_geom.h - c->titlebar_geom.h <
+		    (long)s->top - opt_edge_resist)
+			c->geom.y = newy;
+	} else {
+		/* bottom edge */
+		if (newy + c->geom.h + c->resize_s_geom.h <= sh ||
+		    newy + c->geom.h + c->resize_s_geom.h > sh +
+		    opt_edge_resist)
+			c->geom.y = newy;
+	}
 
 	recalc_frame(c);
 	XMoveWindow(dpy, c->frame, c->frame_geom.x, c->frame_geom.y);

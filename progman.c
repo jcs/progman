@@ -108,6 +108,7 @@ int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
+int opt_edge_resist = DEF_EDGE_RES;
 
 static void cleanup(void);
 static void read_config(char *);
@@ -209,6 +210,9 @@ read_config(char *rcfile)
 			} else if (strcmp(token, "button5") == 0) {
 				if (get_token(&p, token))
 					opt_new[4] = strdup(token);
+			} else if (strcmp(token, "edgeresist") == 0) {
+				if (get_token(&p, token))
+					opt_edge_resist = atoi(token);
 			}
 		}
 	}

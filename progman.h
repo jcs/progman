@@ -63,6 +63,8 @@
 #define DEF_NEW4 "aedesk -1"
 #define DEF_NEW5 "aedesk +1"
 
+#define DEF_EDGE_RES 50
+
 #define DOUBLE_CLICK_MSEC 250
 
 /* End of options */
@@ -219,6 +221,7 @@ extern char *opt_bd;
 extern int opt_bw;
 extern int opt_pad;
 extern char *opt_new[];
+extern int opt_edge_resist;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
