@@ -112,12 +112,15 @@ struct client {
 	geom_t frame_geom;
 	Window close;
 	geom_t close_geom;
+	Bool close_pressed;
 	Window titlebar;
 	geom_t titlebar_geom;
 	Window shade;
 	geom_t shade_geom;
+	Bool shade_pressed;
 	Window zoom;
 	geom_t zoom_geom;
+	Bool zoom_pressed;
 	Window resize_nw;
 	geom_t resize_nw_geom;
 	Window resize_n;

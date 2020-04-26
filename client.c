@@ -32,7 +32,7 @@
 static void do_map(client_t *, int);
 static void init_geom(client_t *, strut_t *);
 static void reparent(client_t *, strut_t *);
-static void bevel(Window win);
+static void bevel(Window, Bool);
 
 /*
  * Set up a client structure for the new (not-yet-mapped) window. We have to
@@ -724,6 +724,7 @@ redraw_frame(client_t *c)
 	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
 
 	/* close box */
+	XClearWindow(dpy, c->close);
 	XMoveResizeWindow(dpy, c->close,
 	    c->close_geom.x, c->close_geom.y, c->close_geom.w, c->close_geom.h);
 	x = (c->close_geom.w / 2) - (close_pm_attrs.width / 2);
@@ -732,6 +733,12 @@ redraw_frame(client_t *c)
 	XSetClipOrigin(dpy, pixmap_gc, x, y);
 	XCopyArea(dpy, close_pm, c->close, pixmap_gc, 0, 0,
 	    close_pm_attrs.width, close_pm_attrs.height, x, y);
+	if (c->close_pressed)
+		XCopyArea(dpy, c->close, c->close, invert_gc, 0, 0,
+		    c->close_geom.w, c->close_geom.h, 0, 0);
+	else
+		XCopyArea(dpy, c->close, c->close, pixmap_gc, 0, 0,
+		    c->close_geom.w, c->close_geom.h, 0, 0);
 	XDrawRectangle(dpy, c->resize_nw, DefaultGC(dpy, screen),
 	    c->resize_nw_geom.w - c->close_geom.w - 1,
 	    c->resize_nw_geom.h - c->close_geom.h - 1,
@@ -744,17 +751,22 @@ redraw_frame(client_t *c)
 	    0, 0, c->resize_n_geom.w - 1, c->resize_n_geom.h);
 
 	/* shade box */
+	XClearWindow(dpy, c->shade);
 	XMoveResizeWindow(dpy, c->shade,
 	    c->shade_geom.x, c->shade_geom.y, c->shade_geom.w, c->shade_geom.h);
 	x = (c->shade_geom.w / 2) - (shade_pm_attrs.width / 2) -
 	    (opt_bevel / 2);
 	y = (c->shade_geom.h / 2) - (shade_pm_attrs.height / 2) -
 	    (opt_bevel / 2);
+	if (c->shade_pressed) {
+		x += 2;
+		y += 2;
+	}
 	XSetClipMask(dpy, pixmap_gc, shade_pm_mask);
 	XSetClipOrigin(dpy, pixmap_gc, x, y);
 	XCopyArea(dpy, shade_pm, c->shade, pixmap_gc, 0, 0,
 	    shade_pm_attrs.width, shade_pm_attrs.height, x, y);
-	bevel(c->shade);
+	bevel(c->shade, c->shade_pressed);
 
 	/* zoom box */
 	XMoveResizeWindow(dpy, c->zoom,
@@ -765,6 +777,10 @@ redraw_frame(client_t *c)
 		    (opt_bevel / 2);
 		y = (c->zoom_geom.h / 2) - (unzoom_pm_attrs.height / 2) -
 		    (opt_bevel / 2);
+		if (c->zoom_pressed) {
+			x += 2;
+			y += 2;
+		}
 		XSetClipMask(dpy, pixmap_gc, unzoom_pm_mask);
 		XSetClipOrigin(dpy, pixmap_gc, x, y);
 		XCopyArea(dpy, unzoom_pm, c->zoom, pixmap_gc, 0, 0,
@@ -774,12 +790,16 @@ redraw_frame(client_t *c)
 		    (opt_bevel / 2);
 		y = (c->zoom_geom.h / 2) - (zoom_pm_attrs.height / 2) -
 		    (opt_bevel / 2);
+		if (c->zoom_pressed) {
+			x += 2;
+			y += 2;
+		}
 		XSetClipMask(dpy, pixmap_gc, zoom_pm_mask);
 		XSetClipOrigin(dpy, pixmap_gc, x, y);
 		XCopyArea(dpy, zoom_pm, c->zoom, pixmap_gc, 0, 0,
 		    zoom_pm_attrs.width, zoom_pm_attrs.height, x, y);
 	}
-	bevel(c->zoom);
+	bevel(c->zoom, c->zoom_pressed);
 
 	/* frame outline */
 	XMoveResizeWindow(dpy, c->resize_nw,
@@ -861,7 +881,7 @@ redraw_frame(client_t *c)
 }
 
 static void
-bevel(Window win)
+bevel(Window win, Bool pressed)
 {
 	XWindowAttributes attr;
 	int x;
@@ -871,23 +891,33 @@ bevel(Window win)
 	/* TODO: store current foreground color */
 
 	XSetForeground(dpy, DefaultGC(dpy, screen), bevel_dark.pixel);
-	for (x = 1; x <= opt_bevel; x++) {
-		XDrawLine(dpy, win, DefaultGC(dpy, screen),
-		    attr.width - x, x - 1,
-		    attr.width - x, attr.height - 1);
-		XDrawLine(dpy, win, DefaultGC(dpy, screen),
-		    x - 1, attr.height - x,
-		    attr.width, attr.height - x);
-	}
 
-	XSetForeground(dpy, DefaultGC(dpy, screen), bevel_light.pixel);
-	for (x = 1; x <= opt_bevel - 1; x++) {
-		XDrawLine(dpy, win, DefaultGC(dpy, screen),
-		    0, x - 1,
-		    attr.width - x, x - 1);
-		XDrawLine(dpy, win, DefaultGC(dpy, screen),
-		    x - 1, 0,
-		    x - 1, attr.height - x);
+	if (pressed) {
+		for (x = 0; x < opt_bevel - 1; x++) {
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    x, x, attr.width - x, x);
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    x, x, x, attr.height - x);
+		}
+	} else {
+		for (x = 1; x <= opt_bevel; x++) {
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    attr.width - x, x - 1,
+			    attr.width - x, attr.height - 1);
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    x - 1, attr.height - x,
+			    attr.width, attr.height - x);
+		}
+
+		XSetForeground(dpy, DefaultGC(dpy, screen), bevel_light.pixel);
+		for (x = 1; x <= opt_bevel - 1; x++) {
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    0, x - 1,
+			    attr.width - x, x - 1);
+			XDrawLine(dpy, win, DefaultGC(dpy, screen),
+			    x - 1, 0,
+			    x - 1, attr.height - x);
+		}
 	}
 
 	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));

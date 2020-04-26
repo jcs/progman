@@ -32,6 +32,9 @@
 static void do_iconify(client_t *);
 static void do_shade(client_t *);
 static geom_t fix_size(client_t *);
+void maybe_toolbar_click(client_t *, Window);
+void monitor_toolbar_click(client_t *, geom_t, int, int, int, int, strut_t *,
+    void *);
 
 static struct timespec last_close_click = { 0, 0 };
 static struct timespec last_titlebar_click = { 0, 0 };
@@ -44,48 +47,78 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	if (win == c->titlebar && button == 1 && down && !c->zoomed) {
-		move_client(c);
-		/* sweep() steals the ButtonRelease event, so fake one */
-		get_pointer(&x, &y);
-		user_action(c, win, x, y, button, 0);
-	} else if (win == c->titlebar && button == 1 && !down) {
-		tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
-		    ((last_titlebar_click.tv_sec * 1000000000) +
-		    last_titlebar_click.tv_nsec)) / 1000000;
+	printf("%s(c, %lx, %d, %d, %d, %d)\n", __func__, win, x, y, button,
+	    down);
 
-		if (tdiff <= DOUBLE_CLICK_MSEC) {
-			if (c->zoomed)
-				unzoom_client(c);
+	if (win == c->titlebar) {
+		if (button == 1 && down && !c->zoomed) {
+			move_client(c);
+			/* sweep() steals the ButtonRelease event */
+			get_pointer(&x, &y);
+			user_action(c, win, x, y, button, 0);
+		} else if (button == 1 && !down) {
+			tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
+			    ((last_titlebar_click.tv_sec * 1000000000) +
+			    last_titlebar_click.tv_nsec)) / 1000000;
+
+			if (tdiff <= DOUBLE_CLICK_MSEC) {
+				if (c->zoomed)
+					unzoom_client(c);
+				else
+					zoom_client(c);
+			}
+
+			last_titlebar_click.tv_sec = now.tv_sec;
+			last_titlebar_click.tv_nsec = now.tv_nsec;
+		} else if (button == 3 && !down) {
+			if (c->shaded)
+				unshade_client(c);
 			else
-				zoom_client(c);
+				shade_client(c);
 		}
+	} else if (win == c->close) {
+		if (button == 1 && down) {
+			maybe_toolbar_click(c, win);
+			if (!c->close_pressed)
+				return;
 
-		last_titlebar_click.tv_sec = now.tv_sec;
-		last_titlebar_click.tv_nsec = now.tv_nsec;
-	} else if (win == c->close && button == 1 && !down) {
-		tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
-		    ((last_close_click.tv_sec * 1000000000) +
-		    last_close_click.tv_nsec)) / 1000000;
+			c->close_pressed = False;
+			redraw_frame(c);
 
-		if (tdiff <= DOUBLE_CLICK_MSEC)
-			send_wm_delete(c);
+			tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
+			    ((last_close_click.tv_sec * 1000000000) +
+			    last_close_click.tv_nsec)) / 1000000;
+			last_close_click.tv_sec = now.tv_sec;
+			last_close_click.tv_nsec = now.tv_nsec;
 
-		last_close_click.tv_sec = now.tv_sec;
-		last_close_click.tv_nsec = now.tv_nsec;
-	} else if (IS_RESIZE_WIN(c, win) && button == 1 && down && !c->shaded) {
-		resize_client(c, win);
-	} else if (((win == c->shade && button == 1) ||
-	    (win == c->titlebar && button == 3)) && !down) {
-		if (c->shaded)
-			unshade_client(c);
-		else
-			shade_client(c);
-	} else if (win == c->zoom && button == 1 && !down) {
-		if (c->zoomed)
-			unzoom_client(c);
-		else
-			zoom_client(c);
+			if (tdiff <= DOUBLE_CLICK_MSEC)
+				send_wm_delete(c);
+		}
+	} else if (IS_RESIZE_WIN(c, win)) {
+		if (button == 1 && down && !c->shaded)
+			resize_client(c, win);
+	} else if (win == c->shade) {
+		if (button == 1 && down) {
+			maybe_toolbar_click(c, win);
+			if (c->shade_pressed) {
+				c->shade_pressed = False;
+				if (c->shaded)
+					unshade_client(c);
+				else
+					shade_client(c);
+			}
+		}
+	} else if (win == c->zoom) {
+		if (button == 1 && down) {
+			maybe_toolbar_click(c, win);
+			if (c->zoom_pressed) {
+				c->zoom_pressed = False;
+				if (c->zoomed)
+					unzoom_client(c);
+				else
+					zoom_client(c);
+			}
+		}
 	}
 }
 
@@ -174,6 +207,63 @@ resize_client(client_t *c, Window resize_win)
 	send_config(c);
 #endif
 }
+
+/*
+ * The user has clicked on a toolbar button but may mouse off of it and then
+ * let go, so only consider it a click if the mouse is still there when the
+ * mouse button is released.
+ */
+void
+maybe_toolbar_click(client_t *c, Window win)
+{
+	if (win == c->shade)
+		c->shade_pressed = True;
+	else if (win == c->zoom)
+		c->zoom_pressed = True;
+	else if (win == c->close)
+		c->close_pressed = True;
+	else
+		return;
+
+	redraw_frame(c);
+	sweep(c, None, monitor_toolbar_click, &win, NULL);
+	redraw_frame(c);
+}
+
+void
+monitor_toolbar_click(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
+    strut_t *s, void *arg)
+{
+	Window win = *(Window *)arg;
+	geom_t *geom;
+	Bool was, *pr;
+
+	if (win == c->shade) {
+		geom = &c->shade_geom;
+		pr = &c->shade_pressed;
+	} else if (win == c->zoom) {
+		geom = &c->zoom_geom;
+		pr = &c->zoom_pressed;
+	} else if (win == c->close) {
+		geom = &c->close_geom;
+		pr = &c->close_pressed;
+	} else
+		return;
+
+	was = *pr;
+
+	if (x1 >= (c->frame_geom.x + geom->x) &&
+	    x1 <= (c->frame_geom.x + geom->x + geom->w) &&
+	    y1 >= (c->frame_geom.y + geom->y) &&
+	    y1 <= (c->frame_geom.y + geom->y + geom->h))
+		*pr = True;
+	else
+		*pr = False;
+
+	if (was != *pr)
+		redraw_frame(c);
+}
+
 
 /* Transients will be iconified when their owner is iconified. */
 void
