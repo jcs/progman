@@ -66,7 +66,9 @@ MAN=		progman.1
 
 all: $(BIN)
 
-progman: $(PROGMAN_OBJ) progman.h
+$(PROGMAN_OBJ): progman.h
+
+progman: $(PROGMAN_OBJ)
 	$(CC) -o $@ $(PROGMAN_OBJ) $(LDFLAGS)
 
 aemenu: $(AEMENU_OBJ) progman.h
