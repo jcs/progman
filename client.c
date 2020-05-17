@@ -456,9 +456,16 @@ reparent(client_t *c, strut_t *s)
 	    DefaultVisual(dpy, screen),
 	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
 
-	pattr.background_pixel = button_bg.pixel;
+	XSetWindowBackground(dpy, c->frame, BlackPixel(dpy, screen));
 
 	if (c->decor) {
+		/*
+		 * These all get changed to button_bg.pixel in redraw_frame,
+		 * but make them black to start with so a slow-drawing window
+		 * just has a solid black background.
+		 */
+		pattr.background_pixel = BlackPixel(dpy, screen);
+
 #define _(x,y,z) x##y##z
 #define CREATE_RESIZE_WIN(DIR) \
 		pattr.cursor = _(resize_,DIR,_curs); \
@@ -724,6 +731,7 @@ redraw_frame(client_t *c)
 	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
 
 	/* close box */
+	XSetWindowBackground(dpy, c->close, button_bg.pixel);
 	XClearWindow(dpy, c->close);
 	XMoveResizeWindow(dpy, c->close,
 	    c->close_geom.x, c->close_geom.y, c->close_geom.w, c->close_geom.h);
@@ -739,10 +747,6 @@ redraw_frame(client_t *c)
 	else
 		XCopyArea(dpy, c->close, c->close, pixmap_gc, 0, 0,
 		    c->close_geom.w, c->close_geom.h, 0, 0);
-	XDrawRectangle(dpy, c->resize_nw, DefaultGC(dpy, screen),
-	    c->resize_nw_geom.w - c->close_geom.w - 1,
-	    c->resize_nw_geom.h - c->close_geom.h - 1,
-	    c->resize_nw_geom.w, c->resize_nw_geom.h);
 
 	/* separators between titlebar and boxes */
 	XDrawRectangle(dpy, c->titlebar, DefaultGC(dpy, screen),
@@ -751,6 +755,7 @@ redraw_frame(client_t *c)
 	    0, 0, c->resize_n_geom.w - 1, c->resize_n_geom.h);
 
 	/* shade box */
+	XSetWindowBackground(dpy, c->shade, button_bg.pixel);
 	XClearWindow(dpy, c->shade);
 	XMoveResizeWindow(dpy, c->shade,
 	    c->shade_geom.x, c->shade_geom.y, c->shade_geom.w, c->shade_geom.h);
@@ -771,6 +776,7 @@ redraw_frame(client_t *c)
 	/* zoom box */
 	XMoveResizeWindow(dpy, c->zoom,
 	    c->zoom_geom.x, c->zoom_geom.y, c->zoom_geom.w, c->zoom_geom.h);
+	XSetWindowBackground(dpy, c->zoom, button_bg.pixel);
 	XClearWindow(dpy, c->zoom);
 	if (c->zoomed) {
 		x = (c->zoom_geom.w / 2) - (unzoom_pm_attrs.width / 2) -
@@ -802,28 +808,40 @@ redraw_frame(client_t *c)
 	bevel(c->zoom, c->zoom_pressed);
 
 	/* frame outline */
+	XSetWindowBackground(dpy, c->resize_nw, button_bg.pixel);
+	XClearWindow(dpy, c->resize_nw);
 	XMoveResizeWindow(dpy, c->resize_nw,
 	    c->resize_nw_geom.x, c->resize_nw_geom.y,
 	    c->resize_nw_geom.w, c->resize_nw_geom.h);
 	XDrawRectangle(dpy, c->resize_nw, DefaultGC(dpy, screen),
 	    0, 0, c->resize_nw_geom.w, c->resize_nw_geom.h);
+	XDrawRectangle(dpy, c->resize_nw, DefaultGC(dpy, screen),
+	    c->resize_nw_geom.w - c->close_geom.w - 1,
+	    c->resize_nw_geom.h - c->close_geom.h - 1,
+	    c->resize_nw_geom.w, c->resize_nw_geom.h);
 
+	XSetWindowBackground(dpy, c->resize_w, button_bg.pixel);
+	XClearWindow(dpy, c->resize_w);
 	XMoveResizeWindow(dpy, c->resize_w,
 	    c->resize_w_geom.x, c->resize_w_geom.y,
 	    c->resize_w_geom.w, c->resize_w_geom.h);
 	XDrawRectangle(dpy, c->resize_w, DefaultGC(dpy, screen),
 	    0, -1, c->resize_w_geom.w - 1, c->resize_w_geom.h + 1);
 
+	XSetWindowBackground(dpy, c->resize_sw, button_bg.pixel);
+	XClearWindow(dpy, c->resize_sw);
 	XMoveResizeWindow(dpy, c->resize_sw,
 	    c->resize_sw_geom.x, c->resize_sw_geom.y,
 	    c->resize_sw_geom.w, c->resize_sw_geom.h);
 	XDrawRectangle(dpy, c->resize_sw, DefaultGC(dpy, screen),
 	    0, 0, c->resize_sw_geom.w, c->resize_sw_geom.h);
-	XDrawRectangle(dpy, c->resize_sw, DefaultGC(dpy, screen),
+	XFillRectangle(dpy, c->resize_sw, DefaultGC(dpy, screen),
 	    c->resize_w_geom.w - 1, 0,
 	    c->resize_sw_geom.w - c->resize_w_geom.w + 1,
-	    c->resize_sw_geom.h - c->resize_w_geom.w + 1);
+	    c->resize_sw_geom.h - c->resize_w_geom.w + 2);
 
+	XSetWindowBackground(dpy, c->resize_s, button_bg.pixel);
+	XClearWindow(dpy, c->resize_s);
 	XMoveResizeWindow(dpy, c->resize_s,
 	    c->resize_s_geom.x, c->resize_s_geom.y,
 	    c->resize_s_geom.w, c->resize_s_geom.h);
@@ -849,22 +867,28 @@ redraw_frame(client_t *c)
 		    c->resize_s_geom.h);
 	}
 
+	XSetWindowBackground(dpy, c->resize_se, button_bg.pixel);
+	XClearWindow(dpy, c->resize_se);
 	XMoveResizeWindow(dpy, c->resize_se,
 	    c->resize_se_geom.x, c->resize_se_geom.y,
 	    c->resize_se_geom.w, c->resize_se_geom.h);
 	XDrawRectangle(dpy, c->resize_se, DefaultGC(dpy, screen),
 	    -1, 0, c->resize_se_geom.w, c->resize_se_geom.h);
-	XDrawRectangle(dpy, c->resize_se, DefaultGC(dpy, screen),
+	XFillRectangle(dpy, c->resize_se, DefaultGC(dpy, screen),
 	    0, 0,
-	    c->resize_se_geom.w - c->resize_e_geom.w,
-	    c->resize_se_geom.h - c->resize_e_geom.w + 1);
+	    c->resize_se_geom.w - c->resize_e_geom.w + 1,
+	    c->resize_se_geom.h - c->resize_e_geom.w + 2);
 
+	XSetWindowBackground(dpy, c->resize_e, button_bg.pixel);
+	XClearWindow(dpy, c->resize_e);
 	XMoveResizeWindow(dpy, c->resize_e,
 	    c->resize_e_geom.x, c->resize_e_geom.y,
 	    c->resize_e_geom.w, c->resize_e_geom.h);
 	XDrawRectangle(dpy, c->resize_e, DefaultGC(dpy, screen),
 	    0, -1, c->resize_e_geom.w - 1, c->resize_e_geom.h + 1);
 
+	XSetWindowBackground(dpy, c->resize_ne, button_bg.pixel);
+	XClearWindow(dpy, c->resize_ne);
 	XMoveResizeWindow(dpy, c->resize_ne,
 	    c->resize_ne_geom.x, c->resize_ne_geom.y,
 	    c->resize_ne_geom.w, c->resize_ne_geom.h);
@@ -873,6 +897,9 @@ redraw_frame(client_t *c)
 	XDrawRectangle(dpy, c->resize_ne, DefaultGC(dpy, screen),
 	    -1, c->resize_ne_geom.w - c->shade_geom.w - 1,
 	    c->shade_geom.w + 1, c->shade_geom.h);
+
+	XSetWindowBackground(dpy, c->resize_n, button_bg.pixel);
+	XClearWindow(dpy, c->resize_n);
 	XMoveResizeWindow(dpy, c->resize_n,
 	    c->resize_n_geom.x, c->resize_n_geom.y,
 	    c->resize_n_geom.w, c->resize_n_geom.h);

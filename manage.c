@@ -172,7 +172,7 @@ focus_client(client_t *c)
 void
 move_client(client_t *c)
 {
-	strut_t s;
+	strut_t s = { 0 };
 
 	if (c->zoomed)
 		return;
@@ -383,7 +383,7 @@ unfullscreen_client(client_t *c)
 void
 zoom_client(client_t *c)
 {
-	strut_t s = { 0, 0, 0, 0 };
+	strut_t s = { 0 };
 
 	if (c->zoomed)
 		return;
@@ -483,7 +483,7 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	XEvent ev;
 	geom_t orig = c->geom;
 	client_t *ec;
-	strut_t as = { 0, 0, 0, 0 };
+	strut_t as = { 0 };
 	int x0, y0, done = 0;
 
 	get_pointer(&x0, &y0);
@@ -501,7 +501,12 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 
 		switch (ev.type) {
 		case Expose:
-			if ((ec = find_client(ev.xexpose.window, MATCH_FRAME)))
+			/*
+			 * The callback should handle redrawing the frame for
+			 * the client being manipulated
+			 */
+			if ((ec = find_client(ev.xexpose.window, MATCH_FRAME))
+			&& ec != c)
 				redraw_frame(ec);
 			break;
 		case MotionNotify:
@@ -646,6 +651,7 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		    c->frame_geom.w, c->frame_geom.h);
 		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
 		send_config(c);
+		redraw_frame(c);
 	}
 }
 
