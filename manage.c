@@ -102,6 +102,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			maybe_toolbar_click(c, win);
 			if (c->iconify_pressed) {
 				c->iconify_pressed = False;
+				redraw_frame(c);
 				if (get_wm_state(c->win) == IconicState)
 					uniconify_client(c);
 				else
@@ -113,6 +114,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			maybe_toolbar_click(c, win);
 			if (c->zoom_pressed) {
 				c->zoom_pressed = False;
+				redraw_frame(c);
 				if (c->zoomed)
 					unzoom_client(c);
 				else
@@ -343,6 +345,7 @@ do_shade(client_t *c)
 		}
 	}
 	send_config(c);
+	flush_expose_client(c);
 }
 
 void
@@ -359,6 +362,7 @@ fullscreen_client(client_t *c)
 	c->fullscreen = 1;
 	redraw_frame(c);
 	send_config(c);
+	flush_expose_client(c);
 }
 
 void
@@ -371,6 +375,7 @@ unfullscreen_client(client_t *c)
 	c->fullscreen = 0;
 	redraw_frame(c);
 	send_config(c);
+	flush_expose_client(c);
 }
 
 /*
@@ -410,6 +415,7 @@ zoom_client(client_t *c)
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
 	send_config(c);
+	flush_expose_client(c);
 }
 
 void
@@ -431,6 +437,7 @@ unzoom_client(client_t *c)
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mv);
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mh);
 	send_config(c);
+	flush_expose_client(c);
 }
 
 /*
@@ -698,6 +705,44 @@ fix_size(client_t *c)
 	}
 
 	return adj;
+}
+
+void
+flush_expose_client(client_t *c)
+{
+	if (c->resize_nw)
+		flush_expose(c->resize_nw);
+	if (c->resize_n)
+		flush_expose(c->resize_n);
+	if (c->resize_ne)
+		flush_expose(c->resize_ne);
+	if (c->resize_e)
+		flush_expose(c->resize_e);
+	if (c->resize_se)
+		flush_expose(c->resize_se);
+	if (c->resize_s)
+		flush_expose(c->resize_s);
+	if (c->resize_sw)
+		flush_expose(c->resize_sw);
+	if (c->resize_w)
+		flush_expose(c->resize_w);
+	if (c->close)
+		flush_expose(c->close);
+	if (c->iconify)
+		flush_expose(c->iconify);
+	if (c->zoom)
+		flush_expose(c->zoom);
+	if (c->titlebar)
+		flush_expose(c->titlebar);
+}
+
+/* Remove expose events for a window from the event queue */
+void
+flush_expose(Window win)
+{
+	XEvent junk;
+	while (XCheckTypedWindowEvent(dpy, win, Expose, &junk))
+		;
 }
 
 #ifdef DEBUG

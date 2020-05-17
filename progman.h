@@ -253,7 +253,7 @@ extern void collect_struts(client_t *, strut_t *);
 extern void set_shape(client_t *c);
 extern void del_client(client_t *c, int mode);
 
-/* ui.c */
+/* manage.c */
 extern void user_action(client_t *c, Window win, int x, int y, int button,
     int down);
 extern int pos_in_frame(client_t *c, int x, int y);
@@ -280,6 +280,8 @@ extern void recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1,
     int y1, strut_t *s, void *arg);
 extern void recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1,
     int y1, strut_t *s, void *arg);
+extern void flush_expose_client(client_t *c);
+extern void flush_expose(Window win);
 #ifdef DEBUG
 extern void dump_name(client_t *c, const char *label, char flag);
 extern void dump_win(Window w, const char *label, char flag);

@@ -657,6 +657,7 @@ check_states(client_t *c)
 		else if (state == net_wm_state_fs)
 			fullscreen_client(c);
 	}
+	flush_expose_client(c);
 }
 
 /* If we frob the geom for some reason, we need to inform the client. */
@@ -903,6 +904,8 @@ redraw_frame(client_t *c)
 	    c->resize_n_geom.w, c->resize_n_geom.h);
 	XDrawRectangle(dpy, c->resize_n, DefaultGC(dpy, screen),
 	    0, 0, c->resize_n_geom.w - 1, c->resize_n_geom.h - 1);
+
+	flush_expose_client(c);
 }
 
 static void
