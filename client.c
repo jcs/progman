@@ -68,7 +68,7 @@ new_client(Window w)
 	c->resize_w = None;
 	c->titlebar = None;
 	c->close = None;
-	c->shade = None;
+	c->iconify = None;
 	c->zoom = None;
 	c->decor = 1;
 
@@ -144,7 +144,7 @@ find_client(Window w, int mode)
 			    w == c->resize_s || w == c->resize_se ||
 			    w == c->resize_e || w == c->resize_ne ||
 			    w == c->resize_n || w == c->titlebar ||
-			    w == c->close || w == c->shade || w == c->zoom)
+			    w == c->close || w == c->iconify || w == c->zoom)
 				return c;
 			break;
 		case MATCH_FRAME:
@@ -153,7 +153,7 @@ find_client(Window w, int mode)
 			    w == c->resize_s || w == c->resize_se ||
 			    w == c->resize_e || w == c->resize_ne ||
 			    w == c->resize_n || w == c->titlebar ||
-			    w == c->close || w == c->shade || w == c->zoom)
+			    w == c->close || w == c->iconify || w == c->zoom)
 				return c;
 			break;
 		case MATCH_WINDOW:
@@ -229,13 +229,10 @@ map_client(client_t *c)
 		}
 	} else {
 		if ((hints = XGetWMHints(dpy, c->win))) {
-#if 0
 			if (hints->flags & StateHint)
 				set_wm_state(c, hints->initial_state);
-#else
-			/* XXX: do not let clients start iconified */
-			set_wm_state(c, NormalState);
-#endif
+			else
+				set_wm_state(c, NormalState);
 			XFree(hints);
 		} else {
 			set_wm_state(c, NormalState);
@@ -286,8 +283,8 @@ do_map(client_t *c, int do_raise)
 			XMapRaised(dpy, c->resize_w);
 		if (c->close)
 			XMapRaised(dpy, c->close);
-		if (c->shade)
-			XMapRaised(dpy, c->shade);
+		if (c->iconify)
+			XMapRaised(dpy, c->iconify);
 		if (c->zoom)
 			XMapRaised(dpy, c->zoom);
 		if (c->titlebar)
@@ -315,8 +312,8 @@ do_map(client_t *c, int do_raise)
 			XMapWindow(dpy, c->resize_w);
 		if (c->close)
 			XMapWindow(dpy, c->close);
-		if (c->shade)
-			XMapWindow(dpy, c->shade);
+		if (c->iconify)
+			XMapWindow(dpy, c->iconify);
 		if (c->zoom)
 			XMapWindow(dpy, c->zoom);
 		if (c->titlebar)
@@ -500,9 +497,9 @@ reparent(client_t *c, strut_t *s)
 		    0, CopyFromParent, InputOutput, CopyFromParent,
 		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
 
-		c->shade = XCreateWindow(dpy, c->frame,
-		    c->shade_geom.x, c->shade_geom.y,
-		    c->shade_geom.w, c->shade_geom.h,
+		c->iconify = XCreateWindow(dpy, c->frame,
+		    c->iconify_geom.x, c->iconify_geom.y,
+		    c->iconify_geom.w, c->iconify_geom.h,
 		    0, CopyFromParent, InputOutput, CopyFromParent,
 		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
 
@@ -576,10 +573,10 @@ recalc_frame(client_t *c)
 	c->resize_ne_geom.w = bw + th;
 	c->resize_ne_geom.h = bw + th;
 
-	c->shade_geom.x = c->resize_ne_geom.x - th - 1;
-	c->shade_geom.y = bw;
-	c->shade_geom.w = th;
-	c->shade_geom.h = th;
+	c->iconify_geom.x = c->resize_ne_geom.x - th - 1;
+	c->iconify_geom.y = bw;
+	c->iconify_geom.w = th;
+	c->iconify_geom.h = th;
 
 	c->zoom_geom.x = c->resize_ne_geom.x;
 	c->zoom_geom.y = bw;
@@ -754,24 +751,25 @@ redraw_frame(client_t *c)
 	XDrawRectangle(dpy, c->resize_n, DefaultGC(dpy, screen),
 	    0, 0, c->resize_n_geom.w - 1, c->resize_n_geom.h);
 
-	/* shade box */
-	XSetWindowBackground(dpy, c->shade, button_bg.pixel);
-	XClearWindow(dpy, c->shade);
-	XMoveResizeWindow(dpy, c->shade,
-	    c->shade_geom.x, c->shade_geom.y, c->shade_geom.w, c->shade_geom.h);
-	x = (c->shade_geom.w / 2) - (shade_pm_attrs.width / 2) -
+	/* iconify box */
+	XSetWindowBackground(dpy, c->iconify, button_bg.pixel);
+	XClearWindow(dpy, c->iconify);
+	XMoveResizeWindow(dpy, c->iconify,
+	    c->iconify_geom.x, c->iconify_geom.y, c->iconify_geom.w,
+	    c->iconify_geom.h);
+	x = (c->iconify_geom.w / 2) - (iconify_pm_attrs.width / 2) -
 	    (opt_bevel / 2);
-	y = (c->shade_geom.h / 2) - (shade_pm_attrs.height / 2) -
+	y = (c->iconify_geom.h / 2) - (iconify_pm_attrs.height / 2) -
 	    (opt_bevel / 2);
-	if (c->shade_pressed) {
+	if (c->iconify_pressed) {
 		x += 2;
 		y += 2;
 	}
-	XSetClipMask(dpy, pixmap_gc, shade_pm_mask);
+	XSetClipMask(dpy, pixmap_gc, iconify_pm_mask);
 	XSetClipOrigin(dpy, pixmap_gc, x, y);
-	XCopyArea(dpy, shade_pm, c->shade, pixmap_gc, 0, 0,
-	    shade_pm_attrs.width, shade_pm_attrs.height, x, y);
-	bevel(c->shade, c->shade_pressed);
+	XCopyArea(dpy, iconify_pm, c->iconify, pixmap_gc, 0, 0,
+	    iconify_pm_attrs.width, iconify_pm_attrs.height, x, y);
+	bevel(c->iconify, c->iconify_pressed);
 
 	/* zoom box */
 	XMoveResizeWindow(dpy, c->zoom,
@@ -895,8 +893,8 @@ redraw_frame(client_t *c)
 	XDrawRectangle(dpy, c->resize_ne, DefaultGC(dpy, screen),
 	    -1, 0, c->resize_ne_geom.w, c->resize_ne_geom.h);
 	XDrawRectangle(dpy, c->resize_ne, DefaultGC(dpy, screen),
-	    -1, c->resize_ne_geom.w - c->shade_geom.w - 1,
-	    c->shade_geom.w + 1, c->shade_geom.h);
+	    -1, c->resize_ne_geom.w - c->iconify_geom.w - 1,
+	    c->iconify_geom.w + 1, c->iconify_geom.h);
 
 	XSetWindowBackground(dpy, c->resize_n, button_bg.pixel);
 	XClearWindow(dpy, c->resize_n);
@@ -1084,8 +1082,8 @@ del_client(client_t *c, int mode)
 		XDestroyWindow(dpy, c->titlebar);
 	if (c->close)
 		XDestroyWindow(dpy, c->close);
-	if (c->shade)
-		XDestroyWindow(dpy, c->shade);
+	if (c->iconify)
+		XDestroyWindow(dpy, c->iconify);
 	if (c->zoom)
 		XDestroyWindow(dpy, c->zoom);
 	XDestroyWindow(dpy, c->frame);

@@ -97,15 +97,15 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 	} else if (IS_RESIZE_WIN(c, win)) {
 		if (button == 1 && down && !c->shaded)
 			resize_client(c, win);
-	} else if (win == c->shade) {
+	} else if (win == c->iconify) {
 		if (button == 1 && down) {
 			maybe_toolbar_click(c, win);
-			if (c->shade_pressed) {
-				c->shade_pressed = False;
-				if (c->shaded)
-					unshade_client(c);
+			if (c->iconify_pressed) {
+				c->iconify_pressed = False;
+				if (get_wm_state(c->win) == IconicState)
+					uniconify_client(c);
 				else
-					shade_client(c);
+					iconify_client(c);
 			}
 		}
 	} else if (win == c->zoom) {
@@ -216,8 +216,8 @@ resize_client(client_t *c, Window resize_win)
 void
 maybe_toolbar_click(client_t *c, Window win)
 {
-	if (win == c->shade)
-		c->shade_pressed = True;
+	if (win == c->iconify)
+		c->iconify_pressed = True;
 	else if (win == c->zoom)
 		c->zoom_pressed = True;
 	else if (win == c->close)
@@ -238,9 +238,9 @@ monitor_toolbar_click(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	geom_t *geom;
 	Bool was, *pr;
 
-	if (win == c->shade) {
-		geom = &c->shade_geom;
-		pr = &c->shade_pressed;
+	if (win == c->iconify) {
+		geom = &c->iconify_geom;
+		pr = &c->iconify_pressed;
 	} else if (win == c->zoom) {
 		geom = &c->zoom_geom;
 		pr = &c->zoom_pressed;

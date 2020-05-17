@@ -37,12 +37,12 @@
 
 #ifdef HIDPI
 #include "close_hidpi.xpm"
-#include "shade_hidpi.xpm"
+#include "iconify_hidpi.xpm"
 #include "zoom_hidpi.xpm"
 #include "unzoom_hidpi.xpm"
 #else
 #include "close.xpm"
-#include "shade.xpm"
+#include "iconify.xpm"
 #include "zoom.xpm"
 #include "unzoom.xpm"
 #endif
@@ -73,9 +73,9 @@ GC invert_gc;
 Pixmap close_pm;
 Pixmap close_pm_mask;
 XpmAttributes close_pm_attrs;
-Pixmap shade_pm;
-Pixmap shade_pm_mask;
-XpmAttributes shade_pm_attrs;
+Pixmap iconify_pm;
+Pixmap iconify_pm_mask;
+XpmAttributes iconify_pm_attrs;
 Pixmap zoom_pm;
 Pixmap zoom_pm_mask;
 XpmAttributes zoom_pm_attrs;
@@ -298,8 +298,8 @@ setup_display(void)
 
 	XpmCreatePixmapFromData(dpy, root, close_xpm, &close_pm, &close_pm_mask,
 	    &close_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, shade_xpm, &shade_pm, &shade_pm_mask,
-	    &shade_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, iconify_xpm, &iconify_pm,
+	    &iconify_pm_mask, &iconify_pm_attrs);
 	XpmCreatePixmapFromData(dpy, root, zoom_xpm, &zoom_pm, &zoom_pm_mask,
 	    &zoom_pm_attrs);
 	XpmCreatePixmapFromData(dpy, root, unzoom_xpm, &unzoom_pm,
@@ -471,8 +471,8 @@ cleanup(void)
 	XFreeGC(dpy, invert_gc);
 	XFreePixmap(dpy, close_pm);
 	XFreePixmap(dpy, close_pm_mask);
-	XFreePixmap(dpy, shade_pm);
-	XFreePixmap(dpy, shade_pm_mask);
+	XFreePixmap(dpy, iconify_pm);
+	XFreePixmap(dpy, iconify_pm_mask);
 	XFreePixmap(dpy, zoom_pm);
 	XFreePixmap(dpy, zoom_pm_mask);
 	XFreePixmap(dpy, unzoom_pm);
