@@ -32,7 +32,7 @@
 static void do_map(client_t *, int);
 static void init_geom(client_t *, strut_t *);
 static void reparent(client_t *, strut_t *);
-static void bevel(Window, Bool);
+static void bevel(Window, int);
 
 /*
  * Set up a client structure for the new (not-yet-mapped) window. We have to
@@ -906,7 +906,7 @@ redraw_frame(client_t *c)
 }
 
 static void
-bevel(Window win, Bool pressed)
+bevel(Window win, int pressed)
 {
 	XWindowAttributes attr;
 	int x;
