@@ -36,15 +36,15 @@
 #include "parser.h"
 
 #ifdef HIDPI
-#include "close_hidpi.xpm"
-#include "iconify_hidpi.xpm"
-#include "zoom_hidpi.xpm"
-#include "unzoom_hidpi.xpm"
+#include "icons/close_hidpi.xpm"
+#include "icons/iconify_hidpi.xpm"
+#include "icons/zoom_hidpi.xpm"
+#include "icons/unzoom_hidpi.xpm"
 #else
-#include "close.xpm"
-#include "iconify.xpm"
-#include "zoom.xpm"
-#include "unzoom.xpm"
+#include "icons/close.xpm"
+#include "icons/iconify.xpm"
+#include "icons/zoom.xpm"
+#include "icons/unzoom.xpm"
 #endif
 
 client_t *head, *focused;
