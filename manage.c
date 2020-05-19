@@ -26,52 +26,68 @@
 #include <sys/types.h>
 #include <time.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/shape.h>
 #include "progman.h"
 #include "atom.h"
 
 static void do_iconify(client_t *);
 static void do_shade(client_t *);
 static geom_t fix_size(client_t *);
-void maybe_toolbar_click(client_t *, Window);
-void monitor_toolbar_click(client_t *, geom_t, int, int, int, int, strut_t *,
-    void *);
+static void maybe_toolbar_click(client_t *, Window);
+static void monitor_toolbar_click(client_t *, geom_t, int, int, int, int,
+    strut_t *, void *);
 
-static struct timespec last_close_click = { 0, 0 };
-static struct timespec last_titlebar_click = { 0, 0 };
+static struct {
+	struct timespec tv;
+	client_t *c;
+	Window win;
+	int button;
+} last_click = { { 0, 0 }, NULL, 0 };
 
 void
 user_action(client_t *c, Window win, int x, int y, int button, int down)
 {
 	struct timespec now;
 	long long tdiff;
+	int double_click = 0;
 
-	clock_gettime(CLOCK_MONOTONIC, &now);
+	if (!down) {
+		clock_gettime(CLOCK_MONOTONIC, &now);
 
-	printf("%s(c, %lx, %d, %d, %d, %d)\n", __func__, win, x, y, button,
-	    down);
+		if (last_click.button == button && c == last_click.c &&
+		    win == last_click.win) {
+			tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
+			    ((last_click.tv.tv_sec * 1000000000) +
+			    last_click.tv.tv_nsec)) / 1000000;
+			if (tdiff <= DOUBLE_CLICK_MSEC)
+				double_click = 1;
+		}
+
+		last_click.button = button;
+		last_click.c = c;
+		last_click.win = win;
+		memcpy(&last_click.tv, &now, sizeof(now));
+	}
+
+#ifdef DEBUG
+	printf("%s(\"%s\", %lx, %d, %d, %d, %d) double:%d, c state %d\n",
+	    __func__, c->name, win, x, y, button, down, double_click, c->state);
+#endif
 
 	if (win == c->titlebar) {
-		if (button == 1 && down && !c->zoomed) {
+		if (button == 1 && down &&
+		   (c->state & (STATE_NORMAL | STATE_SHADED))) {
 			move_client(c);
-			/* sweep() steals the ButtonRelease event */
+			/* sweep() eats the ButtonRelease event */
 			get_pointer(&x, &y);
 			user_action(c, win, x, y, button, 0);
-		} else if (button == 1 && !down) {
-			tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
-			    ((last_titlebar_click.tv_sec * 1000000000) +
-			    last_titlebar_click.tv_nsec)) / 1000000;
-
-			if (tdiff <= DOUBLE_CLICK_MSEC) {
-				if (c->zoomed)
-					unzoom_client(c);
-				else
-					zoom_client(c);
-			}
-
-			last_titlebar_click.tv_sec = now.tv_sec;
-			last_titlebar_click.tv_nsec = now.tv_nsec;
-		} else if (button == 3 && !down) {
-			if (c->shaded)
+		} else if (button == 1 && !down && double_click) {
+			if (c->state == STATE_ZOOMED)
+				unzoom_client(c);
+			else
+				zoom_client(c);
+		} else if (button == 3 && !down && !double_click) {
+			if (c->state == STATE_SHADED)
 				unshade_client(c);
 			else
 				shade_client(c);
@@ -85,17 +101,14 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			c->close_pressed = False;
 			redraw_frame(c);
 
-			tdiff = (((now.tv_sec * 1000000000) + now.tv_nsec) -
-			    ((last_close_click.tv_sec * 1000000000) +
-			    last_close_click.tv_nsec)) / 1000000;
-			last_close_click.tv_sec = now.tv_sec;
-			last_close_click.tv_nsec = now.tv_nsec;
-
-			if (tdiff <= DOUBLE_CLICK_MSEC)
-				send_wm_delete(c);
+			get_pointer(&x, &y);
+			user_action(c, win, x, y, button, 0);
 		}
+
+		if (double_click)
+			send_wm_delete(c);
 	} else if (IS_RESIZE_WIN(c, win)) {
-		if (button == 1 && down && !c->shaded)
+		if (button == 1 && down && c->state != STATE_SHADED)
 			resize_client(c, win);
 	} else if (win == c->iconify) {
 		if (button == 1 && down) {
@@ -103,7 +116,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			if (c->iconify_pressed) {
 				c->iconify_pressed = False;
 				redraw_frame(c);
-				if (get_wm_state(c->win) == IconicState)
+				if (c->state == STATE_ICONIFIED)
 					uniconify_client(c);
 				else
 					iconify_client(c);
@@ -115,12 +128,20 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			if (c->zoom_pressed) {
 				c->zoom_pressed = False;
 				redraw_frame(c);
-				if (c->zoomed)
+				if (c->state == STATE_ZOOMED)
 					unzoom_client(c);
 				else
 					zoom_client(c);
 			}
 		}
+	} else if (c->state == STATE_ICONIFIED &&
+	    (win == c->icon || win == c->icon_label)) {
+	    	if (down && !double_click) {
+			move_client(c);
+			get_pointer(&x, &y);
+			user_action(c, win, x, y, button, 0);
+		} else if (!down && double_click)
+			uniconify_client(c);
 	}
 }
 
@@ -153,7 +174,10 @@ focus_client(client_t *c)
 {
 	client_t *oc;
 
-	if (c) {
+	if (c && c->state == STATE_ICONIFIED) {
+		set_atoms(root, net_active_window, XA_WINDOW, &c->icon, 1);
+		XSetInputFocus(dpy, c->icon, RevertToPointerRoot, CurrentTime);
+	} else if (c) {
 		set_atoms(root, net_active_window, XA_WINDOW, &c->win, 1);
 		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 		XInstallColormap(dpy, c->cmap);
@@ -176,7 +200,7 @@ move_client(client_t *c)
 {
 	strut_t s = { 0 };
 
-	if (c->zoomed)
+	if (c->state & (STATE_ZOOMED | STATE_FULLSCREEN | STATE_DOCK))
 		return;
 
 	collect_struts(c, &s);
@@ -194,20 +218,13 @@ resize_client(client_t *c, Window resize_win)
 {
 	strut_t hold = { 0, 0, 0, 0 };
 
-	if (c->zoomed)
+	if (c->state == STATE_ZOOMED) {
 		c->save = c->geom;
-	unzoom_client(c);
+		unzoom_client(c);
+	}
 
 	sweep(c, cursor_for_resize_win(c, resize_win), recalc_resize,
 	    &resize_win, &hold);
-
-#if 0
-	f = frame_geom(c);
-	XMoveResizeWindow(dpy, c->frame, f.x, f.y, f.w, f.h);
-	XMoveResizeWindow(dpy, c->win, BW(c), BW(c) + titlebar_height(c) + 1,
-	    c->geom.w, c->geom.h);
-	send_config(c);
-#endif
 }
 
 /*
@@ -277,17 +294,78 @@ iconify_client(client_t *c)
 	for (p = head; p; p = p->next)
 		if (p->trans == c->win)
 			do_iconify(p);
+
+	focus_client(prev_focused());
 }
 
 void
 do_iconify(client_t *c)
 {
+	XWMHints *hints;
+	Window junkw;
+	XSetWindowAttributes attrs = { 0 };
+	strut_t s = { 0 };
+	int junki, depth;
+
 	if (!c->ignore_unmap)
 		c->ignore_unmap++;
 
 	XUnmapWindow(dpy, c->frame);
 	XUnmapWindow(dpy, c->win);
 	set_wm_state(c, IconicState);
+	c->state = STATE_ICONIFIED;
+
+	if ((hints = XGetWMHints(dpy, c->win)) &&
+	    (hints->flags & IconPixmapHint)) {
+		XGetGeometry(dpy, hints->icon_pixmap, &junkw, &junki, &junki,
+		    (unsigned int *)&c->icon_geom.w,
+		    (unsigned int *)&c->icon_geom.h, &junki, &depth);
+		c->icon_pixmap = hints->icon_pixmap;
+		c->icon_depth = depth;
+
+		if (hints->flags & IconMaskHint)
+			c->icon_mask = hints->icon_mask;
+	} else {
+		c->icon_pixmap = default_icon_pm;
+		c->icon_depth = DefaultDepth(dpy, screen);
+		c->icon_mask = default_icon_pm_mask;
+	}
+
+	if (c->icon_name)
+		XFree(c->icon_name);
+	c->icon_name = get_wm_icon_name(c->win);
+
+	/* TODO: if not ICON_SIZE, scale up/down */
+	if (c->icon_geom.w < 1)
+		c->icon_geom.w = ICON_SIZE;
+	if (c->icon_geom.h < 1)
+		c->icon_geom.h = ICON_SIZE;
+
+	attrs.background_pixel = BlackPixel(dpy, screen);
+	attrs.event_mask = ButtonPressMask | ButtonReleaseMask |
+	    VisibilityChangeMask | ExposureMask | KeyPressMask |
+	    EnterWindowMask | FocusChangeMask;
+
+	collect_struts(c, &s);
+	/* TODO: find a suitable spot that won't overlap any other icons */
+	c->icon_geom.x = s.left + ICON_SIZE;
+	c->icon_geom.y = DisplayHeight(dpy, screen) - s.top - s.bottom -
+	    c->icon_geom.h - (ICON_SIZE * 2);
+
+	c->icon = XCreateWindow(dpy, root, c->icon_geom.x, c->icon_geom.h,
+	    c->icon_geom.w, c->icon_geom.h, 0, CopyFromParent, CopyFromParent,
+	    CopyFromParent, CWBackPixel | CWEventMask, &attrs);
+	XMapWindow(dpy, c->icon);
+
+	c->icon_label = XCreateWindow(dpy, root, 0, 0, c->icon_geom.w,
+	    c->icon_geom.h, 0, CopyFromParent, CopyFromParent, CopyFromParent,
+	    CWBackPixel | CWEventMask, &attrs);
+	XMapWindow(dpy, c->icon_label);
+	c->icon_xftdraw = XftDrawCreate(dpy, (Drawable)c->icon_label,
+	    DefaultVisual(dpy, DefaultScreen(dpy)),
+	    DefaultColormap(dpy, DefaultScreen(dpy)));
+
+	redraw_icon(c);
 }
 
 void
@@ -296,15 +374,25 @@ uniconify_client(client_t *c)
 	XMapWindow(dpy, c->win);
 	XMapRaised(dpy, c->frame);
 	set_wm_state(c, NormalState);
+	c->state = STATE_NORMAL;
+
+	c->ignore_unmap++;
+	XDestroyWindow(dpy, c->icon);
+	c->icon = None;
+	c->ignore_unmap++;
+	XDestroyWindow(dpy, c->icon_label);
+	c->icon_label = None;
+
+	focus_client(c);
 }
 
 void
 shade_client(client_t *c)
 {
-	if (c->shaded)
+	if (c->state != STATE_NORMAL)
 		return;
 
-	c->shaded = 1;
+	c->state = STATE_SHADED;
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_shaded, 1);
 	do_shade(c);
 }
@@ -312,10 +400,10 @@ shade_client(client_t *c)
 void
 unshade_client(client_t *c)
 {
-	if (!c->shaded)
+	if (c->state != STATE_SHADED)
 		return;
 
-	c->shaded = 0;
+	c->state = STATE_NORMAL;
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
 	do_shade(c);
 }
@@ -329,15 +417,14 @@ do_shade(client_t *c)
 		    c->frame_geom.x, c->frame_geom.y, c->frame_geom.w,
 		    c->frame_geom.h);
 
-		if (c->shaded) {
-			XMoveWindow(dpy, c->win, c->geom.x, c->frame_geom.h);
+		if (c->state == STATE_SHADED) {
+			XLowerWindow(dpy, c->win);
 			XUndefineCursor(dpy, c->resize_nw);
 			XUndefineCursor(dpy, c->resize_n);
 			XUndefineCursor(dpy, c->resize_ne);
 			XUndefineCursor(dpy, c->resize_s);
 		} else {
-			XMoveWindow(dpy, c->win, c->resize_w_geom.w,
-			    c->titlebar_geom.y + c->titlebar_geom.h + 1);
+			XRaiseWindow(dpy, c->win);
 			XDefineCursor(dpy, c->resize_nw, resize_nw_curs);
 			XDefineCursor(dpy, c->resize_n, resize_n_curs);
 			XDefineCursor(dpy, c->resize_ne, resize_ne_curs);
@@ -354,12 +441,15 @@ fullscreen_client(client_t *c)
 	int screen_x = DisplayWidth(dpy, screen);
 	int screen_y = DisplayHeight(dpy, screen);
 
+	if (!(c->state & (STATE_NORMAL | STATE_SHADED)))
+		return;
+
 	c->save = c->geom;
 	c->geom.x = 0;
 	c->geom.y = 0;
 	c->geom.w = screen_x;
 	c->geom.h = screen_y;
-	c->fullscreen = 1;
+	c->state = STATE_FULLSCREEN;
 	redraw_frame(c);
 	send_config(c);
 	flush_expose_client(c);
@@ -368,11 +458,11 @@ fullscreen_client(client_t *c)
 void
 unfullscreen_client(client_t *c)
 {
-	if (!c->fullscreen)
+	if (c->state != STATE_FULLSCREEN)
 		return;
 
 	c->geom = c->save;
-	c->fullscreen = 0;
+	c->state = STATE_NORMAL;
 	redraw_frame(c);
 	send_config(c);
 	flush_expose_client(c);
@@ -390,28 +480,28 @@ zoom_client(client_t *c)
 {
 	strut_t s = { 0 };
 
-	if (c->zoomed)
+	if (!(c->state & (STATE_NORMAL | STATE_SHADED)))
 		return;
 
+	if (c->state == STATE_SHADED)
+		unshade_client(c);
+
 	c->save = c->geom;
-	c->shaded = 0;
-	c->zoomed = 1;
+	c->state = STATE_ZOOMED;
 
 	collect_struts(c, &s);
 	recalc_frame(c);
 
-	c->geom.x = s.left + 1;
-	c->geom.y = s.top + 1 + (c->decor ? c->titlebar_geom.h + 1 : 0);
-	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right - 2;
-	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom - 2 -
+	c->geom.x = s.left;
+	c->geom.y = s.top + (c->decor ? c->titlebar_geom.h + 1 : 0);
+	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
+	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom -
 	    (c->decor ? c->titlebar_geom.h + 1 : 0);
 
-	if (c->decor) {
-		XMoveWindow(dpy, c->win, c->geom.x, c->geom.y);
-		redraw_frame(c);
-	}
+	XMoveWindow(dpy, c->win, c->geom.x, c->geom.y);
 
-	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
+	redraw_frame(c);
+
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
 	send_config(c);
@@ -421,11 +511,11 @@ zoom_client(client_t *c)
 void
 unzoom_client(client_t *c)
 {
-	if (!c->zoomed)
+	if (c->state != STATE_ZOOMED)
 		return;
 
 	c->geom = c->save;
-	c->zoomed = 0;
+	c->state = STATE_NORMAL;
 
 	if (c->frame) {
 		recalc_frame(c);
@@ -484,11 +574,11 @@ map_if_desk(client_t *c)
 		XUnmapWindow(dpy, c->frame);
 }
 
-int
+void
 sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
 	XEvent ev;
-	geom_t orig = c->geom;
+	geom_t orig = (c->state == STATE_ICONIFIED ? c->icon_geom : c->geom);
 	client_t *ec;
 	strut_t as = { 0 };
 	int x0, y0, done = 0;
@@ -499,7 +589,7 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 
 	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
 	    GrabModeAsync, root, curs, CurrentTime) != GrabSuccess)
-		return 0;
+		return;
 
 	cb(c, orig, x0, y0, x0, y0, s, cb_arg);
 
@@ -527,8 +617,6 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	}
 
 	XUngrabPointer(dpy, CurrentTime);
-
-	return ev.xbutton.button;
 }
 
 /*
@@ -563,6 +651,23 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	sw -= s->right;
 	sh -= s->bottom;
 
+	if (c->state == STATE_ICONIFIED) {
+		int xd = newx - c->icon_geom.x;
+		int yd = newy - c->icon_geom.y;
+
+		c->icon_geom.x = newx;
+		c->icon_geom.y = newy;
+		c->icon_label_geom.x += xd;
+		c->icon_label_geom.y += yd;
+
+		XMoveWindow(dpy, c->icon, c->icon_geom.x, c->icon_geom.y);
+		XMoveWindow(dpy, c->icon_label, c->icon_label_geom.x,
+		    c->icon_label_geom.y);
+		send_config(c);
+		flush_expose_client(c);
+		return;
+	}
+
 	/* provide some resistance at screen edges */
 	if (x1 < x0) {
 		/* left edge */
@@ -596,6 +701,7 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	recalc_frame(c);
 	XMoveWindow(dpy, c->frame, c->frame_geom.x, c->frame_geom.y);
 	send_config(c);
+	flush_expose_client(c);
 }
 
 void
@@ -734,6 +840,10 @@ flush_expose_client(client_t *c)
 		flush_expose(c->zoom);
 	if (c->titlebar)
 		flush_expose(c->titlebar);
+	if (c->icon)
+		flush_expose(c->icon);
+	if (c->icon_label)
+		flush_expose(c->icon_label);
 }
 
 /* Remove expose events for a window from the event queue */

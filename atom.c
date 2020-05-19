@@ -40,6 +40,7 @@ Atom net_close_window;
 Atom net_cur_desk;
 Atom net_num_desks;
 Atom net_wm_name;
+Atom net_wm_icon_name;
 Atom net_wm_desk;
 Atom net_wm_state;
 Atom net_wm_state_shaded;
@@ -60,6 +61,7 @@ Atom net_wm_type_splash;
 Atom net_wm_type_desk;
 
 static char *get_string_atom(Window, Atom, Atom);
+static char *_get_wm_name(Window, int);
 
 /*
  * Despite the fact that all these are 32 bits on the wire, libX11 really does
@@ -163,7 +165,7 @@ remove_atom(Window w, Atom a, Atom type, unsigned long remove)
  * must be freed with XFree.
  */
 char *
-get_wm_name(Window w)
+_get_wm_name(Window w, int icon)
 {
 	char *name;
 	XTextProperty name_prop;
@@ -171,11 +173,17 @@ get_wm_name(Window w)
 	char **name_list;
 	int nitems;
 
-	if ((name = get_string_atom(w, net_wm_name, utf8_string)))
-		return name;
-
-	if (!XGetWMName(dpy, w, &name_prop))
-		return NULL;
+	if (icon) {
+		if ((name = get_string_atom(w, net_wm_icon_name, utf8_string)))
+			return name;
+		if (!XGetWMIconName(dpy, w, &name_prop))
+			return NULL;
+	} else {
+		if ((name = get_string_atom(w, net_wm_name, utf8_string)))
+			return name;
+		if (!XGetWMName(dpy, w, &name_prop))
+			return NULL;
+	}
 
 	if (Xutf8TextPropertyToTextList(dpy, &name_prop, &name_list,
 	    &nitems) == Success && nitems >= 1) {
@@ -200,6 +208,18 @@ get_wm_name(Window w)
 	}
 
 	return (char *)name_prop.value;
+}
+
+char *
+get_wm_name(Window w)
+{
+	return _get_wm_name(w, 0);
+}
+
+char *
+get_wm_icon_name(Window w)
+{
+	return _get_wm_name(w, 1);
 }
 
 /*

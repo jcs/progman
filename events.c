@@ -134,22 +134,38 @@ handle_button_press(XButtonEvent *e)
 {
 	client_t *c = find_client(e->window, MATCH_ANY);
 
-	if (e->window == root)
-		root_button_pressed = 1;
-	else if (c) {
-		focus_client(c);
+	if (e->window == root) {
+		client_t *fc;
+		if ((fc = find_client_at_coords(e->window, e->x, e->y)) &&
+		    fc->state == STATE_ICONIFIED) {
+			c = fc;
+			e->window = c->icon;
+		}
+	}
 
+	if (e->window == root) {
+		root_button_pressed = 1;
+	} else if (c && c->state == STATE_DOCK) {
+		/* pass button event through */
+		XAllowEvents(dpy, ReplayPointer, CurrentTime);
+	} else if (c) {
 		if (e->button == 1 && e->state & Mod1Mask) {
 			/* alt+click, begin moving */
-			XRaiseWindow(dpy, c->frame);
-			move_client(c);
+			if (c->state == STATE_NORMAL) {
+				XRaiseWindow(dpy, c->frame);
+				focus_client(c);
+				move_client(c);
+			}
 		} else if (find_client(e->window, MATCH_FRAME)) {
 			/* raising our frame will also raise the window */
 			XRaiseWindow(dpy, c->frame);
+			focus_client(c);
 			user_action(c, e->window, e->x, e->y, e->button, 1);
 		} else {
-			if (e->button == 1)
+			if (e->button == 1) {
 				XRaiseWindow(dpy, c->frame);
+				focus_client(c);
+			}
 
 			/* pass button event through */
 			XAllowEvents(dpy, ReplayPointer, CurrentTime);
@@ -161,6 +177,15 @@ static void
 handle_button_release(XButtonEvent *e)
 {
 	client_t *c = find_client(e->window, MATCH_ANY);
+
+	if (e->window == root) {
+		client_t *fc;
+		if ((fc = find_client_at_coords(e->window, e->x, e->y)) &&
+		    fc->state == STATE_ICONIFIED) {
+			c = fc;
+			e->window = c->icon;
+		}
+	}
 
 	if (e->window == root && root_button_pressed) {
 #ifdef DEBUG
@@ -246,9 +271,9 @@ handle_configure_request(XConfigureRequestEvent *e)
 		XConfigureWindow(dpy, c->frame, e->value_mask, &wc);
 		if (e->value_mask & (CWWidth | CWHeight))
 			set_shape(c);
-		if (c->zoomed && e->value_mask & (CWX | CWY | CWWidth |
-		    CWHeight)) {
-			c->zoomed = 0;
+		if (c->state == STATE_ZOOMED &&
+		    e->value_mask & (CWX | CWY | CWWidth | CWHeight)) {
+			c->state = STATE_NORMAL;
 			remove_atom(c->win, net_wm_state, XA_ATOM,
 			    net_wm_state_mv);
 			remove_atom(c->win, net_wm_state, XA_ATOM,
@@ -290,8 +315,12 @@ handle_circulate_request(XCirculateRequestEvent *e)
 			XLowerWindow(dpy, e->window);
 			focus_client(prev_focused());
 		} else {
-			XRaiseWindow(dpy, e->window);
-			if ((c = find_client(e->window, MATCH_ANY)))
+			c = find_client(e->window, MATCH_ANY);
+
+			if (!(c && c->state == STATE_SHADED))
+				XRaiseWindow(dpy, e->window);
+
+			if (c)
 				focus_client(c);
 		}
 	}
@@ -393,7 +422,8 @@ handle_client_message(XClientMessageEvent *e)
 	} else if (e->message_type == net_wm_state &&
 	    e->data.l[1] == net_wm_state_fs) {
 		if (e->data.l[0] == net_wm_state_add ||
-		    (e->data.l[0] == net_wm_state_toggle && !c->fullscreen))
+		    (e->data.l[0] == net_wm_state_toggle &&
+		    c->state != STATE_FULLSCREEN))
 			fullscreen_client(c);
 		else
 			unfullscreen_client(c);
@@ -419,6 +449,15 @@ handle_property_change(XPropertyEvent *e)
 			XFree(c->name);
 		c->name = get_wm_name(c->win);
 		redraw_frame(c);
+		flush_expose_client(c);
+	} else if (e->atom == XA_WM_ICON_NAME || e->atom == net_wm_icon_name) {
+		if (c->icon_name)
+			XFree(c->icon_name);
+		c->icon_name = get_wm_icon_name(c->win);
+		if (c->state == STATE_ICONIFIED) {
+			redraw_icon(c);
+			flush_expose_client(c);
+		}
 	} else if (e->atom == XA_WM_NORMAL_HINTS) {
 		XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
 	} else if (e->atom == net_wm_state) {

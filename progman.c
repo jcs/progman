@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <locale.h>
 #include <errno.h>
+#include <err.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <X11/Xatom.h>
@@ -40,11 +41,13 @@
 #include "icons/iconify_hidpi.xpm"
 #include "icons/zoom_hidpi.xpm"
 #include "icons/unzoom_hidpi.xpm"
+#include "icons/default_icon_hidpi.xpm"
 #else
 #include "icons/close.xpm"
 #include "icons/iconify.xpm"
 #include "icons/zoom.xpm"
 #include "icons/unzoom.xpm"
+#include "icons/default_icon.xpm"
 #endif
 
 client_t *head, *focused;
@@ -56,6 +59,7 @@ Bool shape;
 int shape_event;
 
 XftFont *xftfont;
+XftFont *icon_xftfont;
 XftColor xft_fg;
 XftColor xft_fg_unfocused;
 
@@ -82,6 +86,9 @@ XpmAttributes zoom_pm_attrs;
 Pixmap unzoom_pm;
 Pixmap unzoom_pm_mask;
 XpmAttributes unzoom_pm_attrs;
+Pixmap default_icon_pm;
+Pixmap default_icon_pm_mask;
+XpmAttributes default_icon_pm_attrs;
 Cursor map_curs;
 Cursor move_curs;
 Cursor resize_n_curs;
@@ -96,6 +103,7 @@ Cursor resize_se_curs;
 int exitmsg[2];
 
 char *opt_xftfont = DEF_XFTFONT;
+char *opt_icon_xftfont = DEF_ICON_XFTFONT;
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
 char *opt_fg_unfocused = DEF_FG_UNFOCUSED;
@@ -114,8 +122,6 @@ static void cleanup(void);
 static void read_config(char *);
 static void setup_display(void);
 
-extern char *__progname;
-
 int
 main(int argc, char **argv)
 {
@@ -131,7 +137,7 @@ main(int argc, char **argv)
 			read_config(optarg);
 			break;
 		default:
-			printf("usage: %s [-c <config file>]\n", __progname);
+			printf("usage: %s [-c <config file>]\n", argv[0]);
 			exit(1);
 		}
 	}
@@ -160,8 +166,7 @@ read_config(char *rcfile)
 
 	if (!(rc = open_rc(rcfile, "progmanrc"))) {
 		if (rcfile)
-			fprintf(stderr, "%s: rc file '%s' not found\n",
-			    __progname, rcfile);
+			warn("rc file \"%s\" not found", rcfile);
 		return;
 	}
 
@@ -171,6 +176,9 @@ read_config(char *rcfile)
 			if (strcmp(token, "xftfont") == 0) {
 				if (get_token(&p, token))
 					opt_xftfont = strdup(token);
+			} else if (strcmp(token, "icon_xftfont") == 0) {
+				if (get_token(&p, token))
+					opt_icon_xftfont = strdup(token);
 			} else if (strcmp(token, "fgcolor") == 0) {
 				if (get_token(&p, token))
 					opt_fg = strdup(token);
@@ -226,6 +234,7 @@ setup_display(void)
 	XColor exact;
 	XSetWindowAttributes sattr;
 	XWindowAttributes attr;
+	XIconSize *xis;
 	int shape_err;
 	Window qroot, qparent, *wins;
 	unsigned int nwins, i;
@@ -233,11 +242,8 @@ setup_display(void)
 
 	dpy = XOpenDisplay(NULL);
 
-	if (!dpy) {
-		fprintf(stderr, "%s: can't open $DISPLAY \"%s\"\n", __progname,
-		    getenv("DISPLAY"));
-		exit(1);
-	}
+	if (!dpy)
+		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
 
 	XSetErrorHandler(handle_xerror);
 	screen = DefaultScreen(dpy);
@@ -283,11 +289,13 @@ setup_display(void)
 	xft_fg_unfocused.pixel = fg_unfocused.pixel;
 
 	xftfont = XftFontOpenName(dpy, DefaultScreen(dpy), opt_xftfont);
-	if (!xftfont) {
-		fprintf(stderr, "%s: Xft font \"%s\" not found\n", __progname,
-		    opt_xftfont);
-		exit(1);
-	}
+	if (!xftfont)
+		errx(1, "Xft font \"%s\" not found", opt_xftfont);
+
+	icon_xftfont = XftFontOpenName(dpy, DefaultScreen(dpy),
+	    opt_icon_xftfont);
+	if (!icon_xftfont)
+		errx(1, "icon Xft font \"%s\" not found", opt_icon_xftfont);
 
 	pixmap_gc = XCreateGC(dpy, root, 0, &gv);
 
@@ -304,6 +312,18 @@ setup_display(void)
 	    &zoom_pm_attrs);
 	XpmCreatePixmapFromData(dpy, root, unzoom_xpm, &unzoom_pm,
 	    &unzoom_pm_mask, &unzoom_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, default_icon_xpm, &default_icon_pm,
+	    &default_icon_pm_mask, &default_icon_pm_attrs);
+
+	xis = XAllocIconSize();
+	xis->min_width = ICON_SIZE;
+	xis->min_height = ICON_SIZE;
+	xis->max_width = ICON_SIZE;
+	xis->max_height = ICON_SIZE;
+	xis->width_inc = 1;
+	xis->height_inc = 1;
+	XSetIconSizes(dpy, root, xis, 1);
+	XFree(xis);
 
 	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
 	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -318,6 +338,7 @@ setup_display(void)
 	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 	net_close_window = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
 	net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
+	net_wm_icon_name = XInternAtom(dpy, "_NET_WM_ICON_NAME", False);
 	net_wm_desk = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
 	net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
 	net_wm_state_shaded = XInternAtom(dpy, "_NET_WM_STATE_SHADED", False);
@@ -410,14 +431,11 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 	client_t *c = find_client(e->resourceid, MATCH_WINDOW);
 #endif
 
-	if (e->error_code == BadAccess && e->resourceid == root) {
-		fprintf(stderr, "%s: root window unavailable\n", __progname);
-		exit(1);
-	}
+	if (e->error_code == BadAccess && e->resourceid == root)
+		errx(1, "root window unavailable");
 
 	XGetErrorText(dpy, e->error_code, msg, sizeof msg);
-	fprintf(stderr, "%s: X error (%#lx): %s\n", __progname, e->resourceid,
-	    msg);
+	warnx("X error (%#lx): %s", e->resourceid, msg);
 #ifdef DEBUG
 	if (c) {
 #if 0 /* these can introduce additional xerrors so don't call them from here */
@@ -457,6 +475,7 @@ cleanup(void)
 	XFree(wins);
 
 	XftFontClose(dpy, xftfont);
+	XftFontClose(dpy, icon_xftfont);
 	XFreeCursor(dpy, map_curs);
 	XFreeCursor(dpy, move_curs);
 	XFreeCursor(dpy, resize_n_curs);
@@ -477,6 +496,8 @@ cleanup(void)
 	XFreePixmap(dpy, zoom_pm_mask);
 	XFreePixmap(dpy, unzoom_pm);
 	XFreePixmap(dpy, unzoom_pm_mask);
+	XFreePixmap(dpy, default_icon_pm);
+	XFreePixmap(dpy, default_icon_pm_mask);
 
 	XInstallColormap(dpy, DefaultColormap(dpy, screen));
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);

@@ -47,11 +47,13 @@
 
 #ifdef HIDPI
 #define DEF_XFTFONT "Microsoft Sans Serif:bold:size=14"
+#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=12"
 #define DEF_BEVEL 2
 #define DEF_PAD 6
 #define DEF_BW 6
 #else
 #define DEF_XFTFONT "system:size=13"
+#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=12"
 #define DEF_BEVEL 2
 #define DEF_PAD 3
 #define DEF_BW 3
@@ -63,9 +65,15 @@
 #define DEF_NEW4 "aedesk -1"
 #define DEF_NEW5 "aedesk +1"
 
-#define DEF_EDGE_RES 50
-
 #define DOUBLE_CLICK_MSEC 250
+
+#ifdef HIDPI
+#define DEF_EDGE_RES 80
+#define ICON_SIZE 64
+#else
+#define DEF_EDGE_RES 40
+#define ICON_SIZE 32
+#endif
 
 /* End of options */
 
@@ -102,10 +110,20 @@ struct geom {
 	long h;
 };
 
+enum {
+	STATE_NORMAL = (1 << 1),
+	STATE_ZOOMED = (1 << 2),
+	STATE_SHADED = (1 << 3),
+	STATE_FULLSCREEN = (1 << 4),
+	STATE_ICONIFIED = (1 << 5),
+	STATE_DOCK = (1 << 6),
+};
+
 typedef struct client client_t;
 struct client {
 	client_t *next;
 	char *name;
+	XftDraw *xftdraw;
 	Window win, trans;
 	geom_t geom, save;
 	Window frame;
@@ -137,7 +155,15 @@ struct client {
 	geom_t resize_sw_geom;
 	Window resize_w;
 	geom_t resize_w_geom;
-	XftDraw *xftdraw;
+	Window icon;
+	geom_t icon_geom;
+	Window icon_label;
+	geom_t icon_label_geom;
+	Pixmap icon_pixmap;
+	Pixmap icon_mask;
+	char *icon_name;
+	XftDraw *icon_xftdraw;
+	int icon_depth;
 	XSizeHints size;
 	Colormap cmap;
 	int ignore_unmap;
@@ -145,13 +171,16 @@ struct client {
 	unsigned long desk;
 	Bool placed;
 	Bool shaped;
-	Bool shaded;
-	Bool zoomed;
-	Bool fullscreen;
 	int state;
 	Bool decor;
-	Bool dock;
 	int old_bw;
+};
+
+typedef struct xft_line xft_line_t;
+struct xft_line_t {
+	char *str;
+	unsigned int len;
+	unsigned int xft_width;
 };
 
 typedef void sweep_func(client_t *, geom_t, int, int, int, int, strut_t *,
@@ -176,6 +205,7 @@ extern unsigned long ndesks;
 extern Bool shape;
 extern int shape_event;
 extern XftFont *xftfont;
+extern XftFont *icon_xftfont;
 extern XftColor xft_fg;
 extern XftColor xft_fg_unfocused;
 extern Colormap cmap;
@@ -201,6 +231,9 @@ extern XpmAttributes zoom_pm_attrs;
 extern Pixmap unzoom_pm;
 extern Pixmap unzoom_pm_mask;
 extern XpmAttributes unzoom_pm_attrs;
+extern Pixmap default_icon_pm;
+extern Pixmap default_icon_pm_mask;
+extern XpmAttributes default_icon_pm_attrs;
 extern Cursor map_curs;
 extern Cursor move_curs;
 extern Cursor resize_n_curs;
@@ -239,6 +272,7 @@ extern void show_event(XEvent e);
 /* client.c */
 extern client_t *new_client(Window w);
 extern client_t *find_client(Window w, int mode);
+extern client_t *find_client_at_coords(Window w, int x, int y);
 extern client_t *top_client(void);
 extern client_t *prev_focused(void);
 extern void map_client(client_t *);
@@ -250,6 +284,7 @@ extern void parse_state_atom(client_t *, Atom);
 extern void send_config(client_t *c);
 extern void redraw_frame(client_t *c);
 extern void collect_struts(client_t *, strut_t *);
+extern void redraw_icon(client_t *c);
 extern void set_shape(client_t *c);
 extern void del_client(client_t *c, int mode);
 
@@ -272,7 +307,7 @@ extern void unzoom_client(client_t *c);
 extern void send_wm_delete(client_t *c);
 extern void goto_desk(int new_desk);
 extern void map_if_desk(client_t *c);
-extern int sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg,
+extern void sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg,
     strut_t *s);
 extern void recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1,
     int y1, strut_t *s, void *arg);

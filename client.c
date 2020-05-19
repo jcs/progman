@@ -32,7 +32,9 @@
 static void do_map(client_t *, int);
 static void init_geom(client_t *, strut_t *);
 static void reparent(client_t *, strut_t *);
-static void bevel(Window, int);
+static void bevel(Window, geom_t, int);
+static void word_wrap_xft(char *, char, XftFont *, int, struct xft_line_t **,
+    int *);
 
 /*
  * Set up a client structure for the new (not-yet-mapped) window. We have to
@@ -56,6 +58,7 @@ new_client(Window w)
 	head = c;
 
 	c->name = get_wm_name(w);
+	c->icon_name = get_wm_icon_name(w);
 	c->win = w;
 	c->frame = None;
 	c->resize_nw = None;
@@ -94,9 +97,12 @@ new_client(Window w)
 	XAllocNamedColor(dpy, c->cmap, opt_bg_unfocused, &bg_unfocused, &exact);
 	XAllocNamedColor(dpy, c->cmap, opt_bd, &bd, &exact);
 
+	c->state = STATE_NORMAL;
+
 	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &win_type, 1, NULL)) {
 		c->decor = HAS_DECOR(win_type);
-		c->dock = (win_type == net_wm_type_dock);
+		if (win_type == net_wm_type_dock)
+			c->state = STATE_DOCK;
 	}
 
 	if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0, &c->desk, 1, NULL)) {
@@ -144,7 +150,8 @@ find_client(Window w, int mode)
 			    w == c->resize_s || w == c->resize_se ||
 			    w == c->resize_e || w == c->resize_ne ||
 			    w == c->resize_n || w == c->titlebar ||
-			    w == c->close || w == c->iconify || w == c->zoom)
+			    w == c->close || w == c->iconify || w == c->zoom ||
+			    w == c->icon || w == c->icon_label)
 				return c;
 			break;
 		case MATCH_FRAME:
@@ -153,7 +160,8 @@ find_client(Window w, int mode)
 			    w == c->resize_s || w == c->resize_se ||
 			    w == c->resize_e || w == c->resize_ne ||
 			    w == c->resize_n || w == c->titlebar ||
-			    w == c->close || w == c->iconify || w == c->zoom)
+			    w == c->close || w == c->iconify || w == c->zoom ||
+			    w == c->icon || w == c->icon_label)
 				return c;
 			break;
 		case MATCH_WINDOW:
@@ -166,22 +174,77 @@ find_client(Window w, int mode)
 }
 
 client_t *
+find_client_at_coords(Window w, int x, int y)
+{
+	unsigned int nwins, i;
+	Window qroot, qparent, *wins;
+	XWindowAttributes attr;
+	client_t *c, *foundc = NULL;
+
+	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
+	for (i = nwins - 1; i > 0; i--) {
+		XGetWindowAttributes(dpy, wins[i], &attr);
+		if (!(c = find_client(wins[i], MATCH_ANY)))
+			continue;
+
+		if (c->state == STATE_ICONIFIED) {
+			if (x >= c->icon_geom.x &&
+			    x <= c->icon_geom.x + c->icon_geom.w &&
+			    y >= c->icon_geom.y &&
+			    y <= c->icon_geom.y + c->icon_geom.h) {
+				foundc = c;
+				break;
+			}
+			if (x >= c->icon_label_geom.x &&
+			    x <= c->icon_label_geom.x + c->icon_label_geom.w &&
+			    y >= c->icon_label_geom.y &&
+			    y <= c->icon_label_geom.y + c->icon_label_geom.h) {
+				foundc = c;
+				break;
+			}
+		} else if (!c->decor) {
+			if (x >= c->geom.x &&
+			    x <= c->geom.x + c->geom.w &&
+			    y >= c->geom.y &&
+			    y <= c->geom.y + c->geom.h) {
+				foundc = c;
+				break;
+			}
+		} else {
+			if (x >= c->frame_geom.x &&
+			    x <= c->frame_geom.x + c->frame_geom.w &&
+			    y >= c->frame_geom.y &&
+			    y <= c->frame_geom.y + c->frame_geom.h) {
+				foundc = c;
+				break;
+			}
+		}
+	}
+	XFree(wins);
+
+	return foundc;
+}
+
+client_t *
 top_client(void)
 {
 	unsigned int nwins, i;
 	Window qroot, qparent, *wins;
 	XWindowAttributes attr;
-	client_t *c;
+	client_t *c, *foundc = NULL;
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = nwins - 1; i > 0; i--) {
 		XGetWindowAttributes(dpy, wins[i], &attr);
-		if ((c = find_client(wins[i], MATCH_FRAME)))
-			return c;
+		if ((c = find_client(wins[i], MATCH_FRAME)) &&
+		    c->state != STATE_ICONIFIED) {
+		    	foundc = c;
+			break;
+		}
 	}
 	XFree(wins);
 
-	return NULL;
+	return foundc;
 }
 
 client_t *
@@ -192,7 +255,8 @@ prev_focused(void)
 	unsigned int high = 0;
 
 	while (c) {
-		if (c->focus_order > high && !c->dock && c != focused) {
+		if (c->focus_order > high && c != focused &&
+		    (c->state != STATE_DOCK && c->state != STATE_ICONIFIED)) {
 			high = c->focus_order;
 			prev = c;
 		}
@@ -206,49 +270,63 @@ void
 map_client(client_t *c)
 {
 	XWindowAttributes attr;
-	strut_t s = {0, 0, 0, 0};
+	strut_t s = { 0 };
 	XWMHints *hints;
-	int want_raise = !c->dock;
+	int want_raise = 0;
+
+	if (!(c->state & (STATE_DOCK | STATE_ICONIFIED)))
+		want_raise = 1;
 
 	XGrabServer(dpy);
 
 	XGetWindowAttributes(dpy, c->win, &attr);
 	collect_struts(c, &s);
 
-	if (attr.map_state == IsViewable) {
-		c->ignore_unmap++;
-		reparent(c, &s);
-		init_geom(c, &s);
-
-		if (get_wm_state(c->win) == IconicState) {
-			c->ignore_unmap++;
-			XUnmapWindow(dpy, c->win);
-		} else {
-			set_wm_state(c, NormalState);
-			do_map(c, want_raise);
-		}
-	} else {
+	if (attr.map_state != IsViewable) {
+		/* IsUnmapped, IsUnviewable */
 		if ((hints = XGetWMHints(dpy, c->win))) {
 			if (hints->flags & StateHint)
 				set_wm_state(c, hints->initial_state);
-			else
+				/* XXX: what do we set c->state to? */
+			else {
 				set_wm_state(c, NormalState);
+				if (c->state != STATE_DOCK)
+					c->state = STATE_NORMAL;
+			}
 			XFree(hints);
 		} else {
 			set_wm_state(c, NormalState);
+			if (c->state != STATE_DOCK)
+				c->state = STATE_NORMAL;
 		}
+	}
+
+	if (get_wm_state(c->win) == IconicState)
+		c->state = STATE_ICONIFIED;
+	else if (c->state != STATE_DOCK)
+		c->state = STATE_NORMAL;
+
+	reparent(c, &s);
+	init_geom(c, &s);
+
+	if (c->state == STATE_ICONIFIED) {
+		c->ignore_unmap++;
+		set_wm_state(c, IconicState);
+		XUnmapWindow(dpy, c->win);
+	} else {
+		do_map(c, want_raise);
 		init_geom(c, &s);
-#ifdef DEBUG
-		dump_geom(c, "set to");
-		dump_info(c);
-#endif
-		reparent(c, &s);
-		if (get_wm_state(c->win) == NormalState)
-			do_map(c, want_raise);
 	}
 
 	XSync(dpy, False);
+
+	if (c->name)
+		XFree(c->name);
 	c->name = get_wm_name(c->win);
+	if (c->icon_name)
+		XFree(c->icon_name);
+	c->icon_name = get_wm_icon_name(c->win);
+
 	/* horrible kludge */
 	XUngrabServer(dpy);
 }
@@ -347,7 +425,7 @@ init_geom(client_t *c, strut_t *s)
 	 * ignore everything and return right away. If c->zoomed is set, that
 	 * means we've already set things up, but otherwise, we do it here.
 	 */
-	if (c->zoomed)
+	if (c->state == STATE_ZOOMED)
 		return;
 
 	if (get_atoms(c->win, net_wm_state, XA_ATOM, 0, &state, 1, NULL) &&
@@ -550,8 +628,8 @@ recalc_frame(client_t *c)
 		return;
 	}
 
-	if (c->zoomed)
-		bw = 1;
+	if (c->state == STATE_ZOOMED)
+		bw = 0;
 
 	c->resize_nw_geom.x = 0;
 	c->resize_nw_geom.y = 0;
@@ -590,7 +668,7 @@ recalc_frame(client_t *c)
 
 	c->resize_e_geom.x = c->zoom_geom.x + c->zoom_geom.w;
 	c->resize_e_geom.y = c->zoom_geom.y + c->zoom_geom.h + 1;
-	if (c->shaded)
+	if (c->state == STATE_SHADED)
 		c->resize_e_geom.y += th;
 	c->resize_e_geom.w = bw;
 	c->resize_e_geom.h = c->geom.h - c->zoom_geom.h - 1;
@@ -600,7 +678,7 @@ recalc_frame(client_t *c)
 	c->resize_se_geom.w = th + bw;
 	c->resize_se_geom.h = th + bw;
 
-	if (c->shaded) {
+	if (c->state == STATE_SHADED) {
 		c->resize_s_geom.x = 0;
 		c->resize_s_geom.y = c->resize_nw_geom.h;
 		c->resize_s_geom.w = c->resize_ne_geom.x + c->resize_ne_geom.w;
@@ -624,7 +702,7 @@ recalc_frame(client_t *c)
 	c->frame_geom.x = c->geom.x - c->resize_w_geom.w;
 	c->frame_geom.y = c->geom.y - 1 - c->resize_nw_geom.h;
 	c->frame_geom.w = c->resize_w_geom.w + c->geom.w + c->resize_e_geom.w;
-	if (c->shaded)
+	if (c->state == STATE_SHADED)
 		c->frame_geom.h = c->resize_nw_geom.h + c->resize_s_geom.h;
 	else
 		c->frame_geom.h = c->resize_nw_geom.h + 1 + c->geom.h +
@@ -643,6 +721,11 @@ check_states(client_t *c)
 	Atom state;
 	unsigned long read, left;
 	int i;
+
+	if (get_wm_state(c->win) == IconicState) {
+		c->state = STATE_ICONIFIED;
+		return;
+	}
 
 	for (i = 0, left = 1; left; i += read) {
 		read = get_atoms(c->win, net_wm_state, XA_ATOM, i, &state, 1,
@@ -687,6 +770,14 @@ redraw_frame(client_t *c)
 	XGlyphInfo extents;
 	int x, y, tw;
 
+	if (!c)
+		return;
+
+	if (c->state == STATE_ICONIFIED) {
+		redraw_icon(c);
+		return;
+	}
+
 	if (!(c && c->decor && c->frame))
 		return;
 
@@ -695,7 +786,14 @@ redraw_frame(client_t *c)
 	XMoveResizeWindow(dpy, c->frame,
 	    c->frame_geom.x, c->frame_geom.y,
 	    c->frame_geom.w, c->frame_geom.h);
-	XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+
+	if (c->state == STATE_ZOOMED)
+		XMoveResizeWindow(dpy, c->win, 0, c->titlebar_geom.h + 1,
+		    c->geom.w, c->geom.h);
+	else
+		XMoveResizeWindow(dpy, c->win, c->resize_w_geom.w,
+		    c->resize_n_geom.h + c->titlebar_geom.h + 1,
+		    c->geom.w, c->geom.h);
 
 	/* title bar */
 	if (c == focused) {
@@ -770,14 +868,14 @@ redraw_frame(client_t *c)
 	XSetClipOrigin(dpy, pixmap_gc, x, y);
 	XCopyArea(dpy, iconify_pm, c->iconify, pixmap_gc, 0, 0,
 	    iconify_pm_attrs.width, iconify_pm_attrs.height, x, y);
-	bevel(c->iconify, c->iconify_pressed);
+	bevel(c->iconify, c->iconify_geom, c->iconify_pressed);
 
 	/* zoom box */
 	XMoveResizeWindow(dpy, c->zoom,
 	    c->zoom_geom.x, c->zoom_geom.y, c->zoom_geom.w, c->zoom_geom.h);
 	XSetWindowBackground(dpy, c->zoom, button_bg.pixel);
 	XClearWindow(dpy, c->zoom);
-	if (c->zoomed) {
+	if (c->state == STATE_ZOOMED) {
 		x = (c->zoom_geom.w / 2) - (unzoom_pm_attrs.width / 2) -
 		    (opt_bevel / 2);
 		y = (c->zoom_geom.h / 2) - (unzoom_pm_attrs.height / 2) -
@@ -804,10 +902,24 @@ redraw_frame(client_t *c)
 		XCopyArea(dpy, zoom_pm, c->zoom, pixmap_gc, 0, 0,
 		    zoom_pm_attrs.width, zoom_pm_attrs.height, x, y);
 	}
-	bevel(c->zoom, c->zoom_pressed);
+	bevel(c->zoom, c->zoom_geom, c->zoom_pressed);
+
+	if (c->state == STATE_ZOOMED) {
+		XUnmapWindow(dpy, c->resize_nw);
+		XUnmapWindow(dpy, c->resize_n);
+		XUnmapWindow(dpy, c->resize_ne);
+		XUnmapWindow(dpy, c->resize_e);
+		XUnmapWindow(dpy, c->resize_se);
+		XUnmapWindow(dpy, c->resize_s);
+		XUnmapWindow(dpy, c->resize_sw);
+		XUnmapWindow(dpy, c->resize_w);
+		flush_expose_client(c);
+		return;
+	}
 
 	/* frame outline */
 	XSetWindowBackground(dpy, c->resize_nw, button_bg.pixel);
+	XMapWindow(dpy, c->resize_nw);
 	XClearWindow(dpy, c->resize_nw);
 	XMoveResizeWindow(dpy, c->resize_nw,
 	    c->resize_nw_geom.x, c->resize_nw_geom.y,
@@ -820,6 +932,7 @@ redraw_frame(client_t *c)
 	    c->resize_nw_geom.w, c->resize_nw_geom.h);
 
 	XSetWindowBackground(dpy, c->resize_w, button_bg.pixel);
+	XMapWindow(dpy, c->resize_w);
 	XClearWindow(dpy, c->resize_w);
 	XMoveResizeWindow(dpy, c->resize_w,
 	    c->resize_w_geom.x, c->resize_w_geom.y,
@@ -828,6 +941,7 @@ redraw_frame(client_t *c)
 	    0, -1, c->resize_w_geom.w - 1, c->resize_w_geom.h + 1);
 
 	XSetWindowBackground(dpy, c->resize_sw, button_bg.pixel);
+	XMapWindow(dpy, c->resize_sw);
 	XClearWindow(dpy, c->resize_sw);
 	XMoveResizeWindow(dpy, c->resize_sw,
 	    c->resize_sw_geom.x, c->resize_sw_geom.y,
@@ -840,6 +954,7 @@ redraw_frame(client_t *c)
 	    c->resize_sw_geom.h - c->resize_w_geom.w + 2);
 
 	XSetWindowBackground(dpy, c->resize_s, button_bg.pixel);
+	XMapWindow(dpy, c->resize_s);
 	XClearWindow(dpy, c->resize_s);
 	XMoveResizeWindow(dpy, c->resize_s,
 	    c->resize_s_geom.x, c->resize_s_geom.y,
@@ -847,7 +962,7 @@ redraw_frame(client_t *c)
 	XDrawRectangle(dpy, c->resize_s, DefaultGC(dpy, screen),
 	    0, 0, c->resize_s_geom.w - 1, c->resize_s_geom.h - 1);
 
-	if (c->shaded) {
+	if (c->state == STATE_SHADED) {
 		XSetForeground(dpy, DefaultGC(dpy, screen), button_bg.pixel);
 		XDrawLine(dpy, c->resize_s, DefaultGC(dpy, screen),
 		    1, 0, c->resize_s_geom.h - 1, 0);
@@ -867,6 +982,7 @@ redraw_frame(client_t *c)
 	}
 
 	XSetWindowBackground(dpy, c->resize_se, button_bg.pixel);
+	XMapWindow(dpy, c->resize_se);
 	XClearWindow(dpy, c->resize_se);
 	XMoveResizeWindow(dpy, c->resize_se,
 	    c->resize_se_geom.x, c->resize_se_geom.y,
@@ -879,6 +995,7 @@ redraw_frame(client_t *c)
 	    c->resize_se_geom.h - c->resize_e_geom.w + 2);
 
 	XSetWindowBackground(dpy, c->resize_e, button_bg.pixel);
+	XMapWindow(dpy, c->resize_e);
 	XClearWindow(dpy, c->resize_e);
 	XMoveResizeWindow(dpy, c->resize_e,
 	    c->resize_e_geom.x, c->resize_e_geom.y,
@@ -887,6 +1004,7 @@ redraw_frame(client_t *c)
 	    0, -1, c->resize_e_geom.w - 1, c->resize_e_geom.h + 1);
 
 	XSetWindowBackground(dpy, c->resize_ne, button_bg.pixel);
+	XMapWindow(dpy, c->resize_ne);
 	XClearWindow(dpy, c->resize_ne);
 	XMoveResizeWindow(dpy, c->resize_ne,
 	    c->resize_ne_geom.x, c->resize_ne_geom.y,
@@ -898,6 +1016,7 @@ redraw_frame(client_t *c)
 	    c->iconify_geom.w + 1, c->iconify_geom.h);
 
 	XSetWindowBackground(dpy, c->resize_n, button_bg.pixel);
+	XMapWindow(dpy, c->resize_n);
 	XClearWindow(dpy, c->resize_n);
 	XMoveResizeWindow(dpy, c->resize_n,
 	    c->resize_n_geom.x, c->resize_n_geom.y,
@@ -909,12 +1028,9 @@ redraw_frame(client_t *c)
 }
 
 static void
-bevel(Window win, int pressed)
+bevel(Window win, geom_t geom, int pressed)
 {
-	XWindowAttributes attr;
 	int x;
-
-	XGetWindowAttributes(dpy, win, &attr);
 
 	/* TODO: store current foreground color */
 
@@ -923,32 +1039,113 @@ bevel(Window win, int pressed)
 	if (pressed) {
 		for (x = 0; x < opt_bevel - 1; x++) {
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
-			    x, x, attr.width - x, x);
+			    x, x, geom.w - x, x);
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
-			    x, x, x, attr.height - x);
+			    x, x, x, geom.h - x);
 		}
 	} else {
 		for (x = 1; x <= opt_bevel; x++) {
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
-			    attr.width - x, x - 1,
-			    attr.width - x, attr.height - 1);
+			    geom.w - x, x - 1,
+			    geom.w - x, geom.h - 1);
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
-			    x - 1, attr.height - x,
-			    attr.width, attr.height - x);
+			    x - 1, geom.h - x,
+			    geom.w, geom.h - x);
 		}
 
 		XSetForeground(dpy, DefaultGC(dpy, screen), bevel_light.pixel);
 		for (x = 1; x <= opt_bevel - 1; x++) {
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
 			    0, x - 1,
-			    attr.width - x, x - 1);
+			    geom.w - x, x - 1);
 			XDrawLine(dpy, win, DefaultGC(dpy, screen),
 			    x - 1, 0,
-			    x - 1, attr.height - x);
+			    x - 1, geom.h - x);
 		}
 	}
 
 	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
+}
+
+void
+redraw_icon(client_t *c)
+{
+	XftColor *txft;
+	struct xft_line_t *xft_lines = NULL;
+	int label_pad = 4;
+	int nlines, x;
+
+	XClearWindow(dpy, c->icon);
+	if (c->icon_depth != DefaultDepth(dpy, screen))
+		XSetWindowBackground(dpy, c->icon, WhitePixel(dpy, screen));
+	XMoveResizeWindow(dpy, c->icon,
+	    c->icon_geom.x, c->icon_geom.y, c->icon_geom.w, c->icon_geom.h);
+	XShapeCombineMask(dpy, c->icon, ShapeBounding, 0, 0, c->icon_mask,
+	    ShapeSet);
+	XSetClipMask(dpy, pixmap_gc, c->icon_mask);
+	XSetClipOrigin(dpy, pixmap_gc, 0, 0);
+	if (c->icon_depth == DefaultDepth(dpy, screen))
+		XCopyArea(dpy, c->icon_pixmap, c->icon, pixmap_gc, 0, 0,
+		    c->icon_geom.w, c->icon_geom.h, 0, 0);
+	else
+		XCopyPlane(dpy, c->icon_pixmap, c->icon, pixmap_gc, 0, 0,
+		    c->icon_geom.w, c->icon_geom.h, 0, 0, 1);
+	XLowerWindow(dpy, c->icon);
+
+	if (c == focused) {
+		txft = &xft_fg;
+		XSetWindowBackground(dpy, c->icon_label, bg.pixel);
+	} else {
+		txft = &xft_fg_unfocused;
+		XSetWindowBackground(dpy, c->icon_label, bg_unfocused.pixel);
+	}
+
+	XClearWindow(dpy, c->icon_label);
+	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
+
+	if (!c->icon_name)
+		c->icon_name = strdup("(Unknown)");
+
+	word_wrap_xft(c->icon_name, ' ', icon_xftfont,
+	    (c->icon_geom.w * 2) - (label_pad * 2), &xft_lines, &nlines);
+
+	c->icon_label_geom.y = c->icon_geom.y + c->icon_geom.h + 20;
+	c->icon_label_geom.h = label_pad;
+	c->icon_label_geom.w = 0;
+
+	for (x = 0; x < nlines; x++) {
+		struct xft_line_t *line = xft_lines +
+		    (sizeof(struct xft_line_t) * x);
+
+		int w = label_pad + line->xft_width + label_pad;
+		if (w > c->icon_label_geom.w)
+			c->icon_label_geom.w = w;
+		c->icon_label_geom.h += icon_xftfont->ascent +
+		    icon_xftfont->descent;
+	}
+
+	c->icon_label_geom.h += label_pad;
+	c->icon_label_geom.x = c->icon_geom.x -
+	    ((c->icon_label_geom.w - c->icon_geom.w) / 2);
+
+	XMoveResizeWindow(dpy, c->icon_label,
+	    c->icon_label_geom.x, c->icon_label_geom.y,
+	    c->icon_label_geom.w, c->icon_label_geom.h);
+	XLowerWindow(dpy, c->icon_label);
+
+	int ly = label_pad;
+	for (x = 0; x < nlines; x++) {
+		struct xft_line_t *line = xft_lines +
+		    (sizeof(struct xft_line_t) * x);
+
+		int lx = ((c->icon_label_geom.w - line->xft_width) / 2);
+		ly += icon_xftfont->ascent;
+		XftDrawStringUtf8(c->icon_xftdraw, txft, icon_xftfont, lx, ly,
+		    (FcChar8 *)line->str, line->len);
+		ly += icon_xftfont->descent;
+	}
+
+	free(xft_lines);
 }
 
 void
@@ -1045,8 +1242,8 @@ del_client(client_t *c, int mode)
 
 	if (mode == DEL_WITHDRAW) {
 		set_wm_state(c, WithdrawnState);
-	} else {	/* mode == DEL_REMAP */
-		if (c->zoomed) {
+	} else {
+		if (c->state == STATE_ZOOMED) {
 			c->geom.x = c->save.x;
 			c->geom.y = c->save.y;
 			c->geom.w = c->save.w;
@@ -1062,6 +1259,8 @@ del_client(client_t *c, int mode)
 	XSetWindowBorderWidth(dpy, c->win, c->old_bw);
 	if (c->xftdraw)
 		XftDrawDestroy(c->xftdraw);
+	if (c->icon_xftdraw)
+		XftDrawDestroy(c->icon_xftdraw);
 
 	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
 	XRemoveFromSaveSet(dpy, c->win);
@@ -1091,6 +1290,19 @@ del_client(client_t *c, int mode)
 		XDestroyWindow(dpy, c->zoom);
 	XDestroyWindow(dpy, c->frame);
 
+	if (c->icon) {
+		XDestroyWindow(dpy, c->icon);
+		if (c->icon_label)
+			XDestroyWindow(dpy, c->icon_label);
+
+		/* TODO: reshuffle icons */
+	}
+
+	if (c->name)
+		XFree(c->name);
+	if (c->icon_name)
+		XFree(c->icon_name);
+
 	if (head == c)
 		head = c->next;
 	else {
@@ -1099,16 +1311,85 @@ del_client(client_t *c, int mode)
 				p->next = c->next;
 	}
 
-	if (c->name)
-		XFree(c->name);
-	free(c);
-
 	if (c == focused) {
 		focused = NULL;
 		focus_client(prev_focused());
 	}
 
+	free(c);
+
 	XSync(dpy, False);
 	XSetErrorHandler(handle_xerror);
 	XUngrabServer(dpy);
+}
+
+void
+word_wrap_xft(char *str, char delim, XftFont *font, int width,
+    struct xft_line_t **lines, int *nlines)
+{
+	XGlyphInfo extents;
+	char *curstr;
+	int x, lastdelim;
+	int alloced = 10;
+	int nline;
+
+	*lines = reallocarray(*lines, alloced, sizeof(struct xft_line_t));
+
+start_wrap:
+	nline = 0;
+	lastdelim = -1;
+	curstr = str;
+
+	for (x = 0; ; x++) {
+		struct xft_line_t *line = *lines +
+		    (sizeof(struct xft_line_t) * nline);
+
+		if (curstr[x] != delim && curstr[x] != '\0')
+			continue;
+
+		XftTextExtentsUtf8(dpy, font, (FcChar8 *)curstr, x, &extents);
+
+		if (curstr[x] == delim) {
+			if (extents.xOff < width) {
+				/* keep eating words */
+				lastdelim = x;
+				continue;
+			}
+		}
+
+		if (extents.xOff > width) {
+			if (lastdelim != -1)
+				x = lastdelim;
+			else {
+				/*
+				 * We can't break this long line, make
+				 * our label width this wide and start
+				 * over, since it may affect previous
+				 * wrapping
+				 */
+				width = extents.xOff;
+				goto start_wrap;
+			}
+		}
+
+		line->str = curstr;
+		line->len = x;
+		line->xft_width = extents.xOff;
+
+		if (curstr[x] == '\0')
+			break;
+
+		curstr = curstr + x + 1;
+		x = 0;
+		lastdelim = -1;
+		nline++;
+
+		if (nline == alloced) {
+			alloced += 10;
+			lines = reallocarray(lines, alloced,
+			    sizeof(struct xft_line_t));
+		}
+	}
+
+	*nlines = nline + 1;
 }
