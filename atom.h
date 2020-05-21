@@ -65,7 +65,9 @@ extern Atom net_wm_type_dock;
 extern Atom net_wm_type_menu;
 extern Atom net_wm_type_splash;
 extern Atom net_wm_type_desk;
+extern Atom net_wm_type_utility;
 
+extern void find_supported_atoms(void);
 extern unsigned long get_atoms(Window, Atom, Atom, unsigned long,
     unsigned long *, unsigned long, unsigned long *);
 extern unsigned long set_atoms(Window, Atom, Atom, unsigned long *,

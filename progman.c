@@ -325,62 +325,7 @@ setup_display(void)
 	XSetIconSizes(dpy, root, xis, 1);
 	XFree(xis);
 
-	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
-	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
-	wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-	wm_state = XInternAtom(dpy, "WM_STATE", False);
-	wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-	net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
-	net_cur_desk = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
-	net_num_desks = XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
-	net_client_list = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
-	net_client_stack = XInternAtom(dpy, "_NET_CLIENT_LIST_STACKING", False);
-	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-	net_close_window = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
-	net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
-	net_wm_icon_name = XInternAtom(dpy, "_NET_WM_ICON_NAME", False);
-	net_wm_desk = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
-	net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
-	net_wm_state_shaded = XInternAtom(dpy, "_NET_WM_STATE_SHADED", False);
-	net_wm_state_mv = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT",
-	    False);
-	net_wm_state_mh = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ",
-	    False);
-	net_wm_state_fs = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-	net_wm_state_rm = 0;
-	net_wm_state_add = 1;
-	net_wm_state_toggle = 2;
-	net_wm_strut = XInternAtom(dpy, "_NET_WM_STRUT", False);
-	net_wm_strut_partial = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
-	net_wm_wintype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
-	net_wm_type_dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
-	net_wm_type_menu = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
-	net_wm_type_splash = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH",
-	    False);
-	net_wm_type_desk = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP",
-	    False);
-
-	/* The bit about _NET_CLIENT_LIST_STACKING here is an evil lie. */
-	append_atoms(root, net_supported, XA_ATOM, &net_cur_desk, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_num_desks, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_client_list, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_client_stack, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_active_window, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_close_window, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_name, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_desk, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_state, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_shaded, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_mv, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_mh, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_fs, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_strut, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_strut_partial, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_wintype, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_dock, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_menu, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_splash, 1);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_desk, 1);
+	find_supported_atoms();
 
 	get_atoms(root, net_num_desks, XA_CARDINAL, 0, &ndesks, 1, NULL);
 	get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL);

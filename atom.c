@@ -59,9 +59,72 @@ Atom net_wm_type_dock;
 Atom net_wm_type_menu;
 Atom net_wm_type_splash;
 Atom net_wm_type_desk;
+Atom net_wm_type_utility;
 
 static char *get_string_atom(Window, Atom, Atom);
 static char *_get_wm_name(Window, int);
+
+void
+find_supported_atoms(void)
+{
+	utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
+	wm_protos = XInternAtom(dpy, "WM_PROTOCOLS", False);
+	wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+	wm_state = XInternAtom(dpy, "WM_STATE", False);
+	wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
+	net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
+	net_cur_desk = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
+	net_num_desks = XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
+	net_client_list = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+	net_client_stack = XInternAtom(dpy, "_NET_CLIENT_LIST_STACKING", False);
+	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+	net_close_window = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
+	net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
+	net_wm_icon_name = XInternAtom(dpy, "_NET_WM_ICON_NAME", False);
+	net_wm_desk = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+	net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+	net_wm_state_shaded = XInternAtom(dpy, "_NET_WM_STATE_SHADED", False);
+	net_wm_state_mv = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT",
+	    False);
+	net_wm_state_mh = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ",
+	    False);
+	net_wm_state_fs = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+	net_wm_state_rm = 0;
+	net_wm_state_add = 1;
+	net_wm_state_toggle = 2;
+	net_wm_strut = XInternAtom(dpy, "_NET_WM_STRUT", False);
+	net_wm_strut_partial = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
+	net_wm_wintype = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+	net_wm_type_dock = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	net_wm_type_menu = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
+	net_wm_type_splash = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH",
+	    False);
+	net_wm_type_desk = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP",
+	    False);
+	net_wm_type_utility = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY",
+	    False);
+
+	append_atoms(root, net_supported, XA_ATOM, &net_cur_desk, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_num_desks, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_client_list, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_client_stack, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_active_window, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_close_window, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_name, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_desk, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_shaded, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_mv, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_mh, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_fs, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_strut, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_strut_partial, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_wintype, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_dock, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_menu, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_splash, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_desk, 1);
+}
 
 /*
  * Despite the fact that all these are 32 bits on the wire, libX11 really does
@@ -78,7 +141,7 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off, unsigned long *ret,
 	unsigned long items_read = 0;
 	unsigned long bytes_left = 0;
 	unsigned long *p;
-	unsigned char *data;
+	unsigned char *data = NULL;
 
 	XGetWindowProperty(dpy, w, a, off, nitems, False, type, &real_type,
 	    &real_format, &items_read, &bytes_left, &data);
@@ -87,13 +150,15 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off, unsigned long *ret,
 		p = (unsigned long *)data;
 		for (i = 0; i < items_read; i++)
 			*ret++ = *p++;
-		XFree(data);
 		if (left)
 			*left = bytes_left;
-		return items_read;
-	}
+	} else
+		items_read = 0;
 
-	return 0;
+	if (data != NULL)
+		XFree(data);
+
+	return items_read;
 }
 
 unsigned long
