@@ -110,13 +110,27 @@ struct geom {
 	long h;
 };
 
+/* client_t state */
 enum {
-	STATE_NORMAL = (1 << 1),
+	STATE_NORMAL = 0,
 	STATE_ZOOMED = (1 << 2),
 	STATE_SHADED = (1 << 3),
 	STATE_FULLSCREEN = (1 << 4),
 	STATE_ICONIFIED = (1 << 5),
 	STATE_DOCK = (1 << 6),
+};
+
+/* client_t frame_style */
+enum {
+	FRAME_NONE = 0,
+	FRAME_BORDER = (1 << 1),
+	FRAME_RESIZABLE = (1 << 2),
+	FRAME_TITLEBAR = (1 << 3),
+	FRAME_CLOSE = (1 << 4),
+	FRAME_ICONIFY = (1 << 5),
+	FRAME_ZOOM = (1 << 6),
+	FRAME_ALL = FRAME_BORDER | FRAME_RESIZABLE | FRAME_TITLEBAR |
+	    FRAME_CLOSE | FRAME_ICONIFY | FRAME_ZOOM,
 };
 
 typedef struct client client_t;
@@ -128,6 +142,7 @@ struct client {
 	geom_t geom, save;
 	Window frame;
 	geom_t frame_geom;
+	unsigned int frame_style;
 	Window close;
 	geom_t close_geom;
 	Bool close_pressed;
@@ -173,6 +188,7 @@ struct client {
 	Bool shaped;
 	int state;
 	Bool decor;
+	Atom win_type;
 	int old_bw;
 };
 
@@ -276,15 +292,14 @@ extern client_t *find_client_at_coords(Window w, int x, int y);
 extern client_t *top_client(void);
 extern client_t *prev_focused(void);
 extern void map_client(client_t *);
-extern int titlebar_height(client_t *c);
 extern void recalc_frame(client_t *c);
 extern int set_wm_state(client_t *c, unsigned long state);
 extern void check_states(client_t *c);
 extern void parse_state_atom(client_t *, Atom);
 extern void send_config(client_t *c);
-extern void redraw_frame(client_t *c);
+extern void redraw_frame(client_t *c, Window);
 extern void collect_struts(client_t *, strut_t *);
-extern void redraw_icon(client_t *c);
+extern void redraw_icon(client_t *c, Window win);
 extern void set_shape(client_t *c);
 extern void del_client(client_t *c, int mode);
 
@@ -315,15 +330,19 @@ extern void recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1,
     int y1, strut_t *s, void *arg);
 extern void recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1,
     int y1, strut_t *s, void *arg);
+extern void fix_size(client_t *);
+extern void constrain_frame(client_t *);
+extern char *state_name(client_t *c);
 extern void flush_expose_client(client_t *c);
 extern void flush_expose(Window win);
 #ifdef DEBUG
-extern void dump_name(client_t *c, const char *label, char flag);
-extern void dump_win(Window w, const char *label, char flag);
+extern void dump_name(client_t *c, const char *label, const char *detail,
+    const char *name);
 extern void dump_info(client_t *c);
-extern void dump_geom(client_t *c, const char *label);
+extern void dump_geom(client_t *c, geom_t g, const char *label);
 extern void dump_removal(client_t *c, int mode);
 extern void dump_clients(void);
+extern const char *frame_name(client_t *c, Window w);
 #endif
 
 #endif	/* PROGMAN_H */

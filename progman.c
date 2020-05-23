@@ -343,6 +343,7 @@ setup_display(void)
 	}
 	XFree(wins);
 
+	/* become "the" window manager with SubstructureRedirectMask on root */
 	sattr.event_mask = SubMask | ColormapChangeMask | ButtonMask;
 	XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
 }
@@ -393,7 +394,6 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 	return 0;
 }
 
-/* Ick. Argh. You didn't see this function. */
 int
 ignore_xerror(Display * dpy, XErrorEvent * e)
 {

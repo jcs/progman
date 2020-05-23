@@ -32,7 +32,6 @@
 
 static void do_iconify(client_t *);
 static void do_shade(client_t *);
-static geom_t fix_size(client_t *);
 static void maybe_toolbar_click(client_t *, Window);
 static void monitor_toolbar_click(client_t *, geom_t, int, int, int, int,
     strut_t *, void *);
@@ -72,22 +71,32 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 #ifdef DEBUG
 	printf("%s(\"%s\", %lx, %d, %d, %d, %d) double:%d, c state %d\n",
 	    __func__, c->name, win, x, y, button, down, double_click, c->state);
+	dump_info(c);
 #endif
 
-	if (win == c->titlebar) {
-		if (button == 1 && down &&
-		   (c->state & (STATE_NORMAL | STATE_SHADED))) {
+	if (c->state & STATE_ICONIFIED &&
+	    (win == c->icon || win == c->icon_label)) {
+	    	if (down && !double_click) {
 			move_client(c);
-			/* sweep() eats the ButtonRelease event */
 			get_pointer(&x, &y);
 			user_action(c, win, x, y, button, 0);
+		} else if (!down && double_click)
+			uniconify_client(c);
+	} else if (win == c->titlebar) {
+		if (button == 1 && down) {
+			if (!(c->state & STATE_ZOOMED)) {
+				move_client(c);
+				/* sweep() eats the ButtonRelease event */
+				get_pointer(&x, &y);
+				user_action(c, win, x, y, button, 0);
+			}
 		} else if (button == 1 && !down && double_click) {
-			if (c->state == STATE_ZOOMED)
+			if (c->state & STATE_ZOOMED)
 				unzoom_client(c);
 			else
 				zoom_client(c);
-		} else if (button == 3 && !down && !double_click) {
-			if (c->state == STATE_SHADED)
+		} else if (button == 3 && !down) {
+			if (c->state & STATE_SHADED)
 				unshade_client(c);
 			else
 				shade_client(c);
@@ -99,7 +108,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 				return;
 
 			c->close_pressed = False;
-			redraw_frame(c);
+			redraw_frame(c, c->close);
 
 			get_pointer(&x, &y);
 			user_action(c, win, x, y, button, 0);
@@ -108,15 +117,15 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 		if (double_click)
 			send_wm_delete(c);
 	} else if (IS_RESIZE_WIN(c, win)) {
-		if (button == 1 && down && c->state != STATE_SHADED)
+		if (button == 1 && down && !(c->state & STATE_SHADED))
 			resize_client(c, win);
 	} else if (win == c->iconify) {
 		if (button == 1 && down) {
 			maybe_toolbar_click(c, win);
 			if (c->iconify_pressed) {
 				c->iconify_pressed = False;
-				redraw_frame(c);
-				if (c->state == STATE_ICONIFIED)
+				redraw_frame(c, c->iconify);
+				if (c->state & STATE_ICONIFIED)
 					uniconify_client(c);
 				else
 					iconify_client(c);
@@ -127,22 +136,18 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			maybe_toolbar_click(c, win);
 			if (c->zoom_pressed) {
 				c->zoom_pressed = False;
-				redraw_frame(c);
-				if (c->state == STATE_ZOOMED)
+				redraw_frame(c, c->zoom);
+				if (c->state & STATE_ZOOMED)
 					unzoom_client(c);
 				else
 					zoom_client(c);
 			}
 		}
-	} else if (c->state == STATE_ICONIFIED &&
-	    (win == c->icon || win == c->icon_label)) {
-	    	if (down && !double_click) {
-			move_client(c);
-			get_pointer(&x, &y);
-			user_action(c, win, x, y, button, 0);
-		} else if (!down && double_click)
-			uniconify_client(c);
 	}
+
+	if (double_click)
+		/* don't let a 3rd click keep counting as a double click */
+		last_click.tv.tv_sec = last_click.tv.tv_nsec = 0;
 }
 
 Cursor
@@ -174,7 +179,7 @@ focus_client(client_t *c)
 {
 	client_t *oc;
 
-	if (c && c->state == STATE_ICONIFIED) {
+	if (c && (c->state & STATE_ICONIFIED)) {
 		set_atoms(root, net_active_window, XA_WINDOW, &c->icon, 1);
 		XSetInputFocus(dpy, c->icon, RevertToPointerRoot, CurrentTime);
 	} else if (c) {
@@ -188,10 +193,10 @@ focus_client(client_t *c)
 		focused = c;
 		if (c) {
 			c->focus_order = ++focus_order;
-			redraw_frame(c);
+			redraw_frame(c, c->titlebar);
 		}
 		if (oc)
-			redraw_frame(oc);
+			redraw_frame(oc, oc->titlebar);
 	}
 }
 
@@ -205,6 +210,15 @@ move_client(client_t *c)
 
 	collect_struts(c, &s);
 	sweep(c, move_curs, recalc_move, NULL, &s);
+
+	send_config(c);
+
+	if (c->state & STATE_ICONIFIED)
+		redraw_icon(c, None);
+	else
+		redraw_frame(c, None);
+
+	flush_expose_client(c);
 }
 
 /*
@@ -218,7 +232,7 @@ resize_client(client_t *c, Window resize_win)
 {
 	strut_t hold = { 0, 0, 0, 0 };
 
-	if (c->state == STATE_ZOOMED) {
+	if (c->state & STATE_ZOOMED) {
 		c->save = c->geom;
 		unzoom_client(c);
 	}
@@ -244,9 +258,9 @@ maybe_toolbar_click(client_t *c, Window win)
 	else
 		return;
 
-	redraw_frame(c);
+	redraw_frame(c, win);
 	sweep(c, None, monitor_toolbar_click, &win, NULL);
-	redraw_frame(c);
+	redraw_frame(c, win);
 }
 
 void
@@ -280,7 +294,7 @@ monitor_toolbar_click(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		*pr = False;
 
 	if (was != *pr)
-		redraw_frame(c);
+		redraw_frame(c, win);
 }
 
 
@@ -312,8 +326,8 @@ do_iconify(client_t *c)
 
 	XUnmapWindow(dpy, c->frame);
 	XUnmapWindow(dpy, c->win);
+	c->state |= STATE_ICONIFIED;
 	set_wm_state(c, IconicState);
-	c->state = STATE_ICONIFIED;
 
 	if ((hints = XGetWMHints(dpy, c->win)) &&
 	    (hints->flags & IconPixmapHint)) {
@@ -365,7 +379,7 @@ do_iconify(client_t *c)
 	    DefaultVisual(dpy, DefaultScreen(dpy)),
 	    DefaultColormap(dpy, DefaultScreen(dpy)));
 
-	redraw_icon(c);
+	redraw_icon(c, None);
 }
 
 void
@@ -373,8 +387,8 @@ uniconify_client(client_t *c)
 {
 	XMapWindow(dpy, c->win);
 	XMapRaised(dpy, c->frame);
+	c->state &= ~STATE_ICONIFIED;
 	set_wm_state(c, NormalState);
-	c->state = STATE_NORMAL;
 
 	c->ignore_unmap++;
 	XDestroyWindow(dpy, c->icon);
@@ -383,16 +397,17 @@ uniconify_client(client_t *c)
 	XDestroyWindow(dpy, c->icon_label);
 	c->icon_label = None;
 
+	redraw_frame(c, None);
 	focus_client(c);
 }
 
 void
 shade_client(client_t *c)
 {
-	if (c->state != STATE_NORMAL)
+	if (c->state != STATE_NORMAL || !c->decor)
 		return;
 
-	c->state = STATE_SHADED;
+	c->state |= STATE_SHADED;
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_shaded, 1);
 	do_shade(c);
 }
@@ -400,10 +415,10 @@ shade_client(client_t *c)
 void
 unshade_client(client_t *c)
 {
-	if (c->state != STATE_SHADED)
+	if (!(c->state & STATE_SHADED))
 		return;
 
-	c->state = STATE_NORMAL;
+	c->state &= ~(STATE_SHADED);
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_shaded);
 	do_shade(c);
 }
@@ -412,19 +427,14 @@ static void
 do_shade(client_t *c)
 {
 	if (c->frame) {
-		recalc_frame(c);
-		XMoveResizeWindow(dpy, c->frame,
-		    c->frame_geom.x, c->frame_geom.y, c->frame_geom.w,
-		    c->frame_geom.h);
+		redraw_frame(c, None);
 
-		if (c->state == STATE_SHADED) {
-			XLowerWindow(dpy, c->win);
+		if (c->state & STATE_SHADED) {
 			XUndefineCursor(dpy, c->resize_nw);
 			XUndefineCursor(dpy, c->resize_n);
 			XUndefineCursor(dpy, c->resize_ne);
 			XUndefineCursor(dpy, c->resize_s);
 		} else {
-			XRaiseWindow(dpy, c->win);
 			XDefineCursor(dpy, c->resize_nw, resize_nw_curs);
 			XDefineCursor(dpy, c->resize_n, resize_n_curs);
 			XDefineCursor(dpy, c->resize_ne, resize_ne_curs);
@@ -441,16 +451,23 @@ fullscreen_client(client_t *c)
 	int screen_x = DisplayWidth(dpy, screen);
 	int screen_y = DisplayHeight(dpy, screen);
 
-	if (!(c->state & (STATE_NORMAL | STATE_SHADED)))
+#ifdef DEBUG
+	dump_name(c, __func__, NULL, c->name);
+#endif
+
+	if (c->state & (STATE_FULLSCREEN | STATE_DOCK))
 		return;
+
+	if (c->state & STATE_SHADED)
+		unshade_client(c);
 
 	c->save = c->geom;
 	c->geom.x = 0;
 	c->geom.y = 0;
 	c->geom.w = screen_x;
 	c->geom.h = screen_y;
-	c->state = STATE_FULLSCREEN;
-	redraw_frame(c);
+	c->state |= STATE_FULLSCREEN;
+	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
 }
@@ -458,12 +475,17 @@ fullscreen_client(client_t *c)
 void
 unfullscreen_client(client_t *c)
 {
-	if (c->state != STATE_FULLSCREEN)
+#ifdef DEBUG
+	dump_name(c, __func__, NULL, c->name);
+#endif
+
+	if (!(c->state & STATE_FULLSCREEN))
 		return;
 
 	c->geom = c->save;
-	c->state = STATE_NORMAL;
-	redraw_frame(c);
+	c->state &= ~STATE_FULLSCREEN;
+
+	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
 }
@@ -480,27 +502,24 @@ zoom_client(client_t *c)
 {
 	strut_t s = { 0 };
 
-	if (!(c->state & (STATE_NORMAL | STATE_SHADED)))
+	if (c->state & STATE_DOCK)
 		return;
 
-	if (c->state == STATE_SHADED)
+	if (c->state & STATE_SHADED)
 		unshade_client(c);
 
 	c->save = c->geom;
-	c->state = STATE_ZOOMED;
+	c->state |= STATE_ZOOMED;
 
 	collect_struts(c, &s);
 	recalc_frame(c);
 
 	c->geom.x = s.left;
-	c->geom.y = s.top + (c->decor ? c->titlebar_geom.h + 1 : 0);
+	c->geom.y = s.top + c->titlebar_geom.h + (c->titlebar_geom.h ? 1 : 0);
 	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
-	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom -
-	    (c->decor ? c->titlebar_geom.h + 1 : 0);
+	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom - c->geom.y;
 
-	XMoveWindow(dpy, c->win, c->geom.x, c->geom.y);
-
-	redraw_frame(c);
+	redraw_frame(c, None);
 
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
@@ -511,18 +530,12 @@ zoom_client(client_t *c)
 void
 unzoom_client(client_t *c)
 {
-	if (c->state != STATE_ZOOMED)
+	if (!(c->state & STATE_ZOOMED))
 		return;
 
 	c->geom = c->save;
-	c->state = STATE_NORMAL;
-
-	if (c->frame) {
-		recalc_frame(c);
-		XMoveWindow(dpy, c->win, c->resize_e_geom.w,
-		    c->resize_n_geom.h + c->titlebar_geom.h + 1);
-		redraw_frame(c);
-	}
+	c->state &= ~STATE_ZOOMED;
+	redraw_frame(c, None);
 
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mv);
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mh);
@@ -574,11 +587,11 @@ map_if_desk(client_t *c)
 		XUnmapWindow(dpy, c->frame);
 }
 
+static XEvent sweepev;
 void
 sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
-	XEvent ev;
-	geom_t orig = (c->state == STATE_ICONIFIED ? c->icon_geom : c->geom);
+	geom_t orig = (c->state & STATE_ICONIFIED ? c->icon_geom : c->geom);
 	client_t *ec;
 	strut_t as = { 0 };
 	int x0, y0, done = 0;
@@ -594,24 +607,29 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	cb(c, orig, x0, y0, x0, y0, s, cb_arg);
 
 	while (!done) {
-		XMaskEvent(dpy, ExposureMask|MouseMask|PointerMotionMask, &ev);
-
-		switch (ev.type) {
+		XMaskEvent(dpy, ExposureMask | MouseMask | PointerMotionMask |
+		    StructureNotifyMask | SubstructureNotifyMask, &sweepev);
+#ifdef DEBUG
+		show_event(sweepev);
+#endif
+		switch (sweepev.type) {
 		case Expose:
-			/*
-			 * The callback should handle redrawing the frame for
-			 * the client being manipulated
-			 */
-			if ((ec = find_client(ev.xexpose.window, MATCH_FRAME))
-			&& ec != c)
-				redraw_frame(ec);
+			if ((ec = find_client(sweepev.xexpose.window,
+			    MATCH_FRAME)))
+				redraw_frame(ec, sweepev.xexpose.window);
 			break;
 		case MotionNotify:
-			cb(c, orig, x0, y0, ev.xmotion.x, ev.xmotion.y, s,
-			    cb_arg);
+			cb(c, orig, x0, y0, sweepev.xmotion.x,
+			    sweepev.xmotion.y, s, cb_arg);
 			break;
 		case ButtonRelease:
 			done = 1;
+			break;
+		case UnmapNotify:
+		case DestroyNotify:
+			/* this may affect our window, better stop */
+			done = 1;
+			XPutBackEvent(dpy, &sweepev);
 			break;
 		}
 	}
@@ -636,7 +654,7 @@ recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	c->geom.x = s->left + ((float) x1 / (float) screen_x) *
 	    (wmax + 1 - c->geom.w - 2 * BW(c));
 	c->geom.y = s->top + ((float) y1 / (float) screen_y) *
-	    (hmax + 1 - c->geom.h - titlebar_height(c) - 2 * BW(c));
+	    (hmax + 1 - c->geom.h - TITLEBAR_HEIGHT(c) - 2 * BW(c));
 }
 
 void
@@ -647,11 +665,9 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	int newy = orig.y + y1 - y0;
 	int sw = DisplayWidth(dpy, screen);
 	int sh = DisplayHeight(dpy, screen);
+	geom_t tg;
 
-	sw -= s->right;
-	sh -= s->bottom;
-
-	if (c->state == STATE_ICONIFIED) {
+	if (c->state & STATE_ICONIFIED) {
 		int xd = newx - c->icon_geom.x;
 		int yd = newy - c->icon_geom.y;
 
@@ -667,6 +683,10 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		flush_expose_client(c);
 		return;
 	}
+
+	sw -= s->right;
+	sh -= s->bottom;
+	memcpy(&tg, &c->frame_geom, sizeof(c->frame_geom));
 
 	/* provide some resistance at screen edges */
 	if (x1 < x0) {
@@ -699,9 +719,11 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	}
 
 	recalc_frame(c);
+
+	if (c->frame_geom.x == tg.x && c->frame_geom.y == tg.y)
+		return;
+
 	XMoveWindow(dpy, c->frame, c->frame_geom.x, c->frame_geom.y);
-	send_config(c);
-	flush_expose_client(c);
 }
 
 void
@@ -755,31 +777,21 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	fix_size(c);
 
 	if (c->geom.w != now.w || c->geom.h != now.h) {
-		recalc_frame(c);
-		XMoveResizeWindow(dpy, c->frame,
-		    c->frame_geom.x, c->frame_geom.y,
-		    c->frame_geom.w, c->frame_geom.h);
-		XMoveResizeWindow(dpy, c->titlebar,
-		    c->frame_geom.x, c->frame_geom.y,
-		    c->frame_geom.w, c->frame_geom.h);
-		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		redraw_frame(c, None);
 		send_config(c);
-		redraw_frame(c);
 	}
 }
 
 /*
  * If the window in question has a ResizeInc hint, then it wants to be resized
  * in multiples of some (x,y). We constrain the values in c->geom based on that
- * and any min/max size hints, and put the "human readable" values back in
- * lw_ret and lh_ret (80x25 for xterm, etc).
+ * and any min/max size hints.
  */
-static geom_t
+void
 fix_size(client_t *c)
 {
 	int width_inc, height_inc;
 	int base_width, base_height;
-	geom_t adj = { 0, 0, 0, 0 };
 
 	if (c->size.flags & PMinSize) {
 		if (c->geom.w < c->size.min_width)
@@ -793,6 +805,7 @@ fix_size(client_t *c)
 		if (c->geom.h > c->size.max_height)
 			c->geom.h = c->size.max_height;
 	}
+
 	if (c->size.flags & PResizeInc) {
 		width_inc = c->size.width_inc ? c->size.width_inc : 1;
 		height_inc = c->size.height_inc ? c->size.height_inc : 1;
@@ -803,14 +816,62 @@ fix_size(client_t *c)
 		    (c->size.flags & PMinSize) ? c->size.min_height : 0;
 		c->geom.w -= (c->geom.w - base_width) % width_inc;
 		c->geom.h -= (c->geom.h - base_height) % height_inc;
-		adj.w = (c->geom.w - base_width) / width_inc;
-		adj.h = (c->geom.h - base_height) / height_inc;
-	} else {
-		adj.w = c->geom.w;
-		adj.h = c->geom.h;
+	}
+}
+
+/* make sure a frame fits on the screen */
+void
+constrain_frame(client_t *c)
+{
+	strut_t s = { 0 };
+	geom_t *g;
+	int h, w;
+
+	if (c->state != STATE_NORMAL)
+		return;
+
+#ifdef DEBUG
+	dump_geom(c, c->geom, "constrain_frame initial");
+#endif
+
+	recalc_frame(c);
+
+	collect_struts(c, &s);
+
+	if (c->decor)
+		g = &c->frame_geom;
+	else
+		g = &c->geom;
+
+	if (g->x < s.top)
+		g->x = s.top;
+	if (g->y < s.left)
+		g->y = s.left;
+
+	h = DisplayHeight(dpy, screen) - s.top - s.bottom;
+	if (g->y + g->h > h)
+		g->h = h - g->y;
+
+	w = DisplayWidth(dpy, screen) - s.left - s.right;
+	if (g->x + g->w > w)
+		g->w = w - g->x;
+
+	if (c->decor) {
+		/*
+		 * recalc_frame adjusts based on c->geom, and we've been
+		 * changing c->frame_geom, so shrink c->geom to the frame_geom
+		 */
+		c->geom.w = c->frame_geom.w - c->resize_w_geom.w -
+		    c->resize_e_geom.w;
+		c->geom.h = c->frame_geom.h - c->resize_nw_geom.h - 1 -
+		    c->resize_s_geom.h;
 	}
 
-	return adj;
+	fix_size(c);
+	recalc_frame(c);
+#ifdef DEBUG
+	dump_geom(c, c->geom, "constrain_frame final");
+#endif
 }
 
 void
@@ -846,7 +907,7 @@ flush_expose_client(client_t *c)
 		flush_expose(c->icon_label);
 }
 
-/* Remove expose events for a window from the event queue */
+/* remove expose events for a window from the event queue */
 void
 flush_expose(Window win)
 {
@@ -856,16 +917,68 @@ flush_expose(Window win)
 }
 
 #ifdef DEBUG
-static const char *
-show_state(client_t *c)
+char *
+state_name(client_t *c)
 {
-	switch (get_wm_state(c->win)) {
-	SHOW(WithdrawnState)
-	SHOW(NormalState)
-	SHOW(IconicState)
-	default:
-		return "unknown state";
-	}
+	int s = 30;
+	char *res = malloc(s);
+	res[0] = '\0';
+
+	if (c->state == STATE_NORMAL)
+		strlcat(res, "normal", s);
+	if (c->state & STATE_ZOOMED)
+		strlcat(res, "| zoomed", s);
+	if (c->state & STATE_ICONIFIED)
+		strlcat(res, "| iconified", s);
+	if (c->state & STATE_SHADED)
+		strlcat(res, "| shaded", s);
+	if (c->state & STATE_FULLSCREEN)
+		strlcat(res, "| fs", s);
+	if (c->state & STATE_DOCK)
+		strlcat(res, "| dock", s);
+
+	if (res[0] == '|')
+		res = strdup(res + 2);
+
+	return res;
+}
+
+const char *
+frame_name(client_t *c, Window w)
+{
+	if (w == None)
+		return "";
+	if (w == c->frame)
+		return "frame";
+	if (w == c->resize_nw)
+		return "resize_nw";
+	if (w == c->resize_w)
+		return "resize_w";
+	if (w == c->resize_sw)
+		return "resize_sw";
+	if (w == c->resize_s)
+		return "resize_s";
+	if (w == c->resize_se)
+		return "resize_se";
+	if (w == c->resize_e)
+		return "resize_e";
+	if (w == c->resize_ne)
+		return "resize_ne";
+	if (w == c->resize_n)
+		return "resize_n";
+	if (w == c->titlebar)
+		return "titlebar";
+	if (w == c->close)
+		return "close";
+	if (w == c->iconify)
+		return "iconify";
+	if (w == c->zoom)
+		return "zoom";
+	if (w == c->icon)
+		return "icon";
+	if (w == c->icon_label)
+		return "icon_label";
+	return "unknown";
 }
 
 static const char *
@@ -892,33 +1005,31 @@ show_grav(client_t *c)
 }
 
 void
-dump_name(client_t *c, const char *label, char flag)
+dump_name(client_t *c, const char *label, const char *detail, const char *name)
 {
-	printf("%18.18s: %#010lx [%c] %-44.44s\n", label, c->win, flag,
-	    c->name);
-}
-
-void
-dump_win(Window w, const char *label, char flag)
-{
-	printf("%18.18s: %#010lx [%c] %-44.44s\n", label, w, flag,
-	    w == root ? "(root window)" : "(unknown window)");
+	printf("%18.18s: %#010lx [%-9.9s] %-35.35s\n", label,
+	    c ? c->win : 0, detail == NULL ? "" : detail,
+	    name == NULL ? "" : name);
 }
 
 void
 dump_info(client_t *c)
 {
-	printf("%31s[i] frame %#0lx, ignore_unmap %d\n", "",
-	    c->frame, c->ignore_unmap);
-	printf("%31s[i] desk %ld, %s, %s\n", "",
-	    c->desk, show_state(c), show_grav(c));
+	char *s = state_name(c);
+
+	printf("%31s[i] decor %d, ignore_unmap %d, trans 0x%lx\n", "",
+	    c->decor, c->ignore_unmap);
+	printf("%31s[i] desk %ld, state %s, %s\n", "",
+	    c->desk, s, show_grav(c));
+
+	free(s);
 }
 
 void
-dump_geom(client_t *c, const char *label)
+dump_geom(client_t *c, geom_t g, const char *label)
 {
 	printf("%31s[g] %s %ldx%ld+%ld+%ld\n", "",
-	    label, c->geom.w, c->geom.h, c->geom.x, c->geom.y);
+	    label, g.w, g.h, g.x, g.y);
 }
 
 void
@@ -934,8 +1045,8 @@ dump_clients()
 	client_t *c;
 
 	for (c = head; c; c = c->next) {
-		dump_name(c, "dump", 'd');
-		dump_geom(c, "current");
+		dump_name(c, __func__, NULL, c->name);
+		dump_geom(c, c->geom, "current");
 		dump_info(c);
 	}
 }

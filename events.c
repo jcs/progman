@@ -43,12 +43,11 @@ static void handle_shape_change(XShapeEvent *);
 
 static int root_button_pressed = 0;
 
-/* TWM has an interesting and different way of doing this. We might also want
- * to respond to unknown events. */
+static XEvent ev;
+
 void
 event_loop(void)
 {
-	XEvent ev;
 	struct pollfd pfd[2];
 
 	memset(&pfd, 0, sizeof(pfd));
@@ -111,7 +110,7 @@ event_loop(void)
 			break;
 		default:
 			if (shape && ev.type == shape_event)
-				handle_shape_change((XShapeEvent *) & ev);
+				handle_shape_change((XShapeEvent *)&ev);
 		}
 	}
 }
@@ -134,10 +133,11 @@ handle_button_press(XButtonEvent *e)
 {
 	client_t *c = find_client(e->window, MATCH_ANY);
 
+	/* clicking inside transparent icons may fall through to the root */
 	if (e->window == root) {
 		client_t *fc;
 		if ((fc = find_client_at_coords(e->window, e->x, e->y)) &&
-		    fc->state == STATE_ICONIFIED) {
+		    (fc->state & STATE_ICONIFIED)) {
 			c = fc;
 			e->window = c->icon;
 		}
@@ -145,13 +145,13 @@ handle_button_press(XButtonEvent *e)
 
 	if (e->window == root) {
 		root_button_pressed = 1;
-	} else if (c && c->state == STATE_DOCK) {
+	} else if (c && (c->state & STATE_DOCK)) {
 		/* pass button event through */
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	} else if (c) {
 		if (e->button == 1 && e->state & Mod1Mask) {
 			/* alt+click, begin moving */
-			if (c->state == STATE_NORMAL) {
+			if (!(c->state & (STATE_FULLSCREEN | STATE_ZOOMED))) {
 				XRaiseWindow(dpy, c->frame);
 				focus_client(c);
 				move_client(c);
@@ -181,7 +181,7 @@ handle_button_release(XButtonEvent *e)
 	if (e->window == root) {
 		client_t *fc;
 		if ((fc = find_client_at_coords(e->window, e->x, e->y)) &&
-		    fc->state == STATE_ICONIFIED) {
+		    (fc->state & STATE_ICONIFIED)) {
 			c = fc;
 			e->window = c->icon;
 		}
@@ -247,16 +247,7 @@ handle_configure_request(XConfigureRequestEvent *e)
 		if (e->value_mask & CWHeight)
 			c->geom.h = e->height;
 
-		recalc_frame(c);
-
-		if (c->decor && (c->frame_geom.x < 0 || c->frame_geom.y < 0)) {
-			if (c->frame_geom.x < 0)
-				c->geom.x = (c->geom.x - c->frame_geom.x);
-			if (c->frame_geom.y < 0)
-				c->geom.y = (c->geom.y - c->frame_geom.y);
-
-			recalc_frame(c);
-		}
+		constrain_frame(c);
 
 		wc.x = c->frame_geom.x;
 		wc.y = c->frame_geom.y;
@@ -266,31 +257,35 @@ handle_configure_request(XConfigureRequestEvent *e)
 		wc.sibling = e->above;
 		wc.stack_mode = e->detail;
 #ifdef DEBUG
-		dump_geom(c, "moving to");
+		dump_geom(c, c->frame_geom, "moving frame to");
 #endif
 		XConfigureWindow(dpy, c->frame, e->value_mask, &wc);
 		if (e->value_mask & (CWWidth | CWHeight))
 			set_shape(c);
-		if (c->state == STATE_ZOOMED &&
-		    e->value_mask & (CWX | CWY | CWWidth | CWHeight)) {
-			c->state = STATE_NORMAL;
-			remove_atom(c->win, net_wm_state, XA_ATOM,
-			    net_wm_state_mv);
-			remove_atom(c->win, net_wm_state, XA_ATOM,
-			    net_wm_state_mh);
+		if ((c->state & STATE_ZOOMED) &&
+		    (e->value_mask & (CWX | CWY | CWWidth | CWHeight))) {
+#ifdef DEBUG
+			dump_name(c, __func__, NULL,
+			    "unzooming from XConfigureRequest");
+#endif
+			unzoom_client(c);
+		} else {
+			redraw_frame(c, None);
+			send_config(c);
 		}
-		send_config(c);
 	}
 
 	if (c) {
 		wc.x = c->geom.x - c->frame_geom.x;
 		wc.y = c->geom.y - c->frame_geom.y;
+		wc.width = c->geom.w;
+		wc.height = c->geom.h;
 	} else {
 		wc.x = e->x;
 		wc.y = e->y;
+		wc.width = e->width;
+		wc.height = e->height;
 	}
-	wc.width = e->width;
-	wc.height = e->height;
 	wc.sibling = e->above;
 	wc.stack_mode = e->detail;
 	XConfigureWindow(dpy, e->window, e->value_mask, &wc);
@@ -317,7 +312,7 @@ handle_circulate_request(XCirculateRequestEvent *e)
 		} else {
 			c = find_client(e->window, MATCH_ANY);
 
-			if (!(c && c->state == STATE_SHADED))
+			if (!(c && (c->state & STATE_SHADED)))
 				XRaiseWindow(dpy, e->window);
 
 			if (c)
@@ -384,12 +379,6 @@ handle_destroy_event(XDestroyWindowEvent *e)
 		del_client(c, DEL_WITHDRAW);
 }
 
-/*
- * If a client wants to manipulate itself or another window it must send a
- * special kind of ClientMessage. As of right now, this only responds to the
- * ICCCM iconify message, but there are more in the EWMH that will be added
- * later.
- */
 static void
 handle_client_message(XClientMessageEvent *e)
 {
@@ -439,29 +428,55 @@ static void
 handle_property_change(XPropertyEvent *e)
 {
 	client_t *c;
+#ifdef DEBUG
+	char *atom;
+#endif
 	long supplied;
 
 	if (!(c = find_client(e->window, MATCH_WINDOW)))
 		return;
 
+#ifdef DEBUG
+	atom = XGetAtomName(dpy, e->atom);
+	dump_name(c, __func__, "", atom);
+	XFree(atom);
+#endif
+
 	if (e->atom == XA_WM_NAME || e->atom == net_wm_name) {
 		if (c->name)
 			XFree(c->name);
 		c->name = get_wm_name(c->win);
-		redraw_frame(c);
-		flush_expose_client(c);
+		redraw_frame(c, c->titlebar);
 	} else if (e->atom == XA_WM_ICON_NAME || e->atom == net_wm_icon_name) {
 		if (c->icon_name)
 			XFree(c->icon_name);
 		c->icon_name = get_wm_icon_name(c->win);
-		if (c->state == STATE_ICONIFIED) {
-			redraw_icon(c);
-			flush_expose_client(c);
-		}
+		if (c->state & STATE_ICONIFIED)
+			redraw_icon(c, c->icon_label);
 	} else if (e->atom == XA_WM_NORMAL_HINTS) {
 		XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
-	} else if (e->atom == net_wm_state) {
+		fix_size(c);
+		redraw_frame(c, None);
+		send_config(c);
+	} else if (e->atom == net_wm_state || e->atom == wm_state) {
+		int was_state = c->state;
 		check_states(c);
+		if (was_state != c->state) {
+			if (c->state & STATE_ICONIFIED)
+				iconify_client(c);
+			else if (c->state & STATE_ZOOMED)
+				zoom_client(c);
+			else if (c->state & STATE_FULLSCREEN)
+				fullscreen_client(c);
+			else {
+				if (was_state & STATE_ZOOMED)
+					unzoom_client(c);
+				else if (was_state & STATE_ICONIFIED)
+					uniconify_client(c);
+				else if (was_state & STATE_FULLSCREEN)
+					unfullscreen_client(c);
+			}
+		}
 	} else if (e->atom == net_wm_desk) {
 		if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0,
 			&c->desk, 1, NULL)) {
@@ -515,7 +530,7 @@ handle_expose_event(XExposeEvent *e)
 	client_t *c;
 
 	if ((c = find_client(e->window, MATCH_FRAME)) && e->count == 0)
-		redraw_frame(c);
+		redraw_frame(c, e->window);
 }
 
 static void
@@ -548,6 +563,7 @@ show_event(XEvent e)
 	SHOW_EV(DestroyNotify, xdestroywindow)
 	SHOW_EV(EnterNotify, xcrossing)
 	SHOW_EV(Expose, xexpose)
+	SHOW_EV(NoExpose, xexpose)
 	SHOW_EV(MapNotify, xmap)
 	SHOW_EV(MapRequest, xmaprequest)
 	SHOW_EV(MappingNotify, xmapping)
@@ -555,6 +571,7 @@ show_event(XEvent e)
 	SHOW_EV(ReparentNotify, xreparent)
 	SHOW_EV(ResizeRequest, xresizerequest)
 	SHOW_EV(UnmapNotify, xunmap)
+	SHOW_EV(MotionNotify, xmotion)
 	default:
 		if (shape && e.type == shape_event) {
 			ev_type = "ShapeNotify";
@@ -569,16 +586,16 @@ show_event(XEvent e)
 	}
 
 	if ((c = find_client(w, MATCH_WINDOW)))
-		dump_name(c, ev_type, 'w');
-	else if ((c = find_client(w, MATCH_FRAME)))
-		dump_name(c, ev_type, 'f');
-	else if (w == root)
-		dump_win(w, ev_type, 'r');
-#if 0
-	else
-		/* something we are not managing */
-		dump_win(w, ev_type, 'u');
-#endif
+		dump_name(c, ev_type, "window", c->name);
+	else if ((c = find_client(w, MATCH_FRAME))) {
+		/*
+		 * ConfigureNotify can only come from us (otherwise it'd be a
+		 * ConfigureRequest) and NoExpose events are just not useful
+		 */
+		if (e.type != ConfigureNotify && e.type != NoExpose)
+			dump_name(c, ev_type, frame_name(c, w), c->name);
+	} else if (w == root)
+		dump_name(NULL, ev_type, "root", "(root)");
 
 	if (m)
 		free(ev_type);
