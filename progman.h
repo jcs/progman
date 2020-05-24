@@ -176,6 +176,7 @@ struct client {
 	geom_t icon_label_geom;
 	Pixmap icon_pixmap;
 	Pixmap icon_mask;
+	GC icon_gc;
 	char *icon_name;
 	XftDraw *icon_xftdraw;
 	int icon_depth;
@@ -299,6 +300,7 @@ extern void parse_state_atom(client_t *, Atom);
 extern void send_config(client_t *c);
 extern void redraw_frame(client_t *c, Window);
 extern void collect_struts(client_t *, strut_t *);
+extern void get_client_icon(client_t *);
 extern void redraw_icon(client_t *c, Window win);
 extern void set_shape(client_t *c);
 extern void del_client(client_t *c, int mode);

@@ -24,8 +24,12 @@
 #include <stdio.h>
 #endif
 #include <string.h>
+#include <err.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
+#ifdef USE_GDK_PIXBUF
+#include <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h>
+#endif
 #include "progman.h"
 #include "atom.h"
 
@@ -72,6 +76,7 @@ new_client(Window w)
 	c->zoom = None;
 	c->icon = None;
 	c->icon_label = None;
+	c->icon_gc = None;
 	c->decor = 1;
 
 	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
@@ -492,8 +497,7 @@ reparent(client_t *c, strut_t *s)
 		    c->zoom_geom.y);
 
 		c->xftdraw = XftDrawCreate(dpy, (Drawable)c->titlebar,
-		    DefaultVisual(dpy, DefaultScreen(dpy)),
-		    DefaultColormap(dpy, DefaultScreen(dpy)));
+		    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
 	}
 
 	if (shape) {
@@ -1145,6 +1149,134 @@ bevel(Window win, geom_t geom, int pressed)
 }
 
 void
+get_client_icon(client_t *c)
+{
+	XWMHints *hints;
+	Window junkw;
+	int junki, depth;
+	long w, h;
+
+	/* try through atom */
+	if (get_atoms(c->win, net_wm_icon, XA_CARDINAL, 0, &w, 1, NULL) &&
+	    get_atoms(c->win, net_wm_icon, XA_CARDINAL, 1, &h, 1, NULL)) {
+	    	/* TODO */
+	}
+
+	/* fallback to WMHints */
+	hints = XGetWMHints(dpy, c->win);
+	if (!hints || !(hints->flags & IconPixmapHint)) {
+		c->icon_pixmap = default_icon_pm;
+		c->icon_depth = DefaultDepth(dpy, screen);
+		c->icon_mask = default_icon_pm_mask;
+		return;
+	}
+
+	XGetGeometry(dpy, hints->icon_pixmap, &junkw, &junki, &junki,
+	    (unsigned int *)&c->icon_geom.w,
+	    (unsigned int *)&c->icon_geom.h, &junki, &depth);
+	c->icon_pixmap = hints->icon_pixmap;
+	c->icon_depth = depth;
+
+	if (hints->flags & IconMaskHint)
+		c->icon_mask = hints->icon_mask;
+	else
+		c->icon_mask = None;
+
+#ifdef USE_GDK_PIXBUF
+	/*
+	 * XXX: for smaller icons, should we just center it in an ICON_SIZE
+	 * window instead of scaling?
+	 */
+	if (c->icon_geom.w != ICON_SIZE || c->icon_geom.h != ICON_SIZE) {
+		GdkPixbuf *gp, *mask, *scaled;
+		int sh, sw;
+
+		if (c->icon_geom.w > c->icon_geom.h) {
+			sw = ICON_SIZE;
+			sh = (ICON_SIZE / (double)c->icon_geom.w) *
+			    c->icon_geom.h;
+		} else {
+			sh = ICON_SIZE;
+			sw = (ICON_SIZE / (double)c->icon_geom.h) *
+			    c->icon_geom.w;
+		}
+
+		gp = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8,
+		    c->icon_geom.w, c->icon_geom.h);
+
+		if (!gdk_pixbuf_xlib_get_from_drawable(gp, c->icon_pixmap,
+		    c->cmap, DefaultVisual(dpy, screen), 0, 0, 0, 0,
+		    c->icon_geom.w, c->icon_geom.h)) {
+			warnx("failed to load pixmap with gdk pixbuf");
+			g_object_unref(gp);
+			return;
+		}
+
+		/* manually mask image, ugh */
+		if (c->icon_mask != None) {
+			guchar *px, *pxm;
+			int rs, rsm, dm, ch, x, y;
+
+			mask = gdk_pixbuf_xlib_get_from_drawable(NULL,
+			    c->icon_mask, c->cmap, DefaultVisual(dpy, screen),
+			    0, 0, 0, 0, c->icon_geom.w, c->icon_geom.h);
+			if (!mask) {
+				warnx("failed to load mask with gdk pixbuf");
+				g_object_unref(gp);
+				return;
+			}
+
+			px = gdk_pixbuf_get_pixels(gp);
+			pxm = gdk_pixbuf_get_pixels(mask);
+			rs = gdk_pixbuf_get_rowstride(gp);
+			rsm = gdk_pixbuf_get_rowstride(mask);
+			dm = gdk_pixbuf_get_bits_per_sample(mask);
+			ch = gdk_pixbuf_get_n_channels(mask);
+
+			for (y = 0; y < c->icon_geom.h; y++) {
+				guchar *tr = px + (y * rs);
+				guchar *trm = pxm + (y * rsm);
+				for (x = 0; x < c->icon_geom.w; x++) {
+					guchar al = 0xff;
+					switch (dm) {
+					case 1:
+						al = trm[x * ch / 8];
+						al >>= (x % 8);
+						al = al ? 0xff : 0;
+						break;
+					case 8:
+						al = (trm[(x * ch) + 2]) ? 0xff
+						    : 0;
+						break;
+					}
+
+					tr[(x * 4) + 3] = al;
+				}
+			}
+
+			g_object_unref(mask);
+		}
+
+		scaled = gdk_pixbuf_scale_simple(gp, sw, sh,
+		    GDK_INTERP_BILINEAR);
+		if (!scaled) {
+			warnx("failed to scale icon with gdk pixbuf");
+			g_object_unref(gp);
+			return;
+		}
+
+		gdk_pixbuf_xlib_render_pixmap_and_mask(scaled,
+		    &c->icon_pixmap, &c->icon_mask, 1);
+		c->icon_geom.w = sw;
+		c->icon_geom.h = sh;
+
+		g_object_unref(scaled);
+		g_object_unref(gp);
+	}
+#endif
+}
+
+void
 redraw_icon(client_t *c, Window only)
 {
 	XftColor *txft;
@@ -1158,22 +1290,27 @@ redraw_icon(client_t *c, Window only)
 
 	if (only == None || only == c->icon) {
 		XClearWindow(dpy, c->icon);
-		if (c->icon_depth != DefaultDepth(dpy, screen))
-			XSetWindowBackground(dpy, c->icon,
-			    WhitePixel(dpy, screen));
+		XSetWindowBackground(dpy, c->icon, WhitePixel(dpy, screen));
 		XMoveResizeWindow(dpy, c->icon,
 		    c->icon_geom.x, c->icon_geom.y, c->icon_geom.w,
 		    c->icon_geom.h);
-		XShapeCombineMask(dpy, c->icon, ShapeBounding, 0, 0,
-		    c->icon_mask, ShapeSet);
-		XSetClipMask(dpy, pixmap_gc, c->icon_mask);
-		XSetClipOrigin(dpy, pixmap_gc, 0, 0);
+		if (c->icon_mask) {
+			XShapeCombineMask(dpy, c->icon, ShapeBounding, 0, 0,
+			    c->icon_mask, ShapeSet);
+			XSetClipMask(dpy, c->icon_gc, c->icon_mask);
+			XSetClipOrigin(dpy, c->icon_gc, 0, 0);
+		}
 		if (c->icon_depth == DefaultDepth(dpy, screen))
-			XCopyArea(dpy, c->icon_pixmap, c->icon, pixmap_gc, 0, 0,
-			    c->icon_geom.w, c->icon_geom.h, 0, 0);
-		else
-			XCopyPlane(dpy, c->icon_pixmap, c->icon, pixmap_gc, 0,
+			XCopyArea(dpy, c->icon_pixmap, c->icon, c->icon_gc,
+			    0, 0, c->icon_geom.w, c->icon_geom.h, 0, 0);
+		else {
+			XSetBackground(dpy, c->icon_gc,
+			    BlackPixel(dpy, screen));
+			XSetForeground(dpy, c->icon_gc,
+			    WhitePixel(dpy, screen));
+			XCopyPlane(dpy, c->icon_pixmap, c->icon, c->icon_gc, 0,
 			    0, c->icon_geom.w, c->icon_geom.h, 0, 0, 1);
+		}
 		XLowerWindow(dpy, c->icon);
 	}
 
@@ -1386,6 +1523,9 @@ del_client(client_t *c, int mode)
 
 		/* TODO: reshuffle icons */
 	}
+
+	if (c->icon_gc)
+		XFreeGC(dpy, c->icon_gc);
 
 	if (c->name)
 		XFree(c->name);

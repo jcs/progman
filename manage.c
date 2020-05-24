@@ -315,35 +315,18 @@ iconify_client(client_t *c)
 void
 do_iconify(client_t *c)
 {
-	XWMHints *hints;
-	Window junkw;
 	XSetWindowAttributes attrs = { 0 };
 	strut_t s = { 0 };
-	int junki, depth;
+	XGCValues gv;
 
 	if (!c->ignore_unmap)
 		c->ignore_unmap++;
-
 	XUnmapWindow(dpy, c->frame);
 	XUnmapWindow(dpy, c->win);
 	c->state |= STATE_ICONIFIED;
 	set_wm_state(c, IconicState);
 
-	if ((hints = XGetWMHints(dpy, c->win)) &&
-	    (hints->flags & IconPixmapHint)) {
-		XGetGeometry(dpy, hints->icon_pixmap, &junkw, &junki, &junki,
-		    (unsigned int *)&c->icon_geom.w,
-		    (unsigned int *)&c->icon_geom.h, &junki, &depth);
-		c->icon_pixmap = hints->icon_pixmap;
-		c->icon_depth = depth;
-
-		if (hints->flags & IconMaskHint)
-			c->icon_mask = hints->icon_mask;
-	} else {
-		c->icon_pixmap = default_icon_pm;
-		c->icon_depth = DefaultDepth(dpy, screen);
-		c->icon_mask = default_icon_pm_mask;
-	}
+	get_client_icon(c);
 
 	if (c->icon_name)
 		XFree(c->icon_name);
@@ -376,8 +359,9 @@ do_iconify(client_t *c)
 	    CWBackPixel | CWEventMask, &attrs);
 	XMapWindow(dpy, c->icon_label);
 	c->icon_xftdraw = XftDrawCreate(dpy, (Drawable)c->icon_label,
-	    DefaultVisual(dpy, DefaultScreen(dpy)),
-	    DefaultColormap(dpy, DefaultScreen(dpy)));
+	    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
+
+	c->icon_gc = XCreateGC(dpy, c->icon, 0, &gv);
 
 	redraw_icon(c, None);
 }
@@ -1018,7 +1002,7 @@ dump_info(client_t *c)
 	char *s = state_name(c);
 
 	printf("%31s[i] decor %d, ignore_unmap %d, trans 0x%lx\n", "",
-	    c->decor, c->ignore_unmap);
+	    c->decor, c->ignore_unmap, c->trans);
 	printf("%31s[i] desk %ld, state %s, %s\n", "",
 	    c->desk, s, show_grav(c));
 

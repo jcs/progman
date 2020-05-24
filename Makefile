@@ -34,7 +34,11 @@ LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 #CFLAGS+=	-g -DDEBUG=1
 
 # uncomment for HiDPI displays
-#CFLAGS+=	-DHIDPI=1
+CFLAGS+=	-DHIDPI=1
+
+# uncomment to use gdk-pixbuf to rescale icons
+PKGLIBS+=	gdk-pixbuf-xlib-2.0
+CFLAGS+=	-DUSE_GDK_PIXBUF
 
 BINDIR=		$(PREFIX)/bin
 MANDIR=		$(PREFIX)/man/man1

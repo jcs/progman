@@ -32,6 +32,9 @@
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
 #include <X11/extensions/shape.h>
+#ifdef USE_GDK_PIXBUF
+#include <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h>
+#endif
 #include "progman.h"
 #include "atom.h"
 #include "parser.h"
@@ -241,13 +244,16 @@ setup_display(void)
 	client_t *c;
 
 	dpy = XOpenDisplay(NULL);
-
 	if (!dpy)
 		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
 
 	XSetErrorHandler(handle_xerror);
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
+
+#ifdef USE_GDK_PIXBUF
+	gdk_pixbuf_xlib_init(dpy, screen);
+#endif
 
 	map_curs = XCreateFontCursor(dpy, XC_dotbox);
 	move_curs = XCreateFontCursor(dpy, XC_fleur);
@@ -288,12 +294,11 @@ setup_display(void)
 	xft_fg_unfocused.color.alpha = 0xffff;
 	xft_fg_unfocused.pixel = fg_unfocused.pixel;
 
-	xftfont = XftFontOpenName(dpy, DefaultScreen(dpy), opt_xftfont);
+	xftfont = XftFontOpenName(dpy, screen, opt_xftfont);
 	if (!xftfont)
 		errx(1, "Xft font \"%s\" not found", opt_xftfont);
 
-	icon_xftfont = XftFontOpenName(dpy, DefaultScreen(dpy),
-	    opt_icon_xftfont);
+	icon_xftfont = XftFontOpenName(dpy, screen, opt_icon_xftfont);
 	if (!icon_xftfont)
 		errx(1, "icon Xft font \"%s\" not found", opt_icon_xftfont);
 
