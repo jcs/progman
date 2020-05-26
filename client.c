@@ -1184,11 +1184,7 @@ get_client_icon(client_t *c)
 		c->icon_mask = None;
 
 #ifdef USE_GDK_PIXBUF
-	/*
-	 * XXX: for smaller icons, should we just center it in an ICON_SIZE
-	 * window instead of scaling?
-	 */
-	if (c->icon_geom.w != ICON_SIZE || c->icon_geom.h != ICON_SIZE) {
+	if (c->icon_geom.w > ICON_SIZE || c->icon_geom.h > ICON_SIZE) {
 		GdkPixbuf *gp, *mask, *scaled;
 		int sh, sw;
 
@@ -1282,7 +1278,12 @@ redraw_icon(client_t *c, Window only)
 {
 	XftColor *txft;
 	void *xft_lines;
-	int label_pad = 4;
+	int label_pad =
+#ifdef HIDPI
+		2;
+#else
+		4;
+#endif
 	int nlines, x;
 
 #ifdef DEBUG
@@ -1293,8 +1294,9 @@ redraw_icon(client_t *c, Window only)
 		XClearWindow(dpy, c->icon);
 		XSetWindowBackground(dpy, c->icon, WhitePixel(dpy, screen));
 		XMoveResizeWindow(dpy, c->icon,
-		    c->icon_geom.x, c->icon_geom.y, c->icon_geom.w,
-		    c->icon_geom.h);
+		    c->icon_geom.x + ((ICON_SIZE - c->icon_geom.w) / 2),
+		    c->icon_geom.y + ((ICON_SIZE - c->icon_geom.h) / 2),
+		    c->icon_geom.w, c->icon_geom.h);
 		if (c->icon_mask) {
 			XShapeCombineMask(dpy, c->icon, ShapeBounding, 0, 0,
 			    c->icon_mask, ShapeSet);
@@ -1309,10 +1311,9 @@ redraw_icon(client_t *c, Window only)
 			    BlackPixel(dpy, screen));
 			XSetForeground(dpy, c->icon_gc,
 			    WhitePixel(dpy, screen));
-			XCopyPlane(dpy, c->icon_pixmap, c->icon, c->icon_gc, 0,
-			    0, c->icon_geom.w, c->icon_geom.h, 0, 0, 1);
+			XCopyPlane(dpy, c->icon_pixmap, c->icon, c->icon_gc,
+			    0, 0, c->icon_geom.w, c->icon_geom.h, 0, 0, 1);
 		}
-		XLowerWindow(dpy, c->icon);
 	}
 
 	if (only != None && only != c->icon_label)
@@ -1333,9 +1334,9 @@ redraw_icon(client_t *c, Window only)
 		c->icon_name = strdup("(Unknown)");
 
 	xft_lines = word_wrap_xft(c->icon_name, ' ', icon_xftfont,
-	    (c->icon_geom.w * 2) - (label_pad * 2), &nlines);
+	    (ICON_SIZE * 2) - (label_pad * 2), &nlines);
 
-	c->icon_label_geom.y = c->icon_geom.y + c->icon_geom.h + 20;
+	c->icon_label_geom.y = c->icon_geom.y + ICON_SIZE + 10;
 	c->icon_label_geom.h = label_pad;
 	c->icon_label_geom.w = label_pad;
 
@@ -1353,19 +1354,18 @@ redraw_icon(client_t *c, Window only)
 
 	c->icon_label_geom.h += label_pad;
 	c->icon_label_geom.x = c->icon_geom.x -
-	    ((c->icon_label_geom.w - c->icon_geom.w) / 2);
+	    ((c->icon_label_geom.w - ICON_SIZE) / 2);
 
 	XMoveResizeWindow(dpy, c->icon_label,
 	    c->icon_label_geom.x, c->icon_label_geom.y,
 	    c->icon_label_geom.w, c->icon_label_geom.h);
-	XLowerWindow(dpy, c->icon_label);
 
 	int ly = label_pad;
 	for (x = 0; x < nlines; x++) {
 		struct xft_line_t *line = xft_lines +
 		    (sizeof(struct xft_line_t) * x);
-
 		int lx = ((c->icon_label_geom.w - line->xft_width) / 2);
+
 		ly += icon_xftfont->ascent;
 		XftDrawStringUtf8(c->icon_xftdraw, txft, icon_xftfont, lx, ly,
 		    (FcChar8 *)line->str, line->len);
@@ -1573,6 +1573,7 @@ start_wrap:
 	for (x = 0; ; x++) {
 		struct xft_line_t *line = lines +
 		    (sizeof(struct xft_line_t) * nline);
+		int tx;
 
 		if (curstr[x] != delim && curstr[x] != '\0')
 			continue;
@@ -1602,8 +1603,18 @@ start_wrap:
 			}
 		}
 
+		/* trim leading and trailing spaces */
+		tx = x;
+		while (curstr[tx - 1] == ' ')
+			tx--;
+		while (curstr[0] == ' ') {
+			curstr++;
+			tx--;
+		}
+		XftTextExtentsUtf8(dpy, font, (FcChar8 *)curstr, tx, &extents);
+
 		line->str = curstr;
-		line->len = x;
+		line->len = tx;
 		line->xft_width = extents.xOff;
 
 		if (curstr[x] == '\0')

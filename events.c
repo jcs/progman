@@ -150,16 +150,17 @@ handle_button_press(XButtonEvent *e)
 		/* pass button event through */
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	} else if (c) {
-		if (e->button == 1 && e->state & Mod1Mask) {
+		if (e->button == 1 && (e->state & Mod1Mask) &&
+		    !(c->state & (STATE_FULLSCREEN | STATE_ZOOMED |
+		    STATE_ICONIFIED))) {
 			/* alt+click, begin moving */
-			if (!(c->state & (STATE_FULLSCREEN | STATE_ZOOMED))) {
-				XRaiseWindow(dpy, c->frame);
-				focus_client(c);
-				move_client(c);
-			}
+			XRaiseWindow(dpy, c->frame);
+			focus_client(c);
+			move_client(c);
 		} else if (find_client(e->window, MATCH_FRAME)) {
 			/* raising our frame will also raise the window */
-			XRaiseWindow(dpy, c->frame);
+			if (!(c->state & STATE_ICONIFIED))
+				XRaiseWindow(dpy, c->frame);
 			focus_client(c);
 			user_action(c, e->window, e->x, e->y, e->button, 1);
 		} else {

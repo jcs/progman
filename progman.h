@@ -47,13 +47,13 @@
 
 #ifdef HIDPI
 #define DEF_XFTFONT "Microsoft Sans Serif:bold:size=14"
-#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=12"
+#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 6
 #define DEF_BW 6
 #else
 #define DEF_XFTFONT "system:size=13"
-#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=12"
+#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 3
 #define DEF_BW 3
@@ -315,6 +315,7 @@ extern void move_client(client_t *c);
 extern void resize_client(client_t *c, Window resize_pos);
 extern void iconify_client(client_t *c);
 extern void uniconify_client(client_t *c);
+extern void place_icon(client_t *c);
 extern void shade_client(client_t *c);
 extern void unshade_client(client_t *c);
 extern void fullscreen_client(client_t *c);
@@ -337,6 +338,7 @@ extern void constrain_frame(client_t *);
 extern char *state_name(client_t *c);
 extern void flush_expose_client(client_t *c);
 extern void flush_expose(Window win);
+extern int overlapping_geom(geom_t a, geom_t b);
 #ifdef DEBUG
 extern void dump_name(client_t *c, const char *label, const char *detail,
     const char *name);

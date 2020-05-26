@@ -78,6 +78,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 	if (c->state & STATE_ICONIFIED &&
 	    (win == c->icon || win == c->icon_label)) {
 	    	if (down && !double_click) {
+			focus_client(c);
 			move_client(c);
 			get_pointer(&x, &y);
 			user_action(c, win, x, y, button, 0);
@@ -180,6 +181,11 @@ focus_client(client_t *c)
 {
 	client_t *oc;
 
+#ifdef DEBUG
+	if (c)
+		dump_name(c, __func__, NULL, c->name);
+#endif
+
 	if (c && (c->state & STATE_ICONIFIED)) {
 		set_atoms(root, net_active_window, XA_WINDOW, &c->icon, 1);
 		XSetInputFocus(dpy, c->icon, RevertToPointerRoot, CurrentTime);
@@ -194,10 +200,10 @@ focus_client(client_t *c)
 		focused = c;
 		if (c) {
 			c->focus_order = ++focus_order;
-			redraw_frame(c, c->titlebar);
+			redraw_frame(c, None);
 		}
 		if (oc)
-			redraw_frame(oc, oc->titlebar);
+			redraw_frame(oc, None);
 	}
 }
 
@@ -212,13 +218,10 @@ move_client(client_t *c)
 	collect_struts(c, &s);
 	sweep(c, move_curs, recalc_move, NULL, &s);
 
-	send_config(c);
-
-	if (c->state & STATE_ICONIFIED)
-		redraw_icon(c, None);
-	else
+	if (!(c->state & STATE_ICONIFIED))
 		redraw_frame(c, None);
 
+	send_config(c);
 	flush_expose_client(c);
 }
 
@@ -310,14 +313,13 @@ iconify_client(client_t *c)
 		if (p->trans == c->win)
 			do_iconify(p);
 
-	focus_client(prev_focused());
+	focus_client(prev_focused(focus_order));
 }
 
 void
 do_iconify(client_t *c)
 {
 	XSetWindowAttributes attrs = { 0 };
-	strut_t s = { 0 };
 	XGCValues gv;
 
 	if (!c->ignore_unmap)
@@ -333,7 +335,6 @@ do_iconify(client_t *c)
 		XFree(c->icon_name);
 	c->icon_name = get_wm_icon_name(c->win);
 
-	/* TODO: if not ICON_SIZE, scale up/down */
 	if (c->icon_geom.w < 1)
 		c->icon_geom.w = ICON_SIZE;
 	if (c->icon_geom.h < 1)
@@ -344,11 +345,7 @@ do_iconify(client_t *c)
 	    VisibilityChangeMask | ExposureMask | KeyPressMask |
 	    EnterWindowMask | FocusChangeMask;
 
-	collect_struts(c, &s);
-	/* TODO: find a suitable spot that won't overlap any other icons */
-	c->icon_geom.x = s.left + ICON_SIZE;
-	c->icon_geom.y = DisplayHeight(dpy, screen) - s.top - s.bottom -
-	    c->icon_geom.h - (ICON_SIZE * 2);
+	place_icon(c);
 
 	c->icon = XCreateWindow(dpy, root, c->icon_geom.x, c->icon_geom.h,
 	    c->icon_geom.w, c->icon_geom.h, 0, CopyFromParent, CopyFromParent,
@@ -365,6 +362,7 @@ do_iconify(client_t *c)
 	c->icon_gc = XCreateGC(dpy, c->icon, 0, &gv);
 
 	redraw_icon(c, None);
+	flush_expose_client(c);
 }
 
 void
@@ -384,6 +382,56 @@ uniconify_client(client_t *c)
 
 	redraw_frame(c, None);
 	focus_client(c);
+}
+
+void
+place_icon(client_t *c)
+{
+	strut_t s = { 0 };
+	client_t *p;
+	int x, y, isize;
+
+	collect_struts(c, &s);
+
+	s.right = DisplayWidth(dpy, screen) - s.right;
+	s.bottom = DisplayHeight(dpy, screen) - s.bottom;
+
+	isize = ICON_SIZE * 2;
+
+	for (y = s.bottom - isize; y >= s.top; y -= isize) {
+		for (x = s.left + ICON_SIZE; x < s.right - isize; x += isize) {
+			int overlap = 0;
+
+			for (p = head; p; p = p->next) {
+				if (!IS_ON_CUR_DESK(p) || p == c)
+					continue;
+				if (!(p->state & STATE_ICONIFIED))
+					continue;
+
+				if ((p->icon_geom.x + ICON_SIZE >= x &&
+				    p->icon_geom.x <= x) &&
+				    (p->icon_geom.y + ICON_SIZE >= y &&
+				    p->icon_geom.y <= y)) {
+					overlap = 1;
+					break;
+				}
+			}
+
+			if (overlap)
+				continue;
+
+			c->icon_geom.x = x;
+			c->icon_geom.y = y;
+#ifdef DEBUG
+			dump_geom(c, c->icon_geom, "place_icon");
+#endif
+			return;
+		}
+	}
+
+	/* shrug */
+	c->icon_geom.x = s.left;
+	c->icon_geom.y = s.top;
 }
 
 void
@@ -661,7 +709,9 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		c->icon_label_geom.x += xd;
 		c->icon_label_geom.y += yd;
 
-		XMoveWindow(dpy, c->icon, c->icon_geom.x, c->icon_geom.y);
+		XMoveWindow(dpy, c->icon,
+		    c->icon_geom.x + ((ICON_SIZE - c->icon_geom.w) / 2),
+		    c->icon_geom.y + ((ICON_SIZE - c->icon_geom.h) / 2));
 		XMoveWindow(dpy, c->icon_label, c->icon_label_geom.x,
 		    c->icon_label_geom.y);
 		send_config(c);
@@ -1002,8 +1052,8 @@ dump_info(client_t *c)
 {
 	char *s = state_name(c);
 
-	printf("%31s[i] decor %d, ignore_unmap %d, trans 0x%lx\n", "",
-	    c->decor, c->ignore_unmap, c->trans);
+	printf("%31s[i] decor %d, ignore_unmap %d, trans 0x%lx, focus %d\n", "",
+	    c->decor, c->ignore_unmap, c->trans, focused == c ? 1 : 0);
 	printf("%31s[i] desk %ld, state %s, %s\n", "",
 	    c->desk, s, show_grav(c));
 
