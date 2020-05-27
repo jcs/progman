@@ -179,9 +179,9 @@ cursor_for_resize_win(client_t *c, Window win)
 void
 focus_client(client_t *c, int style)
 {
-	Window wins[1024];
+	Window *wins = NULL;
 	client_t *prevfocused = NULL, *p;
-	int nwins = 0;
+	int twins = 0, nwins = 0;
 
 	if (!c) {
 		warnx("%s with no c", __func__);
@@ -216,18 +216,41 @@ focus_client(client_t *c, int style)
 
 	adjust_client_order(c, ORDER_TOP);
 
-	/* restack windows, icons on the bottom */
+	/* restack windows - ABOVE, normal, BELOW, ICONIFIED */
+	for (p = focused, twins = 0; p; p = p->next)
+		twins += 2;
+	wins = reallocarray(wins, twins, sizeof(Window));
+	if (wins == NULL)
+		err(1, "reallocarray");
+
+	/* STATE_ABOVE first */
 	for (p = focused; p; p = p->next) {
 		if (!IS_ON_CUR_DESK(p))
 			continue;
 
-		if (!(p->state & STATE_ICONIFIED))
+		if ((p->state & STATE_ABOVE) && !(p->state & STATE_ICONIFIED))
 			wins[nwins++] = p->frame;
-
-		if (nwins >= sizeof(wins) - 1)
-			break;
 	}
 
+	/* then non-iconified windows */
+	for (p = focused; p; p = p->next) {
+		if (!IS_ON_CUR_DESK(p))
+			continue;
+
+		if (!(p->state & (STATE_ICONIFIED | STATE_BELOW | STATE_ABOVE)))
+			wins[nwins++] = p->frame;
+	}
+
+	/* then BELOW windows */
+	for (p = focused; p; p = p->next) {
+		if (!IS_ON_CUR_DESK(p))
+			continue;
+
+		if (p->state & STATE_BELOW)
+			wins[nwins++] = p->frame;
+	}
+
+	/* then icons */
 	for (p = focused; p; p = p->next) {
 		if (!IS_ON_CUR_DESK(p))
 			continue;
@@ -236,9 +259,12 @@ focus_client(client_t *c, int style)
 			wins[nwins++] = p->icon;
 			wins[nwins++] = p->icon_label;
 		}
+	}
 
-		if (nwins >= sizeof(wins) - 2)
-			break;
+	if (nwins >= twins) {
+		warnx("%s allocated for %d windows, used %d", __func__, twins,
+		    nwins);
+		abort();
 	}
 
 	XRestackWindows(dpy, wins, nwins);
@@ -249,6 +275,8 @@ focus_client(client_t *c, int style)
 		redraw_frame(prevfocused, None);
 
 	redraw_frame(c, None);
+
+	free(wins);
 }
 
 void

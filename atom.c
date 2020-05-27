@@ -51,6 +51,8 @@ Atom net_wm_icon;
 Atom net_wm_icon_name;
 Atom net_wm_name;
 Atom net_wm_state;
+Atom net_wm_state_above;
+Atom net_wm_state_below;
 Atom net_wm_state_fs;
 Atom net_wm_state_mh;
 Atom net_wm_state_mv;
@@ -117,6 +119,12 @@ find_supported_atoms(void)
 
 	net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_wm_state, 1);
+
+	net_wm_state_above = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_above, 1);
+
+	net_wm_state_below = XInternAtom(dpy, "_NET_WM_STATE_BELOW", False);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_below, 1);
 
 	net_wm_state_fs = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_wm_state_fs, 1);

@@ -55,6 +55,8 @@ extern Atom net_wm_icon;
 extern Atom net_wm_icon_name;
 extern Atom net_wm_name;
 extern Atom net_wm_state;
+extern Atom net_wm_state_above;
+extern Atom net_wm_state_below;
 extern Atom net_wm_state_fs;
 extern Atom net_wm_state_mh;
 extern Atom net_wm_state_mv;

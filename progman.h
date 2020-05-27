@@ -117,11 +117,13 @@ struct geom {
 /* client_t state */
 enum {
 	STATE_NORMAL = 0,
-	STATE_ZOOMED = (1 << 2),
-	STATE_SHADED = (1 << 3),
-	STATE_FULLSCREEN = (1 << 4),
-	STATE_ICONIFIED = (1 << 5),
-	STATE_DOCK = (1 << 6),
+	STATE_ZOOMED = (1 << 1),
+	STATE_SHADED = (1 << 2),
+	STATE_FULLSCREEN = (1 << 3),
+	STATE_ICONIFIED = (1 << 4),
+	STATE_DOCK = (1 << 5),
+	STATE_ABOVE = (1 << 6),
+	STATE_BELOW = (1 << 7),
 };
 
 /* client_t frame_style */

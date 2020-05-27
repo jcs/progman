@@ -716,6 +716,10 @@ check_states(client_t *c)
 			c->state |= STATE_ZOOMED;
 		else if (state == net_wm_state_fs)
 			c->state |= STATE_FULLSCREEN;
+		else if (state == net_wm_state_above)
+			c->state |= STATE_ABOVE;
+		else if (state == net_wm_state_below)
+			c->state |= STATE_BELOW;
 	}
 }
 
