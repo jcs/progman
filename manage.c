@@ -1110,7 +1110,12 @@ char *
 state_name(client_t *c)
 {
 	int s = 30;
-	char *res = malloc(s);
+	char *res;
+
+	res = malloc(s);
+	if (res == NULL)
+		err(1, "malloc");
+
 	res[0] = '\0';
 
 	if (c->state == STATE_NORMAL)

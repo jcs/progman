@@ -550,10 +550,9 @@ handle_shape_change(XShapeEvent *e)
 void
 show_event(XEvent e)
 {
-	char *ev_type;
+	char ev_type[128];
 	Window w;
 	client_t *c;
-	int m = 0;
 
 	switch (e.type) {
 	SHOW_EV(ButtonPress, xbutton)
@@ -578,13 +577,11 @@ show_event(XEvent e)
 	SHOW_EV(MotionNotify, xmotion)
 	default:
 		if (shape && e.type == shape_event) {
-			ev_type = "ShapeNotify";
+			snprintf(ev_type, sizeof(ev_type), "ShapeNotify");
 			w = ((XShapeEvent *) & e)->window;
 			break;
 		}
-		ev_type = malloc(128);
-		snprintf(ev_type, 128, "unknown event %d", e.type);
-		m = 1;
+		snprintf(ev_type, sizeof(ev_type), "unknown event %d", e.type);
 		w = None;
 		break;
 	}
@@ -600,8 +597,5 @@ show_event(XEvent e)
 			dump_name(c, ev_type, frame_name(c, w), c->name);
 	} else if (w == root)
 		dump_name(NULL, ev_type, "root", "(root)");
-
-	if (m)
-		free(ev_type);
 }
 #endif

@@ -97,9 +97,13 @@
 
 #ifdef DEBUG
 #define SHOW_EV(name, memb) \
-    case name: ev_type = #name; w = e.memb.window; break;
+    case name: \
+    	snprintf(ev_type, sizeof(ev_type), #name); \
+	w = e.memb.window; \
+	break;
 #define SHOW(name) \
-    case name: return #name;
+    case name: \
+    	return #name;
 #endif
 
 typedef struct geom geom_t;

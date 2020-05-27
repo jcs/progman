@@ -20,6 +20,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <err.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -221,6 +222,8 @@ remove_atom(Window w, Atom a, Atom type, unsigned long remove)
 		return;
 
 	new = malloc((read + left) * sizeof *new);
+	if (new == NULL)
+		err(1, "malloc");
 	if (read && tmp != remove)
 		new[j++] = tmp;
 
