@@ -232,6 +232,7 @@ extern unsigned long cur_desk;
 extern unsigned long ndesks;
 extern Bool shape;
 extern int shape_event;
+extern Window supporting_wm_win;
 extern XftFont *xftfont;
 extern XftFont *icon_xftfont;
 extern XftColor xft_fg;

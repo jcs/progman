@@ -49,6 +49,7 @@ extern Atom net_client_stack;
 extern Atom net_close_window;
 extern Atom net_cur_desk;
 extern Atom net_num_desks;
+extern Atom net_supporting_wm;
 extern Atom net_wm_desk;
 extern Atom net_wm_icon;
 extern Atom net_wm_icon_name;
@@ -79,7 +80,8 @@ extern unsigned long append_atoms(Window, Atom, Atom, unsigned long *,
 extern void remove_atom(Window, Atom, Atom, unsigned long);
 extern char *get_wm_name(Window);
 extern char *get_wm_icon_name(Window);
-int get_strut(Window, strut_t *);
+extern void set_string_atom(Window, Atom, unsigned char *, unsigned long);
+extern int get_strut(Window, strut_t *);
 extern unsigned long get_wm_state(Window);
 
 #endif	/* PROGMAN_ATOM_H */

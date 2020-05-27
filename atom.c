@@ -44,6 +44,7 @@ Atom net_client_stack;
 Atom net_close_window;
 Atom net_cur_desk;
 Atom net_num_desks;
+Atom net_supporting_wm;
 Atom net_wm_desk;
 Atom net_wm_icon;
 Atom net_wm_icon_name;
@@ -97,6 +98,9 @@ find_supported_atoms(void)
 
 	net_num_desks = XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_num_desks, 1);
+
+	net_supporting_wm = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
+	append_atoms(root, net_supported, XA_ATOM, &net_supporting_wm, 1);
 
 	net_wm_desk = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_wm_desk, 1);
@@ -343,6 +347,12 @@ get_string_atom(Window w, Atom a, Atom type)
 		return (char *)data;
 
 	return NULL;
+}
+
+void
+set_string_atom(Window w, Atom a, unsigned char *str, unsigned long len)
+{
+	XChangeProperty(dpy, w, a, utf8_string, 8, PropModeReplace, str, len);
 }
 
 /*

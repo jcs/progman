@@ -61,6 +61,7 @@ unsigned long cur_desk = 0;
 unsigned int focus_order = 0;
 Bool shape;
 int shape_event;
+Window supporting_wm_win;
 
 XftFont *xftfont;
 XftFont *icon_xftfont;
@@ -353,6 +354,13 @@ setup_display(void)
 	/* become "the" window manager with SubstructureRedirectMask on root */
 	sattr.event_mask = SubMask | ColormapChangeMask | ButtonMask;
 	XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
+
+	/* create a hidden window for _NET_SUPPORTING_WM_CHECK */
+	supporting_wm_win = XCreateWindow(dpy, root, 0, 0, 1, 1,
+	    0, DefaultDepth(dpy, screen), CopyFromParent,
+	    DefaultVisual(dpy, screen), 0, NULL);
+	set_string_atom(supporting_wm_win, net_wm_name, "progman", 7);
+	set_atoms(root, net_supporting_wm, XA_WINDOW, &supporting_wm_win, 1);
 }
 
 void
@@ -453,6 +461,9 @@ cleanup(void)
 
 	XInstallColormap(dpy, DefaultColormap(dpy, screen));
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+
+	XDeleteProperty(dpy, root, net_supporting_wm);
+	XDestroyWindow(dpy, supporting_wm_win);
 
 	XDeleteProperty(dpy, root, net_supported);
 	XDeleteProperty(dpy, root, net_client_list);
