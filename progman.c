@@ -157,6 +157,7 @@ main(int argc, char **argv)
 	sigaction(SIGCHLD, &act, NULL);
 
 	setup_display();
+	bind_keys();
 	event_loop();
 	cleanup();
 

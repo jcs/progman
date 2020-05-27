@@ -109,6 +109,10 @@ event_loop(void)
 		case Expose:
 			handle_expose_event(&ev.xexpose);
 			break;
+		case KeyPress:
+		case KeyRelease:
+			handle_key_event(&ev.xkey);
+			break;
 		default:
 			if (shape && ev.type == shape_event)
 				handle_shape_change((XShapeEvent *)&ev);

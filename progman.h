@@ -362,4 +362,9 @@ extern void dump_clients(void);
 extern const char *frame_name(client_t *c, Window w);
 #endif
 
+/* keyboard.c */
+extern void bind_keys(void);
+extern KeySym lookup_keysym(XKeyEvent *e);
+extern void handle_key_event(XKeyEvent *e);
+
 #endif	/* PROGMAN_H */
