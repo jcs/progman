@@ -183,7 +183,6 @@ struct client {
 	XSizeHints size;
 	Colormap cmap;
 	int ignore_unmap;
-	unsigned int focus_order;
 	unsigned long desk;
 	Bool placed;
 	Bool shaped;
@@ -213,9 +212,21 @@ enum {
 	DEL_REMAP,
 };	/* del_client */
 
+enum {
+	ORDER_TOP,
+	ORDER_ICONIFIED_TOP,
+	ORDER_BOTTOM,
+	ORDER_OUT,
+	ORDER_INVERT,
+};	/* adjust_client_order */
+
+enum {
+	FOCUS_NORMAL,
+	FOCUS_FORCE,
+};	/* focus_client */
+
 /* progman.c */
-extern client_t *head, *focused;
-extern unsigned int focus_order;
+extern client_t *focused;
 extern int screen;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
@@ -291,7 +302,7 @@ extern client_t *new_client(Window w);
 extern client_t *find_client(Window w, int mode);
 extern client_t *find_client_at_coords(Window w, int x, int y);
 extern client_t *top_client(void);
-extern client_t *prev_focused(void);
+extern client_t *prev_focused(int);
 extern void map_client(client_t *);
 extern void recalc_frame(client_t *c);
 extern int set_wm_state(client_t *c, unsigned long state);
@@ -310,7 +321,7 @@ extern void user_action(client_t *c, Window win, int x, int y, int button,
     int down);
 extern int pos_in_frame(client_t *c, int x, int y);
 extern Cursor cursor_for_resize_win(client_t *c, Window win);
-extern void focus_client(client_t *c);
+extern void focus_client(client_t *c, int);
 extern void move_client(client_t *c);
 extern void resize_client(client_t *c, Window resize_pos);
 extern void iconify_client(client_t *c);
@@ -339,6 +350,7 @@ extern char *state_name(client_t *c);
 extern void flush_expose_client(client_t *c);
 extern void flush_expose(Window win);
 extern int overlapping_geom(geom_t a, geom_t b);
+extern void adjust_client_order(client_t *, int);
 #ifdef DEBUG
 extern void dump_name(client_t *c, const char *label, const char *detail,
     const char *name);

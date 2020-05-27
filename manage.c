@@ -78,7 +78,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 	if (c->state & STATE_ICONIFIED &&
 	    (win == c->icon || win == c->icon_label)) {
 	    	if (down && !double_click) {
-			focus_client(c);
+			focus_client(c, FOCUS_NORMAL);
 			move_client(c);
 			get_pointer(&x, &y);
 			user_action(c, win, x, y, button, 0);
@@ -177,34 +177,78 @@ cursor_for_resize_win(client_t *c, Window win)
 
 /* This can't do anything dangerous. */
 void
-focus_client(client_t *c)
+focus_client(client_t *c, int style)
 {
-	client_t *oc;
+	Window wins[1024];
+	client_t *prevfocused = NULL, *p;
+	int nwins = 0;
+
+	if (!c) {
+		warnx("%s with no c", __func__);
+		abort();
+	}
+
+	if (focused == c && style != FOCUS_FORCE)
+		return;
 
 #ifdef DEBUG
-	if (c)
-		dump_name(c, __func__, NULL, c->name);
+	dump_name(c, __func__, NULL, c->name);
 #endif
 
-	if (c && (c->state & STATE_ICONIFIED)) {
+	if (c->state & STATE_ICONIFIED) {
 		set_atoms(root, net_active_window, XA_WINDOW, &c->icon, 1);
 		XSetInputFocus(dpy, c->icon, RevertToPointerRoot, CurrentTime);
-	} else if (c) {
+	} else {
 		set_atoms(root, net_active_window, XA_WINDOW, &c->win, 1);
 		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 		XInstallColormap(dpy, c->cmap);
 	}
 
-	if (c != focused) {
-		oc = focused;
-		focused = c;
-		if (c) {
-			c->focus_order = ++focus_order;
-			redraw_frame(c, None);
-		}
-		if (oc)
-			redraw_frame(oc, None);
+	if (focused && focused != c) {
+		prevfocused = focused;
+
+		if (focused->state & STATE_ICONIFIED)
+			adjust_client_order(focused,
+			    ORDER_ICONIFIED_TOP);
+		else
+			adjust_client_order(focused, ORDER_TOP);
 	}
+
+	adjust_client_order(c, ORDER_TOP);
+
+	/* restack windows, icons on the bottom */
+	for (p = focused; p; p = p->next) {
+		if (!IS_ON_CUR_DESK(p))
+			continue;
+
+		if (!(p->state & STATE_ICONIFIED))
+			wins[nwins++] = p->frame;
+
+		if (nwins >= sizeof(wins) - 1)
+			break;
+	}
+
+	for (p = focused; p; p = p->next) {
+		if (!IS_ON_CUR_DESK(p))
+			continue;
+
+		if (p->state & STATE_ICONIFIED) {
+			wins[nwins++] = p->icon;
+			wins[nwins++] = p->icon_label;
+		}
+
+		if (nwins >= sizeof(wins) - 2)
+			break;
+	}
+
+	XRestackWindows(dpy, wins, nwins);
+
+	/* TODO: update net_client_stack */
+
+	if (prevfocused)
+		redraw_frame(prevfocused, None);
+
+	redraw_frame(c, None);
 }
 
 void
@@ -308,12 +352,13 @@ iconify_client(client_t *c)
 {
 	client_t *p;
 
-	do_iconify(c);
-	for (p = head; p; p = p->next)
+	for (p = focused; p; p = p->next)
 		if (p->trans == c->win)
 			do_iconify(p);
 
-	focus_client(prev_focused(focus_order));
+	do_iconify(c);
+
+	focus_client(focused, FOCUS_FORCE);
 }
 
 void
@@ -321,6 +366,8 @@ do_iconify(client_t *c)
 {
 	XSetWindowAttributes attrs = { 0 };
 	XGCValues gv;
+
+	adjust_client_order(c, ORDER_ICONIFIED_TOP);
 
 	if (!c->ignore_unmap)
 		c->ignore_unmap++;
@@ -380,8 +427,7 @@ uniconify_client(client_t *c)
 	XDestroyWindow(dpy, c->icon_label);
 	c->icon_label = None;
 
-	redraw_frame(c, None);
-	focus_client(c);
+	focus_client(c, FOCUS_FORCE);
 }
 
 void
@@ -402,7 +448,7 @@ place_icon(client_t *c)
 		for (x = s.left + ICON_SIZE; x < s.right - isize; x += isize) {
 			int overlap = 0;
 
-			for (p = head; p; p = p->next) {
+			for (p = focused; p; p = p->next) {
 				if (!IS_ON_CUR_DESK(p) || p == c)
 					continue;
 				if (!(p->state & STATE_ICONIFIED))
@@ -607,7 +653,7 @@ goto_desk(int new_desk)
 	cur_desk = new_desk;
 	set_atoms(root, net_cur_desk, XA_CARDINAL, &cur_desk, 1);
 
-	for (c = head; c; c = c->next)
+	for (c = focused; c; c = c->next)
 		map_if_desk(c);
 }
 
@@ -951,6 +997,114 @@ flush_expose(Window win)
 		;
 }
 
+int
+overlapping_geom(geom_t a, geom_t b)
+{
+	if (a.x <= b.x + b.w && a.x + a.w >= b.x &&
+	    a.y <= b.y + b.h && a.y + a.h >= b.y)
+		return 1;
+
+	return 0;
+}
+
+void
+adjust_client_order(client_t *c, int where)
+{
+	client_t *p, *pp;
+
+	if (c != NULL && focused == c && !c->next)
+		return;
+
+	switch (where) {
+	case ORDER_TOP:
+		for (p = focused; p && p->next; p = p->next) {
+			if (p->next == c) {
+				p->next = c->next;
+				break;
+			}
+		}
+
+		if (c != focused) {
+			c->next = focused;
+			focused = c;
+		}
+		break;
+	case ORDER_ICONIFIED_TOP:
+		/* remove first */
+		if (focused == c)
+			focused = c->next;
+		else {
+			for (p = focused; p && p->next; p = p->next)
+				if (p->next == c) {
+					p->next = c->next;
+					break;
+				}
+		}
+		c->next = NULL;
+
+		for (p = focused; p && p->next; pp = p, p = p->next) {
+			if (!(p->state & STATE_ICONIFIED))
+				continue;
+
+			/* place ahead of this first iconfied client */
+			if (pp)
+				pp->next = c;
+			if (c != p)
+				c->next = p;
+			break;
+		}
+
+		if (!c->next) {
+			/* no iconified clients, place at the bottom */
+			p->next = c;
+			c->next = NULL;
+		}
+		break;
+	case ORDER_BOTTOM:
+		for (p = focused; p && p->next; p = p->next) {
+			if (p->next == c)
+				p->next = c->next;
+			/* continue until p->next == NULL */
+		}
+
+		if (p)
+			p->next = c;
+		else
+			focused = c;
+
+		c->next = NULL;
+		break;
+	case ORDER_OUT:
+		if (c == focused)
+			focused = c->next;
+		else {
+			for (p = focused; p && p->next; p = p->next) {
+				if (p->next == c) {
+					p->next = c->next;
+					break;
+				}
+			}
+		}
+		break;
+	case ORDER_INVERT: {
+		client_t *pp, *n, *tail;
+
+		for (tail = focused; tail && tail->next; tail = tail->next)
+			;
+
+		for (p = focused, pp = NULL, n = tail; n; pp = p, p = n) {
+			n = p->next;
+			p->next = pp;
+		}
+		focused = tail;
+
+		break;
+	}
+	default:
+		printf("unknown client sort option %d\n", where);
+	}
+}
+
 #ifdef DEBUG
 char *
 state_name(client_t *c)
@@ -1079,7 +1233,7 @@ dump_clients()
 {
 	client_t *c;
 
-	for (c = head; c; c = c->next) {
+	for (c = focused; c; c = c->next) {
 		dump_name(c, __func__, NULL, c->name);
 		dump_geom(c, c->geom, "current");
 		dump_info(c);

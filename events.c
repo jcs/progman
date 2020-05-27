@@ -154,20 +154,15 @@ handle_button_press(XButtonEvent *e)
 		    !(c->state & (STATE_FULLSCREEN | STATE_ZOOMED |
 		    STATE_ICONIFIED))) {
 			/* alt+click, begin moving */
-			XRaiseWindow(dpy, c->frame);
-			focus_client(c);
+			focus_client(c, FOCUS_NORMAL);
 			move_client(c);
 		} else if (find_client(e->window, MATCH_FRAME)) {
 			/* raising our frame will also raise the window */
-			if (!(c->state & STATE_ICONIFIED))
-				XRaiseWindow(dpy, c->frame);
-			focus_client(c);
+			focus_client(c, FOCUS_NORMAL);
 			user_action(c, e->window, e->x, e->y, e->button, 1);
 		} else {
-			if (e->button == 1) {
-				XRaiseWindow(dpy, c->frame);
-				focus_client(c);
-			}
+			if (e->button == 1)
+				focus_client(c, FOCUS_NORMAL);
 
 			/* pass button event through */
 			XAllowEvents(dpy, ReplayPointer, CurrentTime);
@@ -292,8 +287,9 @@ handle_configure_request(XConfigureRequestEvent *e)
 	wc.stack_mode = e->detail;
 	XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 
+	/* top client may not be the focused one now */
 	if ((c = top_client()))
-		focus_client(c);
+		focus_client(c, FOCUS_FORCE);
 }
 
 /*
@@ -308,17 +304,20 @@ handle_circulate_request(XCirculateRequestEvent *e)
 	client_t *c;
 
 	if (e->parent == root) {
+		c = find_client(e->window, MATCH_ANY);
+
 		if (e->place == PlaceOnBottom) {
-			XLowerWindow(dpy, e->window);
-			focus_client(prev_focused());
+			if (c) {
+				adjust_client_order(c, ORDER_BOTTOM);
+				if (focused)
+					focus_client(focused, FOCUS_FORCE);
+			} else
+				XLowerWindow(dpy, e->window);
 		} else {
-			c = find_client(e->window, MATCH_ANY);
-
-			if (!(c && (c->state & STATE_SHADED)))
-				XRaiseWindow(dpy, e->window);
-
 			if (c)
-				focus_client(c);
+				focus_client(c, FOCUS_FORCE);
+			else
+				XRaiseWindow(dpy, e->window);
 		}
 	}
 }
@@ -337,7 +336,7 @@ handle_map_request(XMapRequestEvent *e)
 
 	if ((c = find_client(e->window, MATCH_WINDOW))) {
 		uniconify_client(c);
-		for (p = head; p; p = p->next)
+		for (p = focused; p; p = p->next)
 			if (p->trans == c->win)
 				uniconify_client(p);
 	} else {
@@ -408,8 +407,7 @@ handle_client_message(XClientMessageEvent *e)
 		c->desk = cur_desk;
 		map_if_desk(c);
 		uniconify_client(c);
-		XRaiseWindow(dpy, c->frame);
-		focus_client(c);
+		focus_client(c, FOCUS_NORMAL);
 	} else if (e->message_type == net_wm_state &&
 	    e->data.l[1] == net_wm_state_fs) {
 		if (e->data.l[0] == net_wm_state_add ||

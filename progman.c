@@ -54,7 +54,7 @@
 #include "icons/default_icon.xpm"
 #endif
 
-client_t *head, *focused;
+client_t *focused;
 int screen;
 unsigned long ndesks = 1;
 unsigned long cur_desk = 0;
@@ -251,6 +251,7 @@ setup_display(void)
 	XSetErrorHandler(handle_xerror);
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
+	focused = NULL;
 
 #ifdef USE_GDK_PIXBUF
 	gdk_pixbuf_xlib_init(dpy, screen);

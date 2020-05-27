@@ -56,8 +56,6 @@ new_client(Window w)
 
 	c = malloc(sizeof *c);
 	memset(c, 0, sizeof(*c));
-	c->next = head;
-	head = c;
 
 	c->name = get_wm_name(w);
 	c->icon_name = get_wm_icon_name(w);
@@ -111,8 +109,7 @@ new_client(Window w)
 	 * We are not actually keeping the stack one in order. However, every
 	 * fancy panel uses it and nothing else, no matter what the spec says.
 	 * (I'm not sure why, as rearranging the list every time the stacking
-	 * changes would be distracting. GNOME's window list applet
-	 * doesn't.)
+	 * changes would be distracting. GNOME's window list applet doesn't.)
 	 */
 	append_atoms(root, net_client_list, XA_WINDOW, &c->win, 1);
 	append_atoms(root, net_client_stack, XA_WINDOW, &c->win, 1);
@@ -138,7 +135,7 @@ find_client(Window w, int mode)
 {
 	client_t *c;
 
-	for (c = head; c; c = c->next) {
+	for (c = focused; c; c = c->next) {
 		switch (mode) {
 		case MATCH_ANY:
 			if (w == c->frame || w == c->win || w == c->resize_nw ||
@@ -243,25 +240,6 @@ top_client(void)
 	return foundc;
 }
 
-client_t *
-prev_focused(void)
-{
-	client_t *c = head;
-	client_t *prev = NULL;
-	unsigned int high = 0;
-
-	while (c) {
-		if (c->focus_order > high && c != focused &&
-		    !(c->state & (STATE_DOCK | STATE_ICONIFIED))) {
-			high = c->focus_order;
-			prev = c;
-		}
-		c = c->next;
-	}
-
-	return prev;
-}
-
 void
 map_client(client_t *c)
 {
@@ -271,10 +249,10 @@ map_client(client_t *c)
 	XGrabServer(dpy);
 
 	collect_struts(c, &s);
+	init_geom(c, &s);
 
 	/* this also builds (but does not map) the frame windows */
 	reparent(c, &s);
-	init_geom(c, &s);
 
 	if (c->state & STATE_ICONIFIED) {
 		c->ignore_unmap++;
@@ -285,7 +263,6 @@ map_client(client_t *c)
 	} else {
 		/* we're not allowing WithdrawnState */
 		set_wm_state(c, NormalState);
-
 		if (!(c->state & STATE_DOCK))
 			want_raise = 1;
 	}
@@ -298,13 +275,28 @@ map_client(client_t *c)
 		XFree(c->icon_name);
 	c->icon_name = get_wm_icon_name(c->win);
 
-	if (!(c->state & STATE_ICONIFIED)) {
-		XMapWindow(dpy, c->win);
-		XMapWindow(dpy, c->frame);
-		redraw_frame(c, None);
+	if (c->state & STATE_ICONIFIED)
+		adjust_client_order(c, ORDER_ICONIFIED_TOP);
+	else {
+		/* we haven't drawn anything yet, setup at the right place */
+		recalc_frame(c);
+		XMoveResizeWindow(dpy, c->frame,
+		    c->frame_geom.x, c->frame_geom.y,
+		    c->frame_geom.w, c->frame_geom.h);
+		XMoveResizeWindow(dpy, c->win,
+		    c->geom.x - c->frame_geom.x, c->geom.y - c->frame_geom.y,
+		    c->geom.w, c->geom.h);
 
-		if (want_raise)
-			focus_client(c);
+		if (want_raise) {
+			XMapWindow(dpy, c->frame);
+			XMapWindow(dpy, c->win);
+			focus_client(c, FOCUS_FORCE);
+		} else {
+			XMapWindow(dpy, c->frame);
+			XMapWindow(dpy, c->win);
+			adjust_client_order(c, ORDER_BOTTOM);
+			redraw_frame(c, None);
+		}
 
 		flush_expose_client(c);
 	}
@@ -403,9 +395,12 @@ init_geom(client_t *c, strut_t *s)
 		if (!c->placed || (c->frame_geom.x < 0 || c->geom.y <= 0)) {
 			c->geom.x += (c->geom.x - c->frame_geom.x);
 			c->geom.y += (c->geom.y - c->frame_geom.y);
-			recalc_frame(c);
 		}
 	}
+
+#ifdef DEBUG
+	dump_geom(c, c->geom, __func__);
+#endif
 }
 
 /*
@@ -1382,7 +1377,7 @@ collect_struts(client_t *c, strut_t *s)
 	XWindowAttributes attr;
 	strut_t temp;
 
-	for (p = head; p; p = p->next) {
+	for (p = focused; p; p = p->next) {
 		if (!IS_ON_CUR_DESK(p) || p == c)
 			continue;
 
@@ -1450,15 +1445,13 @@ set_shape(client_t *c)
  * should only fail here if that a window has removed itself completely before
  * the Unmap and Destroy events get through the queue to us. It's not pretty.
  *
- * The 'withdrawing' argument specifes if the client is actually destroying
- * itself or being destroyed by us, or if we are merely cleaning up its data
- * structures when we exit mid-session.
+ * The mode argument specifes if the client is actually destroying itself or
+ * being destroyed by us, or if we are merely cleaning up its data structures
+ * when we exit mid-session.
  */
 void
 del_client(client_t *c, int mode)
 {
-	client_t *p;
-
 	XGrabServer(dpy);
 	XSetErrorHandler(ignore_xerror);
 
@@ -1484,47 +1477,19 @@ del_client(client_t *c, int mode)
 	remove_atom(root, net_client_stack, XA_WINDOW, c->win);
 
 	XSetWindowBorderWidth(dpy, c->win, c->old_bw);
+	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
+	XRemoveFromSaveSet(dpy, c->win);
+	XDestroyWindow(dpy, c->frame);
+
 	if (c->xftdraw)
 		XftDrawDestroy(c->xftdraw);
 	if (c->icon_xftdraw)
 		XftDrawDestroy(c->icon_xftdraw);
-
-	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
-	XRemoveFromSaveSet(dpy, c->win);
-	if (c->resize_nw)
-		XDestroyWindow(dpy, c->resize_nw);
-	if (c->resize_n)
-		XDestroyWindow(dpy, c->resize_n);
-	if (c->resize_ne)
-		XDestroyWindow(dpy, c->resize_ne);
-	if (c->resize_e)
-		XDestroyWindow(dpy, c->resize_e);
-	if (c->resize_se)
-		XDestroyWindow(dpy, c->resize_se);
-	if (c->resize_s)
-		XDestroyWindow(dpy, c->resize_s);
-	if (c->resize_sw)
-		XDestroyWindow(dpy, c->resize_sw);
-	if (c->resize_w)
-		XDestroyWindow(dpy, c->resize_w);
-	if (c->titlebar)
-		XDestroyWindow(dpy, c->titlebar);
-	if (c->close)
-		XDestroyWindow(dpy, c->close);
-	if (c->iconify)
-		XDestroyWindow(dpy, c->iconify);
-	if (c->zoom)
-		XDestroyWindow(dpy, c->zoom);
-	XDestroyWindow(dpy, c->frame);
-
 	if (c->icon) {
 		XDestroyWindow(dpy, c->icon);
 		if (c->icon_label)
 			XDestroyWindow(dpy, c->icon_label);
-
-		/* TODO: reshuffle icons */
 	}
-
 	if (c->icon_gc)
 		XFreeGC(dpy, c->icon_gc);
 
@@ -1533,18 +1498,14 @@ del_client(client_t *c, int mode)
 	if (c->icon_name)
 		XFree(c->icon_name);
 
-	if (head == c)
-		head = c->next;
-	else {
-		for (p = head; p && p->next; p = p->next)
-			if (p->next == c)
-				p->next = c->next;
-	}
-
-	if (c == focused) {
-		focused = NULL;
-		focus_client(prev_focused());
-	}
+	if (focused == c) {
+		if (c->next) {
+			adjust_client_order(c, ORDER_OUT);
+			focus_client(c->next, FOCUS_FORCE);
+		} else
+			focused = NULL;
+	} else
+		adjust_client_order(c, ORDER_OUT);
 
 	free(c);
 
