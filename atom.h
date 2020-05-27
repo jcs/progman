@@ -25,10 +25,10 @@
 #include <X11/Xlib.h>
 
 struct strut {
-	unsigned long left;
-	unsigned long right;
-	unsigned long top;
-	unsigned long bottom;
+	long left;
+	long right;
+	long top;
+	long bottom;
 };
 
 typedef struct strut strut_t;
