@@ -37,7 +37,8 @@ fork_exec(char *cmd)
 
 	switch (pid) {
 	case 0:
-		execlp("/bin/sh", "sh", "-c", cmd, NULL);
+		setsid();
+		execl("/bin/sh", "sh", "-c", cmd, NULL);
 		fprintf(stderr, "exec failed, cleaning up child\n");
 		exit(1);
 	case -1:
