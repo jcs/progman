@@ -34,6 +34,10 @@ bind_keys(void)
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Tab), Mod1Mask | ShiftMask,
 	    root, False, GrabModeAsync, GrabModeAsync);
 
+	/* Alt+F4 closes */
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_F4), Mod1Mask, root, False,
+	    GrabModeAsync, GrabModeAsync);
+
 	/* Alt+1 -> 5 switch to that desk */
 	for (x = 0; x < ndesks; x++)
 		XGrabKey(dpy, XKeysymToKeycode(dpy, XK_1 + x), Mod1Mask, root,
@@ -107,6 +111,10 @@ handle_key_event(XKeyEvent *e)
 			focus_client(cycle_head, FOCUS_FORCE);
 		}
 
+		break;
+	case XK_F4:
+		if (e->state == Mod1Mask && e->type == KeyPress && focused)
+			send_wm_delete(focused);
 		break;
 	case XK_1:
 	case XK_2:
