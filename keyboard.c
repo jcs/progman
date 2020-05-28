@@ -26,18 +26,18 @@ static client_t *cycle_head = NULL;
 void
 bind_keys(void)
 {
+	int x;
+
 	/* Alt+Tab and Shift+Alt+Tab */
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Tab), Mod1Mask, root, False,
 	    GrabModeAsync, GrabModeAsync);
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Tab), Mod1Mask | ShiftMask,
 	    root, False, GrabModeAsync, GrabModeAsync);
 
-#if 0
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Alt_L), 0, root, False,
-	    GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Alt_R), 0, root, False,
-	    GrabModeAsync, GrabModeAsync);
-#endif
+	/* Alt+1 -> 5 switch to that desk */
+	for (x = 0; x < ndesks; x++)
+		XGrabKey(dpy, XKeysymToKeycode(dpy, XK_1 + x), Mod1Mask, root,
+		    False, GrabModeAsync, GrabModeAsync);
 }
 
 KeySym
@@ -55,7 +55,7 @@ handle_key_event(XKeyEvent *e)
 	char buf[64];
 #endif
 	KeySym kc = lookup_keysym(e);
-	client_t *p;
+	client_t *p, *next;
 
 #ifdef DEBUG
 	snprintf(buf, sizeof(buf), "%ld [%s]", kc, e->type == KeyRelease ?
@@ -86,25 +86,39 @@ handle_key_event(XKeyEvent *e)
 		XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync,
 		    e->time);
 
-		if (!cycle_head)
-			cycle_head = focused;
-
-		if (cycle_head) {
-			if (cycle_head->next)
-				focus_client(cycle_head->next,
-				    FOCUS_FORCE);
-			else {
-				/* circled around */
-				p = focused;
-				adjust_client_order(NULL, ORDER_INVERT);
-				/* redraw as unfocused */
-				redraw_frame(p, None);
-				focus_client(cycle_head, FOCUS_FORCE);
+		if (!cycle_head) {
+			if (!focused)
 				break;
-			}
 
+			cycle_head = focused;
 		}
 
+		if ((next = next_client_for_focus(cycle_head)))
+			focus_client(next, FOCUS_FORCE);
+		else {
+			/* probably at the end of the list, invert it back */
+			p = focused;
+			adjust_client_order(NULL, ORDER_INVERT);
+
+			if (p)
+				/* p should now not be focused */
+				redraw_frame(p, None);
+
+			focus_client(cycle_head, FOCUS_FORCE);
+		}
+
+		break;
+	case XK_1:
+	case XK_2:
+	case XK_3:
+	case XK_4:
+	case XK_5:
+	case XK_6:
+	case XK_7:
+	case XK_8:
+	case XK_9:
+		if (e->state == Mod1Mask && e->type == KeyPress)
+			goto_desk(kc - XK_1);
 		break;
 	}
 

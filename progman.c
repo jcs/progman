@@ -56,7 +56,7 @@
 
 client_t *focused;
 int screen;
-unsigned long ndesks = 1;
+unsigned long ndesks = DEF_NDESKS;
 unsigned long cur_desk = 0;
 unsigned int focus_order = 0;
 Bool shape;
@@ -336,8 +336,12 @@ setup_display(void)
 
 	find_supported_atoms();
 
-	get_atoms(root, net_num_desks, XA_CARDINAL, 0, &ndesks, 1, NULL);
+	set_atoms(root, net_num_desks, XA_CARDINAL, &ndesks, 1);
 	get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL);
+	if (cur_desk >= ndesks) {
+		cur_desk = ndesks - 1;
+		set_atoms(root, net_cur_desk, XA_CARDINAL, &cur_desk, 1);
+	}
 
 	shape = XShapeQueryExtension(dpy, &shape_event, &shape_err);
 

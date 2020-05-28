@@ -59,6 +59,8 @@
 #define DEF_BW 3
 #endif
 
+#define DEF_NDESKS 5
+
 #define DEF_NEW1 "aemenu --switch"
 #define DEF_NEW2 "xterm"
 #define DEF_NEW3 "aemenu --launch"
@@ -87,7 +89,7 @@
     (t) == net_wm_type_menu || (t) == net_wm_type_splash || \
     (t) == net_wm_type_desk)
 #define HAS_DECOR(t) (!CAN_PLACE_SELF(t))
-#define IS_ON_CUR_DESK(c) IS_ON_DESK((c)->desk, cur_desk)
+#define IS_ON_CUR_DESK(c) (IS_ON_DESK((c)->desk, cur_desk) || (c)->state & STATE_ICONIFIED)
 #define IS_RESIZE_WIN(c, w) (w == c->resize_nw || w == c->resize_w || \
 	w == c->resize_sw || w == c->resize_s || w == c->resize_se || \
 	w == c->resize_e || w == c->resize_ne || w == c->resize_n)
@@ -353,7 +355,9 @@ extern char *state_name(client_t *c);
 extern void flush_expose_client(client_t *c);
 extern void flush_expose(Window win);
 extern int overlapping_geom(geom_t a, geom_t b);
+extern void restack_clients(void);
 extern void adjust_client_order(client_t *, int);
+extern client_t *next_client_for_focus(client_t *);
 #ifdef DEBUG
 extern void dump_name(client_t *c, const char *label, const char *detail,
     const char *name);

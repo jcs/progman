@@ -251,8 +251,7 @@ map_client(client_t *c)
 		c->ignore_unmap++;
 		set_wm_state(c, IconicState);
 		XUnmapWindow(dpy, c->win);
-		if (IS_ON_CUR_DESK(c))
-			iconify_client(c);
+		iconify_client(c);
 	} else {
 		/* we're not allowing WithdrawnState */
 		set_wm_state(c, NormalState);
@@ -1462,6 +1461,8 @@ set_shape(client_t *c)
 void
 del_client(client_t *c, int mode)
 {
+	client_t *next;
+
 	XGrabServer(dpy);
 	XSetErrorHandler(ignore_xerror);
 
@@ -1509,10 +1510,12 @@ del_client(client_t *c, int mode)
 		XFree(c->icon_name);
 
 	if (focused == c) {
-		if (c->next) {
-			adjust_client_order(c, ORDER_OUT);
-			focus_client(c->next, FOCUS_FORCE);
-		} else
+		next = next_client_for_focus(c);
+		adjust_client_order(c, ORDER_OUT);
+
+		if (next)
+			focus_client(next, FOCUS_FORCE);
+		else
 			focused = NULL;
 	} else
 		adjust_client_order(c, ORDER_OUT);
