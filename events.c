@@ -33,7 +33,6 @@ static void handle_button_release(XButtonEvent *);
 static void handle_configure_request(XConfigureRequestEvent *);
 static void handle_circulate_request(XCirculateRequestEvent *);
 static void handle_map_request(XMapRequestEvent *);
-static void handle_unmap_event(XUnmapEvent *);
 static void handle_destroy_event(XDestroyWindowEvent *);
 static void handle_client_message(XClientMessageEvent *);
 static void handle_property_change(XPropertyEvent *);
@@ -356,7 +355,7 @@ handle_map_request(XMapRequestEvent *e)
  * before we even get the Unmap event, never mind the Destroy one. Therefore we
  * must be extra careful in del_client.
  */
-static void
+void
 handle_unmap_event(XUnmapEvent *e)
 {
 	client_t *c;

@@ -89,7 +89,8 @@
     (t) == net_wm_type_menu || (t) == net_wm_type_splash || \
     (t) == net_wm_type_desk)
 #define HAS_DECOR(t) (!CAN_PLACE_SELF(t))
-#define IS_ON_CUR_DESK(c) (IS_ON_DESK((c)->desk, cur_desk) || (c)->state & STATE_ICONIFIED)
+#define IS_ON_CUR_DESK(c) \
+	(IS_ON_DESK((c)->desk, cur_desk) || (c)->state & STATE_ICONIFIED)
 #define IS_RESIZE_WIN(c, w) (w == c->resize_nw || w == c->resize_w || \
 	w == c->resize_sw || w == c->resize_s || w == c->resize_se || \
 	w == c->resize_e || w == c->resize_ne || w == c->resize_n)
@@ -230,7 +231,7 @@ enum {
 };	/* focus_client */
 
 /* progman.c */
-extern client_t *focused;
+extern client_t *focused, *dragging;
 extern int screen;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
@@ -298,6 +299,7 @@ extern int exitmsg[2];
 extern void event_loop(void);
 extern int handle_xerror(Display *dpy, XErrorEvent *e);
 extern int ignore_xerror(Display *dpy, XErrorEvent *e);
+extern void handle_unmap_event(XUnmapEvent *e);
 #ifdef DEBUG
 extern void show_event(XEvent e);
 #endif

@@ -86,7 +86,7 @@ user_action(client_t *c, Window win, int x, int y, int button, int down)
 			uniconify_client(c);
 	} else if (win == c->titlebar) {
 		if (button == 1 && down) {
-			if (!(c->state & STATE_ZOOMED)) {
+			if (!(c->state & (STATE_ZOOMED | STATE_FULLSCREEN))) {
 				move_client(c);
 				/* sweep() eats the ButtonRelease event */
 				get_pointer(&x, &y);
@@ -231,7 +231,9 @@ move_client(client_t *c)
 		return;
 
 	collect_struts(c, &s);
+	dragging = c;
 	sweep(c, move_curs, recalc_move, NULL, &s);
+	dragging = NULL;
 
 	if (!(c->state & STATE_ICONIFIED))
 		redraw_frame(c, None);
@@ -631,6 +633,12 @@ goto_desk(int new_desk)
 	set_atoms(root, net_cur_desk, XA_CARDINAL, &cur_desk, 1);
 
 	for (c = focused; c; c = c->next) {
+		if (dragging == c) {
+			c->desk = cur_desk;
+			set_atoms(c->win, net_wm_desk, XA_CARDINAL, &cur_desk,
+			    1);
+		}
+
 		if (!IS_ON_CUR_DESK(c)) {
 			if (c->state & STATE_ICONIFIED) {
 				XUnmapWindow(dpy, c->icon);
@@ -686,7 +694,8 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 
 	while (!done) {
 		XMaskEvent(dpy, ExposureMask | MouseMask | PointerMotionMask |
-		    StructureNotifyMask | SubstructureNotifyMask, &sweepev);
+		    StructureNotifyMask | SubstructureNotifyMask |
+		    KeyPressMask | KeyReleaseMask, &sweepev);
 #ifdef DEBUG
 		show_event(sweepev);
 #endif
@@ -704,10 +713,17 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 			done = 1;
 			break;
 		case UnmapNotify:
-		case DestroyNotify:
-			/* this may affect our window, better stop */
-			done = 1;
-			XPutBackEvent(dpy, &sweepev);
+			if (c->win == sweepev.xunmap.window) {
+				done = 1;
+				XPutBackEvent(dpy, &sweepev);
+				break;
+			}
+			handle_unmap_event(&sweepev.xunmap);
+			break;
+		case KeyPress:
+		case KeyRelease:
+			/* to allow switching desktops while dragging */
+			handle_key_event(&sweepev.xkey);
 			break;
 		}
 	}
