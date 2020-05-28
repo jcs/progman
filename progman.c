@@ -386,23 +386,11 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 {
 	char msg[255];
 
-#ifdef DEBUG
-	client_t *c = find_client(e->resourceid, MATCH_WINDOW);
-#endif
-
 	if (e->error_code == BadAccess && e->resourceid == root)
 		errx(1, "root window unavailable");
 
 	XGetErrorText(dpy, e->error_code, msg, sizeof msg);
 	warnx("X error (%#lx): %s", e->resourceid, msg);
-#ifdef DEBUG
-	if (c) {
-#if 0 /* these can introduce additional xerrors so don't call them from here */
-		dump_info(c);
-		del_client(c, DEL_WITHDRAW);
-#endif
-	}
-#endif
 
 	return 0;
 }
