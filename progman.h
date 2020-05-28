@@ -61,11 +61,8 @@
 
 #define DEF_NDESKS 5
 
-#define DEF_NEW1 "aemenu --switch"
-#define DEF_NEW2 "xterm"
-#define DEF_NEW3 "aemenu --launch"
-#define DEF_NEW4 "aedesk -1"
-#define DEF_NEW5 "aedesk +1"
+#define DEF_LAUNCHER "aemenu --launch"
+#define DEF_TERMINAL "xterm"
 
 #define DOUBLE_CLICK_MSEC 250
 
@@ -290,8 +287,9 @@ extern char *opt_bevel_light;
 extern char *opt_bd;
 extern int opt_bw;
 extern int opt_pad;
-extern char *opt_new[];
 extern int opt_edge_resist;
+extern char *opt_launcher;
+extern char *opt_terminal;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 

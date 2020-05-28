@@ -120,8 +120,9 @@ char *opt_bd = DEF_BD;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
-char *opt_new[] = { DEF_NEW1, DEF_NEW2, DEF_NEW3, DEF_NEW4, DEF_NEW5 };
 int opt_edge_resist = DEF_EDGE_RES;
+char *opt_terminal = DEF_TERMINAL;
+char *opt_launcher = DEF_LAUNCHER;
 
 static void cleanup(void);
 static void read_config(char *);
@@ -209,24 +210,15 @@ read_config(char *rcfile)
 			} else if (strcmp(token, "padding") == 0) {
 				if (get_token(&p, token))
 					opt_pad = atoi(token);
-			} else if (strcmp(token, "button1") == 0) {
-				if (get_token(&p, token))
-					opt_new[0] = strdup(token);
-			} else if (strcmp(token, "button2") == 0) {
-				if (get_token(&p, token))
-					opt_new[1] = strdup(token);
-			} else if (strcmp(token, "button3") == 0) {
-				if (get_token(&p, token))
-					opt_new[2] = strdup(token);
-			} else if (strcmp(token, "button4") == 0) {
-				if (get_token(&p, token))
-					opt_new[3] = strdup(token);
-			} else if (strcmp(token, "button5") == 0) {
-				if (get_token(&p, token))
-					opt_new[4] = strdup(token);
 			} else if (strcmp(token, "edgeresist") == 0) {
 				if (get_token(&p, token))
 					opt_edge_resist = atoi(token);
+			} else if (strcmp(token, "launcher") == 0) {
+				if (get_token(&p, token))
+					opt_launcher = strdup(token);
+			} else if (strcmp(token, "terminal") == 0) {
+				if (get_token(&p, token))
+					opt_terminal = strdup(token);
 			}
 		}
 	}

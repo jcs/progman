@@ -28,13 +28,13 @@ bind_keys(void)
 {
 	int x;
 
-	/* Alt+Tab and Shift+Alt+Tab */
+	/* Alt+Tab and Shift+Alt+Tab will cycle windows */
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Tab), Mod1Mask, root, False,
 	    GrabModeAsync, GrabModeAsync);
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Tab), Mod1Mask | ShiftMask,
 	    root, False, GrabModeAsync, GrabModeAsync);
 
-	/* Alt+F4 closes */
+	/* Alt+F4 closes the current window */
 	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_F4), Mod1Mask, root, False,
 	    GrabModeAsync, GrabModeAsync);
 
@@ -42,6 +42,10 @@ bind_keys(void)
 	for (x = 0; x < ndesks; x++)
 		XGrabKey(dpy, XKeysymToKeycode(dpy, XK_1 + x), Mod1Mask, root,
 		    False, GrabModeAsync, GrabModeAsync);
+
+	/* Super_L (Win key) launches terminal */
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Super_L), 0, root, False,
+	    GrabModeAsync, GrabModeAsync);
 }
 
 KeySym
@@ -127,6 +131,10 @@ handle_key_event(XKeyEvent *e)
 	case XK_9:
 		if (e->state == Mod1Mask && e->type == KeyPress)
 			goto_desk(kc - XK_1);
+		break;
+	case XK_Super_L:
+		if (e->type == KeyPress)
+			fork_exec(opt_terminal);
 		break;
 	}
 

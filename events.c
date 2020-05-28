@@ -148,7 +148,7 @@ handle_button_press(XButtonEvent *e)
 	}
 
 	if (e->window == root) {
-		root_button_pressed = 1;
+		root_button_pressed = e->button;
 	} else if (c && (c->state & STATE_DOCK)) {
 		/* pass button event through */
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
@@ -187,28 +187,8 @@ handle_button_release(XButtonEvent *e)
 		}
 	}
 
-	if (e->window == root && root_button_pressed) {
-#ifdef DEBUG
-		dump_clients();
-#endif
-		switch (e->button) {
-		case Button1:
-			fork_exec(opt_new[0]);
-			break;
-		case Button2:
-			fork_exec(opt_new[1]);
-			break;
-		case Button3:
-			fork_exec(opt_new[2]);
-			break;
-		case Button4:
-			fork_exec(opt_new[3]);
-			break;
-		case Button5:
-			fork_exec(opt_new[4]);
-			break;
-		}
-
+	if (e->window == root && root_button_pressed == Button3) {
+		fork_exec(opt_launcher);
 		root_button_pressed = 0;
 	} else if (c) {
 		if (find_client(e->window, MATCH_FRAME))
