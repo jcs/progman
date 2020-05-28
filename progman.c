@@ -59,7 +59,7 @@ int screen;
 unsigned long ndesks = DEF_NDESKS;
 unsigned long cur_desk = 0;
 unsigned int focus_order = 0;
-Bool shape;
+Bool shape_support;
 int shape_event;
 Window supporting_wm_win;
 
@@ -344,7 +344,7 @@ setup_display(void)
 		set_atoms(root, net_cur_desk, XA_CARDINAL, &cur_desk, 1);
 	}
 
-	shape = XShapeQueryExtension(dpy, &shape_event, &shape_err);
+	shape_support = XShapeQueryExtension(dpy, &shape_event, &shape_err);
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = 0; i < nwins; i++) {

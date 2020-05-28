@@ -247,6 +247,9 @@ map_client(client_t *c)
 
 	constrain_frame(c);
 
+	if (shape_support)
+		set_shape(c);
+
 	if (c->state & STATE_ICONIFIED) {
 		c->ignore_unmap++;
 		set_wm_state(c, IconicState);
@@ -493,10 +496,8 @@ reparent(client_t *c, strut_t *s)
 	c->xftdraw = XftDrawCreate(dpy, (Drawable)c->titlebar,
 	    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
 
-	if (shape) {
+	if (shape_support)
 		XShapeSelectInput(dpy, c->win, ShapeNotifyMask);
-		set_shape(c);
-	}
 
 	XAddToSaveSet(dpy, c->win);
 	XSelectInput(dpy, c->win, ColormapChangeMask | PropertyChangeMask);
@@ -1412,38 +1413,42 @@ set_shape(client_t *c)
 
 	rects = XShapeGetRectangles(dpy, c->win, ShapeBounding, &n, &order);
 
-/* XXX */
-#define BW(c) 20
-#define TITLEBAR_HEIGHT(c) 20
-
 	if (n > 1) {
+		/* window contents */
 		XShapeCombineShape(dpy, c->frame, ShapeBounding,
-		    0, TITLEBAR_HEIGHT(c), c->win, ShapeBounding, ShapeSet);
-		temp.x = -BW(c);
-		temp.y = -BW(c);
-		temp.width = c->geom.w + 2 * BW(c);
-		temp.height = TITLEBAR_HEIGHT(c) + BW(c);
-		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
-		    0, 0, &temp, 1, ShapeUnion, YXBanded);
+		    c->resize_w_geom.w,
+		    c->resize_n_geom.h + c->titlebar_geom.h +
+		    (c->titlebar_geom.h ? 1 : 0),
+		    c->win, ShapeBounding, ShapeSet);
+
+		/* titlebar */
 		temp.x = 0;
 		temp.y = 0;
-		temp.width = c->geom.w;
-		temp.height = TITLEBAR_HEIGHT(c) - BW(c);
-		XShapeCombineRectangles(dpy, c->frame, ShapeClip,
-		    0, TITLEBAR_HEIGHT(c), &temp, 1, ShapeUnion, YXBanded);
-		c->shaped = 1;
-	} else if (c->shaped) {
-		/* I can't find a "remove all shaping" function... */
-		temp.x = -BW(c);
-		temp.y = -BW(c);
-		temp.width = c->geom.w + 2 * BW(c);
-		temp.height = c->geom.h + TITLEBAR_HEIGHT(c) + 2 * BW(c);
+		temp.width = c->frame_geom.w;
+		temp.height = c->resize_n_geom.h + c->titlebar_geom.h +
+		    (c->titlebar_geom.h ? 1 : 0);
 		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
-		    0, 0, &temp, 1, ShapeSet, YXBanded);
-	}
+		    0, 0, &temp, 1, ShapeUnion, YXBanded);
 
-#undef BW
-#undef TITLEBAR_HEIGHT
+		/* bottom border */
+		temp.height = c->resize_s_geom.h;
+		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
+		    0, c->frame_geom.h - c->resize_s_geom.h, &temp, 1,
+		    ShapeUnion, YXBanded);
+
+		/* left border */
+		temp.width = c->resize_w_geom.w;
+		temp.height = c->frame_geom.h;
+		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
+		    0, 0, &temp, 1, ShapeUnion, YXBanded);
+		/* right border */
+		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
+		    c->frame_geom.w - c->resize_e_geom.w, 0, &temp, 1,
+		    ShapeUnion, YXBanded);
+
+		c->shaped = 1;
+	} else
+		c->shaped = 0;
 
 	XFree(rects);
 }

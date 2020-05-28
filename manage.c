@@ -252,6 +252,7 @@ void
 resize_client(client_t *c, Window resize_win)
 {
 	strut_t hold = { 0, 0, 0, 0 };
+	XEvent junk;
 
 	if (c->state & STATE_ZOOMED) {
 		c->save = c->geom;
@@ -260,6 +261,12 @@ resize_client(client_t *c, Window resize_win)
 
 	sweep(c, cursor_for_resize_win(c, resize_win), recalc_resize,
 	    &resize_win, &hold);
+
+	if (c->shaped) {
+		/* flush ShapeNotify events */
+		while (XCheckTypedWindowEvent(dpy, c->win, shape_event, &junk))
+			;
+	}
 }
 
 /*
@@ -875,6 +882,8 @@ recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 
 	if (c->geom.w != now.w || c->geom.h != now.h) {
 		redraw_frame(c, None);
+		if (c->shaped)
+			set_shape(c);
 		send_config(c);
 	}
 }
@@ -1311,8 +1320,8 @@ dump_info(client_t *c)
 {
 	char *s = state_name(c);
 
-	printf("%31s[i] ignore_unmap %d, trans 0x%lx, focus %d\n", "",
-	    c->ignore_unmap, c->trans, focused == c ? 1 : 0);
+	printf("%31s[i] ignore_unmap %d, trans 0x%lx, focus %d, shape %d\n", "",
+	    c->ignore_unmap, c->trans, focused == c ? 1 : 0, c->shaped ? 1 : 0);
 	printf("%31s[i] desk %ld, state %s, %s\n", "",
 	    c->desk, s, show_grav(c));
 

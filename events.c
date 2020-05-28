@@ -113,7 +113,7 @@ event_loop(void)
 			handle_key_event(&ev.xkey);
 			break;
 		default:
-			if (shape && ev.type == shape_event)
+			if (shape_support && ev.type == shape_event)
 				handle_shape_change((XShapeEvent *)&ev);
 		}
 	}
@@ -574,7 +574,7 @@ show_event(XEvent e)
 	SHOW_EV(UnmapNotify, xunmap)
 	SHOW_EV(MotionNotify, xmotion)
 	default:
-		if (shape && e.type == shape_event) {
+		if (shape_support && e.type == shape_event) {
 			snprintf(ev_type, sizeof(ev_type), "ShapeNotify");
 			w = ((XShapeEvent *) & e)->window;
 			break;

@@ -235,7 +235,7 @@ extern client_t *focused, *dragging;
 extern int screen;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
-extern Bool shape;
+extern Bool shape_support;
 extern int shape_event;
 extern Window supporting_wm_win;
 extern XftFont *xftfont;
