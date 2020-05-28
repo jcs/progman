@@ -76,7 +76,6 @@ new_client(Window w)
 	c->icon = None;
 	c->icon_label = None;
 	c->icon_gc = None;
-	c->decor = 1;
 
 	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
 	XGetTransientForHint(dpy, c->win, &c->trans);
@@ -123,7 +122,7 @@ new_client(Window w)
 
 #ifdef DEBUG
 	dump_name(c, __func__, "", c->name);
-	dump_geom(c, c->geom, "initial");
+	dump_geom(c, c->geom, "XGetWindowAttributes");
 	dump_info(c);
 #endif
 
@@ -195,14 +194,6 @@ find_client_at_coords(Window w, int x, int y)
 				foundc = c;
 				break;
 			}
-		} else if (!c->decor) {
-			if (x >= c->geom.x &&
-			    x <= c->geom.x + c->geom.w &&
-			    y >= c->geom.y &&
-			    y <= c->geom.y + c->geom.h) {
-				foundc = c;
-				break;
-			}
 		} else {
 			if (x >= c->frame_geom.x &&
 			    x <= c->frame_geom.x + c->frame_geom.w &&
@@ -253,6 +244,8 @@ map_client(client_t *c)
 
 	/* this also builds (but does not map) the frame windows */
 	reparent(c, &s);
+
+	constrain_frame(c);
 
 	if (c->state & STATE_ICONIFIED) {
 		c->ignore_unmap++;
@@ -318,6 +311,9 @@ map_client(client_t *c)
 static void
 init_geom(client_t *c, strut_t *s)
 {
+#ifdef DEBUG
+	geom_t size_flags = { 0 };
+#endif
 	Atom win_type;
 	int screen_x = DisplayWidth(dpy, screen);
 	int screen_y = DisplayHeight(dpy, screen);
@@ -325,8 +321,16 @@ init_geom(client_t *c, strut_t *s)
 	int hmax = screen_y - s->top - s->bottom;
 	int mouse_x, mouse_y;
 
-	if (c->state & (STATE_ZOOMED | STATE_FULLSCREEN))
+	if (c->state & (STATE_ZOOMED | STATE_FULLSCREEN)) {
+		c->geom.x = s->top;
+		c->geom.y = s->left;
+		c->geom.w = wmax;
+		c->geom.h = hmax;
+#ifdef DEBUG
+		dump_geom(c, c->geom, "init_geom zoom/fs");
+#endif
 		return;
+	}
 
 	/*
 	 * Here, we merely set the values; they're in the same place regardless
@@ -334,6 +338,10 @@ init_geom(client_t *c, strut_t *s)
 	 * between the two cases later, if we need to.
 	 */
 	if (c->size.flags & (USSize | PSize)) {
+#ifdef DEBUG
+		size_flags.w = c->size.width;
+		size_flags.h = c->size.height;
+#endif
 		if (c->size.width > 0)
 			c->geom.w = c->size.width;
 		if (c->size.height > 0)
@@ -341,11 +349,20 @@ init_geom(client_t *c, strut_t *s)
 	}
 
 	if (c->size.flags & (USPosition | PPosition)) {
+#ifdef DEBUG
+		size_flags.x = c->size.x;
+		size_flags.y = c->size.y;
+#endif
 		if (c->size.x > 0)
 			c->geom.x = c->size.x;
 		if (c->size.y > 0)
 			c->geom.y = c->size.y;
 	}
+
+#ifdef DEBUG
+	if (c->size.flags & (USSize | PSize | USPosition | PPosition))
+		dump_geom(c, size_flags, "init_geom size flags");
+#endif
 
 	/*
 	 * Several types of windows can put themselves wherever they want, but
@@ -373,29 +390,22 @@ init_geom(client_t *c, strut_t *s)
 	 * except for transients, because they might be a panel-type client
 	 * popping up a notification window over themselves.
 	 */
-	if (!c->trans) {
-		if (c->geom.x + c->geom.w > screen_x - s->right)
-			c->geom.x = screen_x - s->right - c->geom.w;
-		if (c->geom.y + c->geom.h > screen_y - s->bottom)
-			c->geom.y = screen_y - s->bottom - c->geom.h;
-		if (c->geom.x < s->left || c->geom.w > wmax)
-			c->geom.x = s->left;
-		if (c->geom.y < s->top || c->geom.h > hmax)
-			c->geom.y = s->top;
-	}
+	if (c->geom.x + c->geom.w > screen_x - s->right)
+		c->geom.x = screen_x - s->right - c->geom.w;
+	if (c->geom.y + c->geom.h > screen_y - s->bottom)
+		c->geom.y = screen_y - s->bottom - c->geom.h;
+	if (c->geom.x < s->left || c->geom.w > wmax)
+		c->geom.x = s->left;
+	if (c->geom.y < s->top || c->geom.h > hmax)
+		c->geom.y = s->top;
 
-	/*
-	 * And now, wherever the client thought it was going, that's where the
-	 * frame is going, so adjust the client accordingly.
-	 */
-	if (c->decor) {
-		recalc_frame(c);
+	recalc_frame(c);
 
-		/* only move already-placed windows if they're off-screen */
-		if (!c->placed || (c->frame_geom.x < 0 || c->geom.y <= 0)) {
-			c->geom.x += (c->geom.x - c->frame_geom.x);
-			c->geom.y += (c->geom.y - c->frame_geom.y);
-		}
+	/* only move already-placed windows if they're off-screen */
+	if (!c->placed &&
+	    (c->frame_geom.x < s->left || c->geom.y <= s->top)) {
+		c->geom.x += (c->geom.x - c->frame_geom.x);
+		c->geom.y += (c->geom.y - c->frame_geom.y);
 	}
 
 #ifdef DEBUG
@@ -428,73 +438,61 @@ reparent(client_t *c, strut_t *s)
 	    DefaultVisual(dpy, screen),
 	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
 
-	if (c->decor) {
-		/*
-		 * These all get changed to button_bg.pixel in redraw_frame,
-		 * but make them black to start with so a slow-drawing window
-		 * just has a solid black background.
-		 */
-		pattr.background_pixel = BlackPixel(dpy, screen);
+	/*
+	 * Init all windows to 1x1+1+1 because a width/height of 0 causes a
+	 * BadValue error.  redraw_frame moves them to the right size and
+	 * position anyway, and some of these never even get mapped/shown.
+	 */
 
 #define _(x,y,z) x##y##z
 #define CREATE_RESIZE_WIN(DIR) \
-		pattr.cursor = _(resize_,DIR,_curs); \
-		_(c->resize_,DIR,) = XCreateWindow(dpy, c->frame, \
-		    _(c->resize_,DIR,_geom.x), _(c->resize_,DIR,_geom.y), \
-		    _(c->resize_,DIR,_geom.w), _(c->resize_,DIR,_geom.h), \
-		    0, CopyFromParent, InputOutput, CopyFromParent, \
-		    CWOverrideRedirect | CWBackPixel | CWEventMask | CWCursor, \
-		    &pattr); \
-		XReparentWindow(dpy, _(c->resize_,DIR,), c->frame, \
-		    _(c->resize_,DIR,_geom.x), _(c->resize_,DIR,_geom.y));
+	pattr.background_pixel = BlackPixel(dpy, screen); \
+	pattr.cursor = _(resize_,DIR,_curs); \
+	_(c->resize_,DIR,) = XCreateWindow(dpy, c->frame, 1, 1, 1, 1, \
+	    0, CopyFromParent, InputOutput, CopyFromParent, \
+	    CWOverrideRedirect | CWBackPixel | CWEventMask | CWCursor, \
+	    &pattr); \
+	XReparentWindow(dpy, _(c->resize_,DIR,), c->frame, \
+	    _(c->resize_,DIR,_geom.x), _(c->resize_,DIR,_geom.y));
 
-		CREATE_RESIZE_WIN(nw);
-		CREATE_RESIZE_WIN(n);
-		CREATE_RESIZE_WIN(ne);
-		CREATE_RESIZE_WIN(e);
-		CREATE_RESIZE_WIN(se);
-		CREATE_RESIZE_WIN(s);
-		CREATE_RESIZE_WIN(sw);
-		CREATE_RESIZE_WIN(w);
+	CREATE_RESIZE_WIN(nw);
+	CREATE_RESIZE_WIN(n);
+	CREATE_RESIZE_WIN(ne);
+	CREATE_RESIZE_WIN(e);
+	CREATE_RESIZE_WIN(se);
+	CREATE_RESIZE_WIN(s);
+	CREATE_RESIZE_WIN(sw);
+	CREATE_RESIZE_WIN(w);
 #undef _
 #undef CREATE_RESIZE_WIN
 
-		/* no CWCursor for these */
-		c->close = XCreateWindow(dpy, c->frame,
-		    c->close_geom.x, c->close_geom.y,
-		    c->close_geom.w, c->close_geom.h,
-		    0, CopyFromParent, InputOutput, CopyFromParent,
-		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
-		XReparentWindow(dpy, c->close, c->frame, c->close_geom.x,
-		    c->close_geom.y);
+	/* no CWCursor for these */
+	c->close = XCreateWindow(dpy, c->frame, 1, 1, 1, 1,
+	    0, CopyFromParent, InputOutput, CopyFromParent,
+	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
+	XReparentWindow(dpy, c->close, c->frame, c->close_geom.x,
+	    c->close_geom.y);
 
-		c->titlebar = XCreateWindow(dpy, c->frame,
-		    c->titlebar_geom.x, c->titlebar_geom.y,
-		    c->titlebar_geom.w, c->titlebar_geom.h,
-		    0, CopyFromParent, InputOutput, CopyFromParent,
-		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
-		XReparentWindow(dpy, c->titlebar, c->frame, c->titlebar_geom.x,
-		    c->titlebar_geom.y);
+	c->titlebar = XCreateWindow(dpy, c->frame, 1, 1, 1, 1,
+	    0, CopyFromParent, InputOutput, CopyFromParent,
+	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
+	XReparentWindow(dpy, c->titlebar, c->frame, c->titlebar_geom.x,
+	    c->titlebar_geom.y);
 
-		c->iconify = XCreateWindow(dpy, c->frame,
-		    c->iconify_geom.x, c->iconify_geom.y,
-		    c->iconify_geom.w, c->iconify_geom.h,
-		    0, CopyFromParent, InputOutput, CopyFromParent,
-		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
-		XReparentWindow(dpy, c->iconify, c->frame, c->iconify_geom.x,
-		    c->iconify_geom.y);
+	c->iconify = XCreateWindow(dpy, c->frame, 1, 1, 1, 1,
+	    0, CopyFromParent, InputOutput, CopyFromParent,
+	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
+	XReparentWindow(dpy, c->iconify, c->frame, c->iconify_geom.x,
+	    c->iconify_geom.y);
 
-		c->zoom = XCreateWindow(dpy, c->frame,
-		    c->zoom_geom.x, c->zoom_geom.y,
-		    c->zoom_geom.w, c->zoom_geom.h,
-		    0, CopyFromParent, InputOutput, CopyFromParent,
-		    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
-		XReparentWindow(dpy, c->zoom, c->frame, c->zoom_geom.x,
-		    c->zoom_geom.y);
+	c->zoom = XCreateWindow(dpy, c->frame, 1, 1, 1, 1,
+	    0, CopyFromParent, InputOutput, CopyFromParent,
+	    CWOverrideRedirect | CWBackPixel | CWEventMask, &pattr);
+	XReparentWindow(dpy, c->zoom, c->frame, c->zoom_geom.x,
+	    c->zoom_geom.y);
 
-		c->xftdraw = XftDrawCreate(dpy, (Drawable)c->titlebar,
-		    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
-	}
+	c->xftdraw = XftDrawCreate(dpy, (Drawable)c->titlebar,
+	    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
 
 	if (shape) {
 		XShapeSelectInput(dpy, c->win, ShapeNotifyMask);
@@ -513,9 +511,17 @@ reparent(client_t *c, strut_t *s)
 void
 recalc_frame(client_t *c)
 {
-	int borw = 0, buts = 0;
+	int borw = 0;
+	int buts = xftfont->ascent + xftfont->descent + (2 * opt_pad);
 
-	if (!c->decor || (c->state & (STATE_DOCK | STATE_FULLSCREEN)))
+	if (c->win_type == net_wm_type_dock ||
+	    c->win_type == net_wm_type_menu ||
+	    c->win_type == net_wm_type_splash ||
+	    c->win_type == net_wm_type_desk)
+		c->frame_style = FRAME_NONE;
+	else if (c->win_type == net_wm_type_utility)
+		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE);
+	else if (c->state & (STATE_DOCK | STATE_FULLSCREEN))
 		c->frame_style = FRAME_NONE;
 	else if (c->state & STATE_ZOOMED)
 		c->frame_style = FRAME_ALL & ~(FRAME_BORDER | FRAME_RESIZABLE);
@@ -530,23 +536,18 @@ recalc_frame(client_t *c)
 
 	if (c->frame_style & FRAME_RESIZABLE)
 		borw = opt_bw + 2;
-	else if (c->state & STATE_ZOOMED)
-		borw = 0;
 	else if (c->frame_style & FRAME_BORDER)
 		borw = 1;
 
-	if (c->frame_style & (FRAME_TITLEBAR | FRAME_CLOSE | FRAME_ICONIFY |
-	    FRAME_ZOOM))
-		buts = xftfont->ascent + xftfont->descent + (2 * opt_pad);
-
 	c->frame_geom.x = c->geom.x - borw;
-	c->frame_geom.y = c->geom.y - borw - (buts ? buts + 1 : 0);
+	c->frame_geom.y = c->geom.y - borw -
+	    ((c->frame_style & FRAME_TITLEBAR) ? buts + 1 : 0);
 	c->frame_geom.w = c->geom.w + borw + borw;
 	if (c->state & STATE_SHADED)
 		c->frame_geom.h = borw + buts + borw;
 	else
 		c->frame_geom.h = c->geom.h + borw +
-		    (buts ? buts + 1 : 0) + borw;
+		    ((c->frame_style & FRAME_TITLEBAR) ? buts + 1 : 0) + borw;
 
 	if (c->frame_style & FRAME_RESIZABLE) {
 		c->resize_nw_geom.x = 0;
@@ -687,8 +688,6 @@ check_states(client_t *c)
 		dump_name(c, __func__, "wm_wintype", XGetAtomName(dpy,
 		    c->win_type));
 #endif
-		c->decor = HAS_DECOR(c->win_type);
-
 		if (c->win_type == net_wm_type_dock)
 			c->state |= STATE_DOCK;
 	}
@@ -750,7 +749,7 @@ redraw_frame(client_t *c, Window only)
 	XGlyphInfo extents;
 	int x, y, tw;
 
-	if (!c || !c->decor || !c->frame)
+	if (!c || (c->frame_style & FRAME_NONE) || !c->frame)
 		return;
 
 	if (!IS_ON_CUR_DESK(c))
@@ -1414,6 +1413,10 @@ set_shape(client_t *c)
 
 	rects = XShapeGetRectangles(dpy, c->win, ShapeBounding, &n, &order);
 
+/* XXX */
+#define BW(c) 20
+#define TITLEBAR_HEIGHT(c) 20
+
 	if (n > 1) {
 		XShapeCombineShape(dpy, c->frame, ShapeBounding,
 		    0, TITLEBAR_HEIGHT(c), c->win, ShapeBounding, ShapeSet);
@@ -1439,6 +1442,9 @@ set_shape(client_t *c)
 		XShapeCombineRectangles(dpy, c->frame, ShapeBounding,
 		    0, 0, &temp, 1, ShapeSet, YXBanded);
 	}
+
+#undef BW
+#undef TITLEBAR_HEIGHT
 
 	XFree(rects);
 }

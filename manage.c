@@ -511,7 +511,7 @@ place_icon(client_t *c)
 void
 shade_client(client_t *c)
 {
-	if (c->state != STATE_NORMAL || !c->decor)
+	if (c->state != STATE_NORMAL || (c->frame_style & FRAME_NONE))
 		return;
 
 	c->state |= STATE_SHADED;
@@ -759,9 +759,10 @@ recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 	int hmax = screen_y - s->top - s->bottom;
 
 	c->geom.x = s->left + ((float) x1 / (float) screen_x) *
-	    (wmax + 1 - c->geom.w - 2 * BW(c));
+	    (wmax + 1 - c->geom.w - (2 * c->resize_nw_geom.w));
 	c->geom.y = s->top + ((float) y1 / (float) screen_y) *
-	    (hmax + 1 - c->geom.h - TITLEBAR_HEIGHT(c) - 2 * BW(c));
+	    (hmax + 1 - c->geom.h - c->titlebar_geom.h -
+	    (2 * c->resize_w_geom.w));
 }
 
 void
@@ -933,10 +934,9 @@ void
 constrain_frame(client_t *c)
 {
 	strut_t s = { 0 };
-	geom_t *g;
-	int h, w;
+	int h, w, delta;
 
-	if (c->state != STATE_NORMAL)
+	if (c->state & STATE_FULLSCREEN)
 		return;
 
 #ifdef DEBUG
@@ -944,40 +944,39 @@ constrain_frame(client_t *c)
 #endif
 
 	recalc_frame(c);
+	fix_size(c);
 
 	collect_struts(c, &s);
 
-	if (c->decor)
-		g = &c->frame_geom;
-	else
-		g = &c->geom;
-
-	if (g->x < s.top)
-		g->x = s.top;
-	if (g->y < s.left)
-		g->y = s.left;
-
-	h = DisplayHeight(dpy, screen) - s.top - s.bottom;
-	if (g->y + g->h > h)
-		g->h = h - g->y;
-
-	w = DisplayWidth(dpy, screen) - s.left - s.right;
-	if (g->x + g->w > w)
-		g->w = w - g->x;
-
-	if (c->decor) {
-		/*
-		 * recalc_frame adjusts based on c->geom, and we've been
-		 * changing c->frame_geom, so shrink c->geom to the frame_geom
-		 */
-		c->geom.w = c->frame_geom.w - c->resize_w_geom.w -
-		    c->resize_e_geom.w;
-		c->geom.h = c->frame_geom.h - c->resize_nw_geom.h - 1 -
-		    c->resize_s_geom.h;
+	if (c->frame_geom.x < s.left) {
+		delta = s.left - c->frame_geom.x;
+		c->frame_geom.x += delta;
+		c->geom.x -= delta;
+	}
+	if (c->frame_geom.y < s.top) {
+		delta = s.top - c->frame_geom.y;
+		c->frame_geom.y += delta;
+		c->geom.y += delta;
 	}
 
-	fix_size(c);
+	h = DisplayHeight(dpy, screen) - s.top - s.bottom;
+	if (c->frame_geom.y + c->frame_geom.h > h) {
+		delta = h - c->frame_geom.y - c->frame_geom.h;
+		c->frame_geom.h -= delta;
+		c->geom.h -= delta;
+	}
+
+	w = DisplayWidth(dpy, screen) - s.left - s.right;
+	if (c->frame_geom.x + c->frame_geom.w > w) {
+		delta = w - c->frame_geom.x - c->frame_geom.w;
+		c->frame_geom.w -= delta;
+		c->geom.w -= delta;
+	}
+
+	/* TODO: fix_size() again but don't allow enlarging */
+
 	recalc_frame(c);
+
 #ifdef DEBUG
 	dump_geom(c, c->geom, "constrain_frame final");
 #endif
@@ -1239,8 +1238,8 @@ dump_info(client_t *c)
 {
 	char *s = state_name(c);
 
-	printf("%31s[i] decor %d, ignore_unmap %d, trans 0x%lx, focus %d\n", "",
-	    c->decor, c->ignore_unmap, c->trans, focused == c ? 1 : 0);
+	printf("%31s[i] ignore_unmap %d, trans 0x%lx, focus %d\n", "",
+	    c->ignore_unmap, c->trans, focused == c ? 1 : 0);
 	printf("%31s[i] desk %ld, state %s, %s\n", "",
 	    c->desk, s, show_grav(c));
 

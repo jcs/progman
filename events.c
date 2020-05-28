@@ -238,11 +238,9 @@ handle_configure_request(XConfigureRequestEvent *e)
 		recalc_frame(c);
 
 		if (e->value_mask & CWX)
-			c->geom.x = e->x +
-			    (c->decor ? c->geom.x - c->frame_geom.x : 0);
+			c->geom.x = e->x + (c->geom.x - c->frame_geom.x);
 		if (e->value_mask & CWY)
-			c->geom.y = e->y +
-			    (c->decor ? c->geom.y - c->frame_geom.y : 0);
+			c->geom.y = e->y + (c->geom.y - c->frame_geom.y);
 		if (e->value_mask & CWWidth)
 			c->geom.w = e->width;
 		if (e->value_mask & CWHeight)
@@ -450,7 +448,8 @@ handle_property_change(XPropertyEvent *e)
 		if (c->name)
 			XFree(c->name);
 		c->name = get_wm_name(c->win);
-		redraw_frame(c, c->titlebar);
+		if (c->frame_style & FRAME_TITLEBAR)
+			redraw_frame(c, c->titlebar);
 	} else if (e->atom == XA_WM_ICON_NAME || e->atom == net_wm_icon_name) {
 		if (c->icon_name)
 			XFree(c->icon_name);
