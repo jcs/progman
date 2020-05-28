@@ -297,82 +297,79 @@ extern int exitmsg[2];
 
 /* event.c */
 extern void event_loop(void);
-extern int handle_xerror(Display *dpy, XErrorEvent *e);
-extern int ignore_xerror(Display *dpy, XErrorEvent *e);
-extern void handle_unmap_event(XUnmapEvent *e);
+extern int handle_xerror(Display *, XErrorEvent *);
+extern int ignore_xerror(Display *, XErrorEvent *);
+extern void handle_unmap_event(XUnmapEvent *);
 #ifdef DEBUG
-extern void show_event(XEvent e);
+extern void show_event(XEvent);
 #endif
 
 /* client.c */
-extern client_t *new_client(Window w);
-extern client_t *find_client(Window w, int mode);
-extern client_t *find_client_at_coords(Window w, int x, int y);
+extern client_t *new_client(Window);
+extern client_t *find_client(Window, int);
+extern client_t *find_client_at_coords(Window, int, int);
 extern client_t *top_client(void);
 extern client_t *prev_focused(int);
 extern void map_client(client_t *);
-extern void recalc_frame(client_t *c);
-extern int set_wm_state(client_t *c, unsigned long state);
-extern void check_states(client_t *c);
+extern void recalc_frame(client_t *);
+extern int set_wm_state(client_t *, unsigned long);
+extern void check_states(client_t *);
 extern void parse_state_atom(client_t *, Atom);
-extern void send_config(client_t *c);
-extern void redraw_frame(client_t *c, Window);
+extern void send_config(client_t *);
+extern void redraw_frame(client_t *, Window);
 extern void collect_struts(client_t *, strut_t *);
 extern void get_client_icon(client_t *);
-extern void redraw_icon(client_t *c, Window win);
-extern void set_shape(client_t *c);
-extern void del_client(client_t *c, int mode);
+extern void redraw_icon(client_t *, Window);
+extern void set_shape(client_t *);
+extern void del_client(client_t *, int);
 
 /* manage.c */
-extern void user_action(client_t *c, Window win, int x, int y, int button,
-    int down);
-extern int pos_in_frame(client_t *c, int x, int y);
-extern Cursor cursor_for_resize_win(client_t *c, Window win);
-extern void focus_client(client_t *c, int);
-extern void move_client(client_t *c);
-extern void resize_client(client_t *c, Window resize_pos);
-extern void iconify_client(client_t *c);
-extern void uniconify_client(client_t *c);
-extern void place_icon(client_t *c);
-extern void shade_client(client_t *c);
-extern void unshade_client(client_t *c);
-extern void fullscreen_client(client_t *c);
-extern void unfullscreen_client(client_t *c);
-extern void zoom_client(client_t *c);
-extern void unzoom_client(client_t *c);
-extern void send_wm_delete(client_t *c);
-extern void goto_desk(int new_desk);
-extern void map_if_desk(client_t *c);
-extern void sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg,
-    strut_t *s);
-extern void recalc_map(client_t *c, geom_t orig, int x0, int y0, int x1,
-    int y1, strut_t *s, void *arg);
-extern void recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1,
-    int y1, strut_t *s, void *arg);
-extern void recalc_resize(client_t *c, geom_t orig, int x0, int y0, int x1,
-    int y1, strut_t *s, void *arg);
+extern void user_action(client_t *, Window, int, int, int, int);
+extern int pos_in_frame(client_t *, int, int);
+extern Cursor cursor_for_resize_win(client_t *, Window);
+extern void focus_client(client_t *, int);
+extern void move_client(client_t *);
+extern void resize_client(client_t *, Window);
+extern void iconify_client(client_t *);
+extern void uniconify_client(client_t *);
+extern void place_icon(client_t *);
+extern void shade_client(client_t *);
+extern void unshade_client(client_t *);
+extern void fullscreen_client(client_t *);
+extern void unfullscreen_client(client_t *);
+extern void zoom_client(client_t *);
+extern void unzoom_client(client_t *);
+extern void send_wm_delete(client_t *);
+extern void goto_desk(int);
+extern void map_if_desk(client_t *);
+extern void sweep(client_t *, Cursor, sweep_func, void *, strut_t *);
+extern void recalc_map(client_t *, geom_t, int, int, int, int, strut_t *,
+    void *);
+extern void recalc_move(client_t *, geom_t, int, int, int, int, strut_t *,
+    void *);
+extern void recalc_resize(client_t *, geom_t, int, int, int, int, strut_t *,
+    void *);
 extern void fix_size(client_t *);
 extern void constrain_frame(client_t *);
-extern char *state_name(client_t *c);
-extern void flush_expose_client(client_t *c);
-extern void flush_expose(Window win);
-extern int overlapping_geom(geom_t a, geom_t b);
+extern char *state_name(client_t *);
+extern void flush_expose_client(client_t *);
+extern void flush_expose(Window);
+extern int overlapping_geom(geom_t, geom_t);
 extern void restack_clients(void);
 extern void adjust_client_order(client_t *, int);
 extern client_t *next_client_for_focus(client_t *);
 #ifdef DEBUG
-extern void dump_name(client_t *c, const char *label, const char *detail,
-    const char *name);
-extern void dump_info(client_t *c);
-extern void dump_geom(client_t *c, geom_t g, const char *label);
-extern void dump_removal(client_t *c, int mode);
+extern void dump_name(client_t *, const char *, const char *, const char *);
+extern void dump_info(client_t *);
+extern void dump_geom(client_t *, geom_t, const char *);
+extern void dump_removal(client_t *, int);
 extern void dump_clients(void);
-extern const char *frame_name(client_t *c, Window w);
+extern const char *frame_name(client_t *, Window);
 #endif
 
 /* keyboard.c */
 extern void bind_keys(void);
-extern KeySym lookup_keysym(XKeyEvent *e);
-extern void handle_key_event(XKeyEvent *e);
+extern KeySym lookup_keysym(XKeyEvent *);
+extern void handle_key_event(XKeyEvent *);
 
 #endif	/* PROGMAN_H */
