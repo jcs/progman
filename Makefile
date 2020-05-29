@@ -23,6 +23,11 @@ PREFIX?=	/usr/local
 X11BASE?=	/usr/X11R6
 
 PKGLIBS=	x11 xft xpm gtk+-2.0
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+        PKGLIBS+= libbsd xext
+endif
 
 CC?=		cc
 CFLAGS+=	-O2 -Wall -Wunused \
@@ -34,7 +39,7 @@ LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 #CFLAGS+=	-g -DDEBUG=1
 
 # uncomment for HiDPI displays
-CFLAGS+=	-DHIDPI=1
+#CFLAGS+=	-DHIDPI=1
 
 # uncomment to use gdk-pixbuf to rescale icons
 PKGLIBS+=	gdk-pixbuf-xlib-2.0

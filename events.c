@@ -28,6 +28,11 @@
 #include "progman.h"
 #include "atom.h"
 
+#ifdef __linux__
+        #include <bsd/string.h>
+        #define INFTIM          (-1)
+#endif
+
 static void handle_button_press(XButtonEvent *);
 static void handle_button_release(XButtonEvent *);
 static void handle_configure_request(XConfigureRequestEvent *);
@@ -58,7 +63,8 @@ event_loop(void)
 
 	for (;;) {
 		if (!XPending(dpy)) {
-			poll(pfd, 2, INFTIM);
+//			poll(pfd, 2, INFTIM);
+			poll(pfd, 2, -1);
 			if (pfd[1].revents)
 				/* exitmsg */
 				break;

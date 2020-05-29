@@ -31,6 +31,7 @@
 #include "progman.h"
 #include "atom.h"
 
+
 static void do_iconify(client_t *);
 static void do_shade(client_t *);
 static void maybe_toolbar_click(client_t *, Window);
