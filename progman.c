@@ -20,6 +20,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#define WAIT_ANY -1
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
