@@ -46,14 +46,14 @@
 #define DEF_BD "black"
 
 #ifdef HIDPI
-#define DEF_XFTFONT "Microsoft Sans Serif:bold:size=14"
-#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=11"
+#define DEF_FONT "Microsoft Sans Serif:bold:size=14"
+#define DEF_ICONFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 6
 #define DEF_BW 6
 #else
-#define DEF_XFTFONT "system:size=13"
-#define DEF_ICON_XFTFONT "Microsoft Sans Serif:size=11"
+#define DEF_FONT "system:size=13"
+#define DEF_ICONFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 3
 #define DEF_BW 3
@@ -235,8 +235,8 @@ extern unsigned long ndesks;
 extern Bool shape_support;
 extern int shape_event;
 extern Window supporting_wm_win;
-extern XftFont *xftfont;
-extern XftFont *icon_xftfont;
+extern XftFont *font;
+extern XftFont *iconfont;
 extern XftColor xft_fg;
 extern XftColor xft_fg_unfocused;
 extern Colormap cmap;
@@ -275,7 +275,8 @@ extern Cursor resize_nw_curs;
 extern Cursor resize_sw_curs;
 extern Cursor resize_ne_curs;
 extern Cursor resize_se_curs;
-extern char *opt_xftfont;
+extern char *opt_font;
+extern char *opt_iconfont;
 extern char *opt_fg;
 extern char *opt_bg;
 extern char *opt_fg_unfocused;

@@ -512,7 +512,7 @@ void
 recalc_frame(client_t *c)
 {
 	int borw = 0;
-	int buts = xftfont->ascent + xftfont->descent + (2 * opt_pad);
+	int buts = font->ascent + font->descent + (2 * opt_pad);
 
 	if (c->win_type == net_wm_type_dock ||
 	    c->win_type == net_wm_type_menu ||
@@ -802,7 +802,7 @@ redraw_frame(client_t *c, Window only)
 			XClearWindow(dpy, c->titlebar);
 
 			if (c->name) {
-				XftTextExtentsUtf8(dpy, xftfont,
+				XftTextExtentsUtf8(dpy, font,
 				    (FcChar8 *)c->name, strlen(c->name),
 				    &extents);
 				tw = extents.xOff;
@@ -812,9 +812,9 @@ redraw_frame(client_t *c, Window only)
 					/* center title */
 					x = (c->titlebar_geom.w / 2) - (tw / 2);
 
-				y = opt_pad + xftfont->ascent;
+				y = opt_pad + font->ascent;
 
-				XftDrawStringUtf8(c->xftdraw, txft, xftfont, x,
+				XftDrawStringUtf8(c->xftdraw, txft, font, x,
 				    y, (unsigned char *)c->name,
 				    strlen(c->name));
 			}
@@ -1331,7 +1331,7 @@ redraw_icon(client_t *c, Window only)
 	if (!c->icon_name)
 		c->icon_name = strdup("(Unknown)");
 
-	xft_lines = word_wrap_xft(c->icon_name, ' ', icon_xftfont,
+	xft_lines = word_wrap_xft(c->icon_name, ' ', iconfont,
 	    (ICON_SIZE * 2) - (label_pad * 2), &nlines);
 
 	c->icon_label_geom.y = c->icon_geom.y + ICON_SIZE + 10;
@@ -1346,8 +1346,7 @@ redraw_icon(client_t *c, Window only)
 		w = label_pad + line->xft_width + label_pad;
 		if (w > c->icon_label_geom.w)
 			c->icon_label_geom.w = w;
-		c->icon_label_geom.h += icon_xftfont->ascent +
-		    icon_xftfont->descent;
+		c->icon_label_geom.h += iconfont->ascent + iconfont->descent;
 	}
 
 	c->icon_label_geom.h += label_pad;
@@ -1364,10 +1363,10 @@ redraw_icon(client_t *c, Window only)
 		    (sizeof(struct xft_line_t) * x);
 		int lx = ((c->icon_label_geom.w - line->xft_width) / 2);
 
-		ly += icon_xftfont->ascent;
-		XftDrawStringUtf8(c->icon_xftdraw, txft, icon_xftfont, lx, ly,
+		ly += iconfont->ascent;
+		XftDrawStringUtf8(c->icon_xftdraw, txft, iconfont, lx, ly,
 		    (FcChar8 *)line->str, line->len);
-		ly += icon_xftfont->descent;
+		ly += iconfont->descent;
 	}
 
 	free(xft_lines);

@@ -63,8 +63,8 @@ Bool shape_support;
 int shape_event;
 Window supporting_wm_win;
 
-XftFont *xftfont;
-XftFont *icon_xftfont;
+XftFont *font;
+XftFont *iconfont;
 XftColor xft_fg;
 XftColor xft_fg_unfocused;
 
@@ -107,8 +107,8 @@ Cursor resize_se_curs;
 
 int exitmsg[2];
 
-char *opt_xftfont = DEF_XFTFONT;
-char *opt_icon_xftfont = DEF_ICON_XFTFONT;
+char *opt_font = DEF_FONT;
+char *opt_iconfont = DEF_ICONFONT;
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
 char *opt_fg_unfocused = DEF_FG_UNFOCUSED;
@@ -181,10 +181,10 @@ read_config(char *inifile)
 		goto done;
 
 	while (get_ini_kv(ini, &key, &val)) {
-		if (strcmp(key, "xftfont") == 0)
-			opt_xftfont = strdup(val);
-		else if (strcmp(key, "icon_xftfont") == 0)
-			opt_icon_xftfont = strdup(val);
+		if (strcmp(key, "font") == 0)
+			opt_font = strdup(val);
+		else if (strcmp(key, "iconfont") == 0)
+			opt_iconfont = strdup(val);
 		else if (strcmp(key, "fgcolor") == 0)
 			opt_fg = strdup(val);
 		else if (strcmp(key, "bgcolor") == 0)
@@ -284,13 +284,13 @@ setup_display(void)
 	xft_fg_unfocused.color.alpha = 0xffff;
 	xft_fg_unfocused.pixel = fg_unfocused.pixel;
 
-	xftfont = XftFontOpenName(dpy, screen, opt_xftfont);
-	if (!xftfont)
-		errx(1, "Xft font \"%s\" not found", opt_xftfont);
+	font = XftFontOpenName(dpy, screen, opt_font);
+	if (!font)
+		errx(1, "Xft font \"%s\" not found", opt_font);
 
-	icon_xftfont = XftFontOpenName(dpy, screen, opt_icon_xftfont);
-	if (!icon_xftfont)
-		errx(1, "icon Xft font \"%s\" not found", opt_icon_xftfont);
+	iconfont = XftFontOpenName(dpy, screen, opt_iconfont);
+	if (!iconfont)
+		errx(1, "icon Xft font \"%s\" not found", opt_iconfont);
 
 	pixmap_gc = XCreateGC(dpy, root, 0, &gv);
 
@@ -413,8 +413,8 @@ cleanup(void)
 	}
 	XFree(wins);
 
-	XftFontClose(dpy, xftfont);
-	XftFontClose(dpy, icon_xftfont);
+	XftFontClose(dpy, font);
+	XftFontClose(dpy, iconfont);
 	XFreeCursor(dpy, map_curs);
 	XFreeCursor(dpy, move_curs);
 	XFreeCursor(dpy, resize_n_curs);
