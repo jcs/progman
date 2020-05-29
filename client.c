@@ -1554,9 +1554,10 @@ del_client(client_t *c, int mode)
 		XFree(c->icon_name);
 
 	if (focused == c) {
-		next = next_client_for_focus(c);
+		next = next_client_for_focus(focused);
+		if (!next)
+			next = focused->next;
 		adjust_client_order(c, ORDER_OUT);
-
 		if (next)
 			focus_client(next, FOCUS_FORCE);
 		else
