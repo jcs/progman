@@ -1,5 +1,5 @@
 /*
- * Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
+ * Copyright 2020 joshua stein <jcs@jcs.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,83 +19,109 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <err.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include "common.h"
 #include "parser.h"
 
 /*
- * If the user specifies an rc file, return NULL immediately if it's not found;
- * otherwise, search for the usual suspects.
+ * If the user specifies an ini file, return NULL immediately if it's not
+ * found; otherwise, search for the usual suspects.
  */
 
 FILE *
-open_rc(char *rcfile, char *def)
+open_ini(char *inifile)
 {
-	FILE *rc;
+	FILE *ini;
 	char buf[BUF_SIZE];
 
-	if (rcfile)
-		return fopen(rcfile, "r");
+	if (inifile)
+		return fopen(inifile, "r");
 
-	snprintf(buf, sizeof buf, "%s/.config/progman/%s", getenv("HOME"), def);
-	if ((rc = fopen(buf, "r")))
-		return rc;
-
-	return NULL;
-}
-
-char *
-get_rc_line(char *s, int size, FILE * stream)
-{
-	while (fgets(s, size, stream)) {
-		if (s[0] == '#' || s[0] == '\n')
-			continue;
-
-		return s;
-	}
+	snprintf(buf, sizeof(buf), "%s/.config/progman/progman.ini",
+	    getenv("HOME"));
+	if ((ini = fopen(buf, "r")))
+		return ini;
 
 	return NULL;
 }
-
-/*
- * Our crappy parser. A token is either a whitespace-delimited word, or a bunch
- * of words in double quotes (backslashes are permitted in either case).  src
- * points to somewhere in a buffer -- the caller must save the location of this
- * buffer, because we update src to point past all the tokens found so far. If
- * we find a token, we write it into dest (caller is responsible for allocating
- * storage) and return 1. Otherwise return 0.
- */
 
 int
-get_token(char **src, char *dest)
+find_ini_section(FILE *stream, char *section)
 {
-	int quoted = 0, nchars = 0;
+	char buf[BUF_SIZE], marker[BUF_SIZE];
 
-	while (**src && isspace(**src))
-		(*src)++;
+	snprintf(marker, sizeof(marker), "[%s]\n", section);
 
-	if (**src == '"') {
-		quoted = 1;
-		(*src)++;
+	while (fgets(buf, sizeof(buf), stream)) {
+		if (buf[0] == '#' || buf[0] == '\n')
+			continue;
+		if (strncmp(buf, marker, strlen(marker)) == 0)
+			return 1;
 	}
-	while (**src) {
-		if (quoted) {
-			if (**src == '"') {
-				(*src)++;
-				break;
-			}
-		} else {
-			if (isspace(**src))
-				break;
+
+	return 0;
+}
+
+int
+get_ini_kv(FILE *stream, char **key, char **val)
+{
+	char buf[BUF_SIZE], *tval;
+	long pos = ftell(stream);
+	int len;
+
+	buf[0] = '\0';
+
+	/* find next non-comment, non-section line */
+	while (fgets(buf, sizeof(buf), stream)) {
+		if (buf[0] == '#' || buf[0] == '\n') {
+			pos = ftell(stream);
+			continue;
 		}
-		if (**src == '\\')
-			(*src)++;
-		*dest++ = *(*src)++;
-		nchars++;
+
+		if (buf[0] == '[') {
+			/* new section, rewind so find_ini_section can see it */
+			fseek(stream, pos, SEEK_SET);
+			return 0;
+		}
+
+		break;
 	}
 
-	*dest = '\0';
-	return nchars || quoted;
+	if (!buf[0])
+		return 0;
+
+	tval = strchr(buf, '=');
+	if (tval == NULL) {
+		warnx("bad line in ini file: %s", buf);
+		return 0;
+	}
+
+	tval[0] = '\0';
+	tval++;
+
+	/* trim trailing spaces from key */
+	for (len = strlen(buf); len > 0 && buf[len - 1] == ' '; len--)
+		;
+	buf[len] = '\0';
+
+	/* trim leading spaces from val */
+	while (tval[0] == ' ')
+		tval++;
+
+	/* and trailing spaces and newlines from val */
+	len = strlen(tval) - 1;
+	while (len) {
+		if (tval[len] == ' ' || tval[len] == '\r' || tval[len] == '\n')
+			len--;
+		else
+			break;
+	}
+	tval[len + 1] = '\0';
+
+	*key = strdup(buf);
+	*val = strdup(tval);
+
+	return 1;
 }

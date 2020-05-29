@@ -1,5 +1,5 @@
 /*
- * Copyright 1998-2007 Decklin Foster <decklin@red-bean.com>.
+ * Copyright 2020 joshua stein <jcs@jcs.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -24,8 +24,8 @@
 
 #include <stdio.h>
 
-FILE *open_rc(char *, char *);
-char *get_rc_line(char *, int, FILE *);
-int get_token(char **, char *);
+FILE *open_ini(char *);
+int find_ini_section(FILE *, char *);
+int get_ini_kv(FILE *, char **, char **);
 
 #endif	/* PROGMAN_PARSER_H */

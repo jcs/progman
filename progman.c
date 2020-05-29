@@ -166,63 +166,56 @@ main(int argc, char **argv)
 }
 
 static void
-read_config(char *rcfile)
+read_config(char *inifile)
 {
-	FILE *rc;
-	char buf[BUF_SIZE], token[BUF_SIZE], *p;
+	FILE *ini;
+	char *key, *val;
 
-	if (!(rc = open_rc(rcfile, "progmanrc"))) {
-		if (rcfile)
-			warn("rc file \"%s\" not found", rcfile);
+	if (!(ini = open_ini(inifile))) {
+		if (inifile)
+			err(1, "can't open config file \"%s\"", inifile);
 		return;
 	}
 
-	while (get_rc_line(buf, sizeof buf, rc)) {
-		p = buf;
-		while (get_token(&p, token)) {
-			if (strcmp(token, "xftfont") == 0) {
-				if (get_token(&p, token))
-					opt_xftfont = strdup(token);
-			} else if (strcmp(token, "icon_xftfont") == 0) {
-				if (get_token(&p, token))
-					opt_icon_xftfont = strdup(token);
-			} else if (strcmp(token, "fgcolor") == 0) {
-				if (get_token(&p, token))
-					opt_fg = strdup(token);
-			} else if (strcmp(token, "bgcolor") == 0) {
-				if (get_token(&p, token))
-					opt_bg = strdup(token);
-			} else if (strcmp(token, "fgcolor_unfocused") == 0) {
-				if (get_token(&p, token))
-					opt_fg_unfocused = strdup(token);
-			} else if (strcmp(token, "bgcolor_unfocused") == 0) {
-				if (get_token(&p, token))
-					opt_bg_unfocused = strdup(token);
-			} else if (strcmp(token, "button_bgcolor") == 0) {
-				if (get_token(&p, token))
-					opt_button_bg = strdup(token);
-			} else if (strcmp(token, "bdcolor") == 0) {
-				if (get_token(&p, token))
-					opt_bd = strdup(token);
-			} else if (strcmp(token, "bdwidth") == 0) {
-				if (get_token(&p, token))
-					opt_bw = atoi(token);
-			} else if (strcmp(token, "padding") == 0) {
-				if (get_token(&p, token))
-					opt_pad = atoi(token);
-			} else if (strcmp(token, "edgeresist") == 0) {
-				if (get_token(&p, token))
-					opt_edge_resist = atoi(token);
-			} else if (strcmp(token, "launcher") == 0) {
-				if (get_token(&p, token))
-					opt_launcher = strdup(token);
-			} else if (strcmp(token, "terminal") == 0) {
-				if (get_token(&p, token))
-					opt_terminal = strdup(token);
-			}
-		}
+	if (!find_ini_section(ini, "progman"))
+		goto done;
+
+	while (get_ini_kv(ini, &key, &val)) {
+		if (strcmp(key, "xftfont") == 0)
+			opt_xftfont = strdup(val);
+		else if (strcmp(key, "icon_xftfont") == 0)
+			opt_icon_xftfont = strdup(val);
+		else if (strcmp(key, "fgcolor") == 0)
+			opt_fg = strdup(val);
+		else if (strcmp(key, "bgcolor") == 0)
+			opt_bg = strdup(val);
+		else if (strcmp(key, "fgcolor_unfocused") == 0)
+			opt_fg_unfocused = strdup(val);
+		else if (strcmp(key, "bgcolor_unfocused") == 0)
+			opt_bg_unfocused = strdup(val);
+		else if (strcmp(key, "button_bgcolor") == 0)
+			opt_button_bg = strdup(val);
+		else if (strcmp(key, "bdcolor") == 0)
+			opt_bd = strdup(val);
+		else if (strcmp(key, "bdwidth") == 0)
+			opt_bw = atoi(val);
+		else if (strcmp(key, "padding") == 0)
+			opt_pad = atoi(val);
+		else if (strcmp(key, "edgeresist") == 0)
+			opt_edge_resist = atoi(val);
+		else if (strcmp(key, "launcher") == 0)
+			opt_launcher = strdup(val);
+		else if (strcmp(key, "terminal") == 0)
+			opt_terminal = strdup(val);
+		else
+			warnx("unknown key \"%s\" and value \"%s\" in ini\n",
+			    key, val);
+
+		free(key);
+		free(val);
 	}
-	fclose(rc);
+done:
+	fclose(ini);
 }
 
 static void

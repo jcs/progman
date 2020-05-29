@@ -93,12 +93,12 @@ make_launchitem_cb(void *menu, char *label, char *cmd)
 {
 	GtkWidget *item, *sub_menu = NULL;
 
-	item = gtk_menu_item_new_with_label(label);
+	item = gtk_menu_item_new_with_label(strdup(label));
 	gtk_menu_append(GTK_MENU(menu), item);
 
 	if (cmd) {
 		gtk_signal_connect(GTK_OBJECT(item), "activate",
-		    GTK_SIGNAL_FUNC(fork_exec_cb), cmd);
+		    GTK_SIGNAL_FUNC(fork_exec_cb), strdup(cmd));
 	} else {
 		sub_menu = gtk_menu_new();
 		gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), sub_menu);

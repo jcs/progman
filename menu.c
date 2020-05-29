@@ -121,68 +121,30 @@ raise_win(Window w)
 	send_xmessage(root, w, net_active_window, 0, SubstructureNotifyMask);
 }
 
-/*
- * XXX: We do not free the command, since make_item_cb gives gives the toolkit
- * a pointer for use at some point in the future. The label we assume is copied
- * right away and thus can be freed as soon as the item is created.
- *
- * If we want to catch SIGHUP and rebuild the menu, we are going to need to
- * find some way to make sure the toolkit actually frees this stuff, or come up
- * with some fantastically ugly way of doing it ourselves.
- */
 static void
-do_launch_menu(FILE *rc, void *menu, make_item_func make_item_cb)
+do_launch_menu(FILE *ini, void *menu, make_item_func make_item_cb)
 {
-	FILE *f;
-	char buf[BUF_SIZE], token[BUF_SIZE], *p;
-	char *label;
-	void *newmenu;
+	char *key, *val;
 
-	while (get_rc_line(buf, sizeof buf, rc)) {
-		p = buf;
-		while (get_token(&p, token)) {
-			if (strcmp(token, "menu") == 0) {
-				if (get_token(&p, token)) {
-					newmenu = make_item_cb(menu, token,
-					    NULL);
-					do_launch_menu(rc, newmenu,
-					    make_item_cb);
-				}
-			}
-			if (strcmp(token, "cmd") == 0) {
-				if (get_token(&p, token)) {
-					label = strdup(token);
-					if (get_token(&p, token))
-						make_item_cb(menu, label,
-						    strdup(token));
-					free(label);
-				}
-			}
-			if (strcmp(token, "include") == 0) {
-				if (get_token(&p, token)) {
-					if ((f = fopen(token, "r"))) {
-						do_launch_menu(f, menu,
-						    make_item_cb);
-						fclose(f);
-					}
-				}
-			}
-			if (strcmp(token, "end") == 0)
-				return;
-		}
+	if (!find_ini_section(ini, "launcher"))
+		return;
+
+	while (get_ini_kv(ini, &key, &val)) {
+		make_item_cb(menu, key, val);
+		free(key);
+		free(val);
 	}
 }
 
 void
-make_launch_menu(char *rcfile, void *menu, make_item_func make_item_cb)
+make_launch_menu(char *inifile, void *menu, make_item_func make_item_cb)
 {
-	FILE *rc;
+	FILE *ini;
 
-	if ((rc = open_rc(rcfile, "clientsrc"))) {
-		do_launch_menu(rc, menu, make_item_cb);
-		fclose(rc);
-	} else {
-		fprintf(stderr, "can't find any rc files\n");
-		exit(1);
-	}
+	ini = open_ini(inifile);
+	if (!ini)
+		errx(1, "can't find progman.ini");
+
+	do_launch_menu(ini, menu, make_item_cb);
+	fclose(ini);
 }
