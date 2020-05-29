@@ -22,7 +22,7 @@
 PREFIX?=	/usr/local
 X11BASE?=	/usr/X11R6
 
-PKGLIBS=	x11 xft xpm gtk+-2.0
+PKGLIBS=	x11 xft xext xpm gtk+-2.0
 
 CC?=		cc
 CFLAGS+=	-O2 -Wall -Wunused \
