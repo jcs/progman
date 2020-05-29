@@ -355,7 +355,8 @@ setup_display(void)
 	supporting_wm_win = XCreateWindow(dpy, root, 0, 0, 1, 1,
 	    0, DefaultDepth(dpy, screen), CopyFromParent,
 	    DefaultVisual(dpy, screen), 0, NULL);
-	set_string_atom(supporting_wm_win, net_wm_name, "progman", 7);
+	set_string_atom(supporting_wm_win, net_wm_name,
+	    (unsigned char *)"progman", 7);
 	set_atoms(root, net_supporting_wm, XA_WINDOW, &supporting_wm_win, 1);
 }
 
