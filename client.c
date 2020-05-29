@@ -33,6 +33,7 @@
 #endif
 #include "progman.h"
 #include "atom.h"
+#include "util.h"
 
 static void init_geom(client_t *, strut_t *);
 static void reparent(client_t *, strut_t *);

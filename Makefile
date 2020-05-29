@@ -43,7 +43,8 @@ CFLAGS+=	-DUSE_GDK_PIXBUF
 BINDIR=		$(PREFIX)/bin
 MANDIR=		$(PREFIX)/man/man1
 
-PROGMAN_SRC=	atom.c \
+PROGMAN_SRC=	util.c \
+		atom.c \
 		client.c \
 		common.c \
 		events.c \
