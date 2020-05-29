@@ -621,13 +621,14 @@ recalc_frame(client_t *c)
 		c->resize_e_geom.x = c->frame_geom.w - borw;
 		c->resize_e_geom.y = borw + buts + 1;
 		c->resize_e_geom.w = borw;
-		c->resize_e_geom.h = c->geom.h - buts - 1;
+		c->resize_e_geom.h = c->geom.h - buts;
 	} else
 		memset(&c->resize_e_geom, 0, sizeof(geom_t));
 
 	if ((c->frame_style & FRAME_RESIZABLE) && !(c->state & STATE_SHADED)) {
 		c->resize_se_geom.x = c->resize_ne_geom.x;
-		c->resize_se_geom.y = borw + buts + c->geom.h - buts;
+		c->resize_se_geom.y = borw + buts + c->geom.h - buts +
+		    ((c->frame_style & FRAME_TITLEBAR) ? 1 : 0);
 		c->resize_se_geom.w = borw + buts;
 		c->resize_se_geom.h = borw + buts;
 	} else
@@ -641,7 +642,7 @@ recalc_frame(client_t *c)
 			c->resize_s_geom.h = borw;
 		} else {
 			c->resize_s_geom.x = c->resize_n_geom.x;
-			c->resize_s_geom.y = c->resize_se_geom.y + 1 + buts;
+			c->resize_s_geom.y = c->resize_se_geom.y + buts;
 			c->resize_s_geom.w = c->resize_n_geom.w;
 			c->resize_s_geom.h = borw;
 		}
@@ -767,6 +768,7 @@ redraw_frame(client_t *c, Window only)
 	recalc_frame(c);
 
 	if (only == None) {
+		XSetWindowBackground(dpy, c->frame, BlackPixel(dpy, screen));
 		XMoveResizeWindow(dpy, c->frame,
 		    c->frame_geom.x, c->frame_geom.y,
 		    c->frame_geom.w, c->frame_geom.h);
@@ -822,8 +824,6 @@ redraw_frame(client_t *c, Window only)
 			XUnmapWindow(dpy, c->titlebar);
 	}
 
-	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
-
 	if (only == None || only == c->close) {
 		if (c->frame_style & FRAME_CLOSE) {
 			XSetWindowBackground(dpy, c->close, button_bg.pixel);
@@ -853,8 +853,13 @@ redraw_frame(client_t *c, Window only)
 	if ((only == None || only == c->titlebar || only == c->close ||
 	    only == c->iconify) && (c->frame_style & FRAME_TITLEBAR)) {
 		/* separators between titlebar and buttons */
+		XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 		XDrawRectangle(dpy, c->titlebar, DefaultGC(dpy, screen),
 		    0, -1, c->titlebar_geom.w - 1, c->titlebar_geom.h + 1);
+
+		XDrawLine(dpy, c->frame, DefaultGC(dpy, screen),
+		    0, c->resize_nw_geom.h, c->frame_geom.w,
+		    c->resize_nw_geom.h);
 	}
 
 	if (only == None || only == c->iconify) {
@@ -931,36 +936,37 @@ redraw_frame(client_t *c, Window only)
 
 	if (only == None || only == c->resize_nw) {
 		if (c->frame_style & FRAME_RESIZABLE) {
-			XSetWindowBackground(dpy, c->resize_nw,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_nw, bd.pixel);
 			XClearWindow(dpy, c->resize_nw);
 			XMoveResizeWindow(dpy, c->resize_nw,
 			    c->resize_nw_geom.x, c->resize_nw_geom.y,
 			    c->resize_nw_geom.w, c->resize_nw_geom.h);
 			XMapWindow(dpy, c->resize_nw);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_nw, DefaultGC(dpy,
 			    screen), 0, 0, c->resize_nw_geom.w,
 			    c->resize_nw_geom.h);
-			if (c->resize_n_geom.h)
+			if (c->resize_n_geom.h) {
 				XDrawRectangle(dpy, c->resize_nw,
 				    DefaultGC(dpy, screen),
 				    c->resize_n_geom.h - 1,
 				    c->resize_n_geom.h - 1,
 				    c->resize_nw_geom.w - c->resize_n_geom.h,
 				    c->resize_nw_geom.h - c->resize_n_geom.h);
+			}
 		} else
 			XUnmapWindow(dpy, c->resize_nw);
 	}
 
 	if (only == None || only == c->resize_n) {
 		if (c->frame_style & FRAME_RESIZABLE) {
-			XSetWindowBackground(dpy, c->resize_n,
-			    button_bg.pixel);
-			XMapWindow(dpy, c->resize_n);
+			XSetWindowBackground(dpy, c->resize_n, bd.pixel);
 			XClearWindow(dpy, c->resize_n);
 			XMoveResizeWindow(dpy, c->resize_n,
 			    c->resize_n_geom.x, c->resize_n_geom.y,
 			    c->resize_n_geom.w, c->resize_n_geom.h);
+			XMapWindow(dpy, c->resize_n);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_n, DefaultGC(dpy, screen),
 			    0, 0, c->resize_n_geom.w - 1,
 			    c->resize_n_geom.h - 1);
@@ -970,13 +976,13 @@ redraw_frame(client_t *c, Window only)
 
 	if (only == None || only == c->resize_ne) {
 		if (c->frame_style & FRAME_RESIZABLE) {
-			XSetWindowBackground(dpy, c->resize_ne,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_ne, bd.pixel);
 			XMapWindow(dpy, c->resize_ne);
 			XClearWindow(dpy, c->resize_ne);
 			XMoveResizeWindow(dpy, c->resize_ne,
 			    c->resize_ne_geom.x, c->resize_ne_geom.y,
 			    c->resize_ne_geom.w, c->resize_ne_geom.h);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_ne,
 			    DefaultGC(dpy, screen), -1, 0, c->resize_ne_geom.w,
 			    c->resize_ne_geom.h);
@@ -993,13 +999,13 @@ redraw_frame(client_t *c, Window only)
 	if (only == None || only == c->resize_e) {
 		if ((c->frame_style & FRAME_RESIZABLE) &&
 		    !(c->state & STATE_SHADED)) {
-			XSetWindowBackground(dpy, c->resize_e,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_e, bd.pixel);
 			XMapWindow(dpy, c->resize_e);
 			XClearWindow(dpy, c->resize_e);
 			XMoveResizeWindow(dpy, c->resize_e,
 			    c->resize_e_geom.x, c->resize_e_geom.y,
 			    c->resize_e_geom.w, c->resize_e_geom.h);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_e, DefaultGC(dpy, screen),
 			    0, -1, c->resize_e_geom.w - 1,
 			    c->resize_e_geom.h + 1);
@@ -1010,40 +1016,47 @@ redraw_frame(client_t *c, Window only)
 	if (only == None || only == c->resize_se) {
 		if ((c->frame_style & FRAME_RESIZABLE) &&
 		    !(c->state & STATE_SHADED)) {
-			XSetWindowBackground(dpy, c->resize_se,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_se, bd.pixel);
 			XClearWindow(dpy, c->resize_se);
 			XMoveResizeWindow(dpy, c->resize_se,
 			    c->resize_se_geom.x, c->resize_se_geom.y,
 			    c->resize_se_geom.w, c->resize_se_geom.h);
 			XMapWindow(dpy, c->resize_se);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_se,
-			    DefaultGC(dpy, screen), -1, 0, c->resize_se_geom.w,
-			    c->resize_se_geom.h);
+			    DefaultGC(dpy, screen), 0, 0,
+			    c->resize_se_geom.w - 1,
+			    c->resize_se_geom.h - 1);
+			XDrawRectangle(dpy, c->resize_se,
+			    DefaultGC(dpy, screen), 0, 0,
+			    c->resize_se_geom.w - c->resize_e_geom.w,
+			    c->resize_se_geom.h - c->resize_s_geom.h);
+			XSetForeground(dpy, DefaultGC(dpy, screen),
+			    BlackPixel(dpy, screen));
 			XFillRectangle(dpy, c->resize_se,
 			    DefaultGC(dpy, screen), 0, 0,
-			    c->resize_se_geom.w - c->resize_e_geom.w + 1,
-			    c->resize_se_geom.h - c->resize_e_geom.w + 2);
+			    c->resize_se_geom.w - c->resize_e_geom.w,
+			    c->resize_se_geom.h - c->resize_e_geom.h);
 		} else
 			XUnmapWindow(dpy, c->resize_se);
 	}
 
 	if (only == None || only == c->resize_s) {
 		if (c->frame_style & FRAME_RESIZABLE) {
-			XSetWindowBackground(dpy, c->resize_s,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_s, bd.pixel);
 			XClearWindow(dpy, c->resize_s);
 			XMoveResizeWindow(dpy, c->resize_s,
 			    c->resize_s_geom.x, c->resize_s_geom.y,
 			    c->resize_s_geom.w, c->resize_s_geom.h);
 			XMapWindow(dpy, c->resize_s);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_s, DefaultGC(dpy, screen),
-			    0, 0, c->resize_s_geom.w - 1,
+			    0, 0, c->resize_s_geom.w,
 			    c->resize_s_geom.h - 1);
 
 			if (c->state & STATE_SHADED) {
 				XSetForeground(dpy, DefaultGC(dpy, screen),
-				    button_bg.pixel);
+				    bd.pixel);
 				XDrawLine(dpy, c->resize_s,
 				    DefaultGC(dpy, screen), 1, 0,
 				    c->resize_s_geom.h - 1, 0);
@@ -1053,7 +1066,7 @@ redraw_frame(client_t *c, Window only)
 				    0, c->resize_s_geom.w - 1, 0);
 
 				XSetForeground(dpy, DefaultGC(dpy, screen),
-				    BlackPixel(dpy, screen));
+				    bdf.pixel);
 				XDrawLine(dpy, c->resize_s,
 				    DefaultGC(dpy, screen),
 				    c->resize_sw_geom.w, 0,
@@ -1072,20 +1085,27 @@ redraw_frame(client_t *c, Window only)
 	if (only == None || only == c->resize_sw) {
 		if ((c->frame_style & FRAME_RESIZABLE) &&
 		    !(c->state & STATE_SHADED)) {
-			XSetWindowBackground(dpy, c->resize_sw,
-			    button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_sw, bd.pixel);
 			XClearWindow(dpy, c->resize_sw);
 			XMoveResizeWindow(dpy, c->resize_sw,
 			    c->resize_sw_geom.x, c->resize_sw_geom.y,
 			    c->resize_sw_geom.w, c->resize_sw_geom.h);
 			XMapWindow(dpy, c->resize_sw);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_sw,
 			    DefaultGC(dpy, screen), 0, 0, c->resize_sw_geom.w,
-			    c->resize_sw_geom.h);
+			    c->resize_sw_geom.h - 1);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XFillRectangle(dpy, c->resize_sw,
 			    DefaultGC(dpy, screen), c->resize_w_geom.w - 1, 0,
 			    c->resize_sw_geom.w - c->resize_w_geom.w + 1,
-			    c->resize_sw_geom.h - c->resize_w_geom.w + 2);
+			    c->resize_sw_geom.h - c->resize_w_geom.w + 1);
+			XSetForeground(dpy, DefaultGC(dpy, screen),
+			    BlackPixel(dpy, screen));
+			XFillRectangle(dpy, c->resize_sw,
+			    DefaultGC(dpy, screen), c->resize_w_geom.w, 0,
+			    c->resize_sw_geom.w - c->resize_w_geom.w,
+			    c->resize_sw_geom.h - c->resize_w_geom.w);
 		} else
 			XUnmapWindow(dpy, c->resize_sw);
 	}
@@ -1093,12 +1113,13 @@ redraw_frame(client_t *c, Window only)
 	if (only == None || only == c->resize_w) {
 		if ((c->frame_style & FRAME_RESIZABLE) &&
 		    !(c->state & STATE_SHADED)) {
-			XSetWindowBackground(dpy, c->resize_w, button_bg.pixel);
+			XSetWindowBackground(dpy, c->resize_w, bd.pixel);
 			XClearWindow(dpy, c->resize_w);
 			XMoveResizeWindow(dpy, c->resize_w,
 			    c->resize_w_geom.x, c->resize_w_geom.y,
 			    c->resize_w_geom.w, c->resize_w_geom.h);
 			XMapWindow(dpy, c->resize_w);
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 			XDrawRectangle(dpy, c->resize_w, DefaultGC(dpy, screen),
 			    0, -1, c->resize_w_geom.w - 1,
 			    c->resize_w_geom.h + 1);
@@ -1112,7 +1133,8 @@ bevel(Window win, geom_t geom, int pressed)
 {
 	int x;
 
-	/* TODO: store current foreground color */
+	XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
+	XDrawLine(dpy, win, DefaultGC(dpy, screen), 0, 0, 0, geom.h);
 
 	XSetForeground(dpy, DefaultGC(dpy, screen), bevel_dark.pixel);
 
@@ -1143,8 +1165,6 @@ bevel(Window win, geom_t geom, int pressed)
 			    x - 1, geom.h - x);
 		}
 	}
-
-	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
 }
 
 void
@@ -1320,13 +1340,15 @@ redraw_icon(client_t *c, Window only)
 	if (c == focused) {
 		txft = &xft_fg;
 		XSetWindowBackground(dpy, c->icon_label, bg.pixel);
+		XSetForeground(dpy, DefaultGC(dpy, screen), fg.pixel);
 	} else {
 		txft = &xft_fg_unfocused;
 		XSetWindowBackground(dpy, c->icon_label, unfocused_bg.pixel);
+		XSetForeground(dpy, DefaultGC(dpy, screen),
+		    unfocused_fg.pixel);
 	}
 
 	XClearWindow(dpy, c->icon_label);
-	XSetForeground(dpy, DefaultGC(dpy, screen), BlackPixel(dpy, screen));
 
 	if (!c->icon_name)
 		c->icon_name = strdup("(Unknown)");

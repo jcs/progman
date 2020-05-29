@@ -43,7 +43,8 @@
 #define DEF_BEVEL_LIGHT "white"
 
 /* Borders */
-#define DEF_BD "black"
+#define DEF_BD "#c0c7c8"
+#define DEF_BDF "black"
 
 #ifdef HIDPI
 #define DEF_FONT "Microsoft Sans Serif:bold:size=14"
@@ -248,6 +249,7 @@ extern XColor button_bg;
 extern XColor bevel_dark;
 extern XColor bevel_light;
 extern XColor bd;
+extern XColor bdf;
 extern GC pixmap_gc;
 extern GC invert_gc;
 extern Pixmap close_pm;
@@ -286,6 +288,7 @@ extern int opt_bevel;
 extern char *opt_bevel_dark;
 extern char *opt_bevel_light;
 extern char *opt_bd;
+extern char *opt_bdf;
 extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
