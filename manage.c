@@ -663,6 +663,8 @@ goto_desk(int new_desk)
 				XMapWindow(dpy, c->frame);
 			}
 		}
+
+		send_config(c);
 	}
 
 	restack_clients();
