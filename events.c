@@ -63,8 +63,7 @@ event_loop(void)
 
 	for (;;) {
 		if (!XPending(dpy)) {
-//			poll(pfd, 2, INFTIM);
-			poll(pfd, 2, -1);
+			poll(pfd, 2, INFTIM);
 			if (pfd[1].revents)
 				/* exitmsg */
 				break;
