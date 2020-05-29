@@ -1046,9 +1046,9 @@ restack_clients(void)
 	if (twins == 0)
 		return;
 
-	wins = reallocarray(wins, twins, sizeof(Window));
+	wins = realloc(wins, twins * sizeof(Window));
 	if (wins == NULL)
-		err(1, "reallocarray");
+		err(1, "realloc");
 
 	/* STATE_ABOVE first */
 	for (p = focused; p; p = p->next) {

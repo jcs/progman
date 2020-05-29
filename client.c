@@ -1583,9 +1583,9 @@ word_wrap_xft(char *str, char delim, XftFont *font, int width, int *nlines)
 	int alloced = 10;
 	int nline;
 
-	lines = reallocarray(lines, alloced, sizeof(struct xft_line_t));
+	lines = realloc(lines, alloced * sizeof(struct xft_line_t));
 	if (lines == NULL)
-		err(1, "reallocarray");
+		err(1, "realloc");
 
 start_wrap:
 	nline = 0;
@@ -1649,10 +1649,10 @@ start_wrap:
 
 		if (nline == alloced) {
 			alloced += 10;
-			lines = reallocarray(lines, alloced,
-			    sizeof(struct xft_line_t));
+			lines = realloc(lines,
+			    alloced * sizeof(struct xft_line_t));
 			if (lines == NULL)
-				err(1, "reallocarray");
+				err(1, "realloc");
 		}
 	}
 
