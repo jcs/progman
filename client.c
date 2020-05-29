@@ -1517,6 +1517,7 @@ del_client(client_t *c, int mode)
 
 	if (mode == DEL_WITHDRAW) {
 		set_wm_state(c, WithdrawnState);
+		XUnmapWindow(dpy, c->frame);
 	} else {
 		if (c->state & STATE_ZOOMED) {
 			c->geom.x = c->save.x;
@@ -1526,12 +1527,12 @@ del_client(client_t *c, int mode)
 			XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
 		}
 		XMapWindow(dpy, c->win);
+		XSetWindowBorderWidth(dpy, c->win, c->old_bw);
 	}
 
 	remove_atom(root, net_client_list, XA_WINDOW, c->win);
 	remove_atom(root, net_client_stack, XA_WINDOW, c->win);
 
-	XSetWindowBorderWidth(dpy, c->win, c->old_bw);
 	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
 	XRemoveFromSaveSet(dpy, c->win);
 	XDestroyWindow(dpy, c->frame);
