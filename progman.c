@@ -54,6 +54,10 @@
 #include "icons/default_icon.xpm"
 #endif
 
+#ifndef WAIT_ANY
+#define WAIT_ANY (-1)
+#endif
+
 client_t *focused, *dragging;
 int screen;
 unsigned long ndesks = DEF_NDESKS;

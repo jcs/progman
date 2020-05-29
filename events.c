@@ -28,6 +28,10 @@
 #include "progman.h"
 #include "atom.h"
 
+#ifndef INFTIM
+#define INFTIM (-1)
+#endif
+
 static void handle_button_press(XButtonEvent *);
 static void handle_button_release(XButtonEvent *);
 static void handle_configure_request(XConfigureRequestEvent *);
