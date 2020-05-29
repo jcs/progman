@@ -36,8 +36,8 @@
 /* Title bars */
 #define DEF_FG "white"
 #define DEF_BG "#0000a8"
-#define DEF_FG_UNFOCUSED "black"
-#define DEF_BG_UNFOCUSED "white"
+#define DEF_UNFOCUSED_FG "black"
+#define DEF_UNFOCUSED_BG "white"
 #define DEF_BUTTON_BG "#c0c7c8"
 #define DEF_BEVEL_DARK "#87888f"
 #define DEF_BEVEL_LIGHT "white"
@@ -242,8 +242,8 @@ extern XftColor xft_fg_unfocused;
 extern Colormap cmap;
 extern XColor fg;
 extern XColor bg;
-extern XColor fg_unfocused;
-extern XColor bg_unfocused;
+extern XColor unfocused_fg;
+extern XColor unfocused_bg;
 extern XColor button_bg;
 extern XColor bevel_dark;
 extern XColor bevel_light;
@@ -279,8 +279,8 @@ extern char *opt_font;
 extern char *opt_iconfont;
 extern char *opt_fg;
 extern char *opt_bg;
-extern char *opt_fg_unfocused;
-extern char *opt_bg_unfocused;
+extern char *opt_unfocused_fg;
+extern char *opt_unfocused_bg;
 extern char *opt_button_bg;
 extern int opt_bevel;
 extern char *opt_bevel_dark;

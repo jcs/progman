@@ -71,8 +71,8 @@ XftColor xft_fg_unfocused;
 Colormap def_cmap;
 XColor fg;
 XColor bg;
-XColor fg_unfocused;
-XColor bg_unfocused;
+XColor unfocused_fg;
+XColor unfocused_bg;
 XColor button_bg;
 XColor bevel_dark;
 XColor bevel_light;
@@ -111,8 +111,8 @@ char *opt_font = DEF_FONT;
 char *opt_iconfont = DEF_ICONFONT;
 char *opt_fg = DEF_FG;
 char *opt_bg = DEF_BG;
-char *opt_fg_unfocused = DEF_FG_UNFOCUSED;
-char *opt_bg_unfocused = DEF_BG_UNFOCUSED;
+char *opt_unfocused_fg = DEF_UNFOCUSED_FG;
+char *opt_unfocused_bg = DEF_UNFOCUSED_BG;
 char *opt_button_bg = DEF_BUTTON_BG;
 char *opt_bevel_dark = DEF_BEVEL_DARK;
 char *opt_bevel_light = DEF_BEVEL_LIGHT;
@@ -189,10 +189,10 @@ read_config(char *inifile)
 			opt_fg = strdup(val);
 		else if (strcmp(key, "bgcolor") == 0)
 			opt_bg = strdup(val);
-		else if (strcmp(key, "fgcolor_unfocused") == 0)
-			opt_fg_unfocused = strdup(val);
-		else if (strcmp(key, "bgcolor_unfocused") == 0)
-			opt_bg_unfocused = strdup(val);
+		else if (strcmp(key, "unfocused_fgcolor") == 0)
+			opt_unfocused_fg = strdup(val);
+		else if (strcmp(key, "unfocused_bgcolor") == 0)
+			opt_unfocused_bg = strdup(val);
 		else if (strcmp(key, "button_bgcolor") == 0)
 			opt_button_bg = strdup(val);
 		else if (strcmp(key, "bdcolor") == 0)
@@ -259,9 +259,9 @@ setup_display(void)
 	def_cmap = DefaultColormap(dpy, screen);
 	XAllocNamedColor(dpy, def_cmap, opt_fg, &fg, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bg, &bg, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_fg_unfocused, &fg_unfocused,
+	XAllocNamedColor(dpy, def_cmap, opt_unfocused_fg, &unfocused_fg,
 	    &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bg_unfocused, &bg_unfocused,
+	XAllocNamedColor(dpy, def_cmap, opt_unfocused_bg, &unfocused_bg,
 	    &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_button_bg, &button_bg, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bevel_dark, &bevel_dark, &exact);
@@ -278,11 +278,11 @@ setup_display(void)
 	xft_fg.color.alpha = 0xffff;
 	xft_fg.pixel = fg.pixel;
 
-	xft_fg_unfocused.color.red = fg_unfocused.red;
-	xft_fg_unfocused.color.green = fg_unfocused.green;
-	xft_fg_unfocused.color.blue = fg_unfocused.blue;
+	xft_fg_unfocused.color.red = unfocused_fg.red;
+	xft_fg_unfocused.color.green = unfocused_fg.green;
+	xft_fg_unfocused.color.blue = unfocused_fg.blue;
 	xft_fg_unfocused.color.alpha = 0xffff;
-	xft_fg_unfocused.pixel = fg_unfocused.pixel;
+	xft_fg_unfocused.pixel = unfocused_fg.pixel;
 
 	font = XftFontOpenName(dpy, screen, opt_font);
 	if (!font)

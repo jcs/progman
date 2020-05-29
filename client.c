@@ -90,8 +90,8 @@ new_client(Window w)
 
 	XAllocNamedColor(dpy, c->cmap, opt_fg, &fg, &exact);
 	XAllocNamedColor(dpy, c->cmap, opt_bg, &bg, &exact);
-	XAllocNamedColor(dpy, c->cmap, opt_fg_unfocused, &fg_unfocused, &exact);
-	XAllocNamedColor(dpy, c->cmap, opt_bg_unfocused, &bg_unfocused, &exact);
+	XAllocNamedColor(dpy, c->cmap, opt_unfocused_fg, &unfocused_fg, &exact);
+	XAllocNamedColor(dpy, c->cmap, opt_unfocused_bg, &unfocused_bg, &exact);
 	XAllocNamedColor(dpy, c->cmap, opt_bd, &bd, &exact);
 
 	if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0, &c->desk, 1, NULL)) {
@@ -793,7 +793,7 @@ redraw_frame(client_t *c, Window only)
 			} else {
 				txft = &xft_fg_unfocused;
 				XSetWindowBackground(dpy, c->titlebar,
-				    bg_unfocused.pixel);
+				    unfocused_bg.pixel);
 			}
 			XMoveResizeWindow(dpy, c->titlebar,
 			    c->titlebar_geom.x, c->titlebar_geom.y,
@@ -1322,7 +1322,7 @@ redraw_icon(client_t *c, Window only)
 		XSetWindowBackground(dpy, c->icon_label, bg.pixel);
 	} else {
 		txft = &xft_fg_unfocused;
-		XSetWindowBackground(dpy, c->icon_label, bg_unfocused.pixel);
+		XSetWindowBackground(dpy, c->icon_label, unfocused_bg.pixel);
 	}
 
 	XClearWindow(dpy, c->icon_label);
