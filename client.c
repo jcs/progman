@@ -784,6 +784,10 @@ redraw_frame(client_t *c, Window only)
 			    c->geom.x - c->frame_geom.x,
 			    c->geom.y - c->frame_geom.y,
 			    c->geom.w, c->geom.h);
+
+		XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
+		XDrawRectangle(dpy, c->frame, DefaultGC(dpy, screen),
+		    0, 0, c->frame_geom.w - 1, c->frame_geom.h - 1);
 	}
 
 	if (only == None || only == c->titlebar) {
@@ -851,15 +855,21 @@ redraw_frame(client_t *c, Window only)
 	}
 
 	if ((only == None || only == c->titlebar || only == c->close ||
-	    only == c->iconify) && (c->frame_style & FRAME_TITLEBAR)) {
+	    only == c->iconify || only == c->zoom) &&
+	    (c->frame_style & FRAME_TITLEBAR)) {
 		/* separators between titlebar and buttons */
 		XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
 		XDrawRectangle(dpy, c->titlebar, DefaultGC(dpy, screen),
 		    0, -1, c->titlebar_geom.w - 1, c->titlebar_geom.h + 1);
 
+		/* separator between titlebar and actual window */
 		XDrawLine(dpy, c->frame, DefaultGC(dpy, screen),
-		    0, c->resize_nw_geom.h, c->frame_geom.w,
-		    c->resize_nw_geom.h);
+		    0,
+		    c->resize_n_geom.h + c->titlebar_geom.h +
+		    (c->resize_n_geom.h ? 0 : 1),
+		    c->frame_geom.w,
+		    c->resize_n_geom.h + c->titlebar_geom.h +
+		    (c->resize_n_geom.h ? 0 : 1));
 	}
 
 	if (only == None || only == c->iconify) {
@@ -887,6 +897,17 @@ redraw_frame(client_t *c, Window only)
 			bevel(c->iconify, c->iconify_geom, c->iconify_pressed);
 		} else
 			XUnmapWindow(dpy, c->iconify);
+	}
+
+	if (only == None || only == c->zoom || only == c->iconify) {
+		if (c->frame_style & (FRAME_ZOOM | FRAME_ICONIFY)) {
+			XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
+			XDrawLine(dpy, c->frame, DefaultGC(dpy, screen),
+			    c->iconify_geom.x + c->iconify_geom.w,
+			    c->resize_n_geom.h,
+			    c->iconify_geom.x + c->iconify_geom.w,
+			    c->resize_n_geom.h + c->iconify_geom.h);
+		}
 	}
 
 	if (only == None || only == c->zoom) {
@@ -1132,9 +1153,6 @@ static void
 bevel(Window win, geom_t geom, int pressed)
 {
 	int x;
-
-	XSetForeground(dpy, DefaultGC(dpy, screen), bdf.pixel);
-	XDrawLine(dpy, win, DefaultGC(dpy, screen), 0, 0, 0, geom.h);
 
 	XSetForeground(dpy, DefaultGC(dpy, screen), bevel_dark.pixel);
 
