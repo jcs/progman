@@ -80,8 +80,8 @@ XColor unfocused_bg;
 XColor button_bg;
 XColor bevel_dark;
 XColor bevel_light;
-XColor bd;
-XColor bdf;
+XColor border_fg;
+XColor border_bg;
 GC pixmap_gc;
 GC invert_gc;
 Pixmap close_pm;
@@ -121,8 +121,8 @@ char *opt_unfocused_bg = DEF_UNFOCUSED_BG;
 char *opt_button_bg = DEF_BUTTON_BG;
 char *opt_bevel_dark = DEF_BEVEL_DARK;
 char *opt_bevel_light = DEF_BEVEL_LIGHT;
-char *opt_bd = DEF_BD;
-char *opt_bdf = DEF_BDF;
+char *opt_border_bg = DEF_BORDER_BG;
+char *opt_border_fg = DEF_BORDER_FG;
 char *opt_root_bg = DEF_ROOTBG;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
@@ -202,13 +202,13 @@ read_config(char *inifile)
 			opt_unfocused_bg = strdup(val);
 		else if (strcmp(key, "button_bgcolor") == 0)
 			opt_button_bg = strdup(val);
-		else if (strcmp(key, "bordercolor") == 0)
-			opt_bd = strdup(val);
-		else if (strcmp(key, "framecolor") == 0)
-			opt_bdf = strdup(val);
-		else if (strcmp(key, "bdwidth") == 0)
+		else if (strcmp(key, "border_fgcolor") == 0)
+			opt_border_fg = strdup(val);
+		else if (strcmp(key, "border_bgcolor") == 0)
+			opt_border_bg = strdup(val);
+		else if (strcmp(key, "border_width") == 0)
 			opt_bw = atoi(val);
-		else if (strcmp(key, "padding") == 0)
+		else if (strcmp(key, "title_padding") == 0)
 			opt_pad = atoi(val);
 		else if (strcmp(key, "edgeresist") == 0)
 			opt_edge_resist = atoi(val);
@@ -278,8 +278,8 @@ setup_display(void)
 	XAllocNamedColor(dpy, def_cmap, opt_button_bg, &button_bg, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bevel_dark, &bevel_dark, &exact);
 	XAllocNamedColor(dpy, def_cmap, opt_bevel_light, &bevel_light, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bd, &bd, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bdf, &bdf, &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_border_fg, &border_fg, &exact);
+	XAllocNamedColor(dpy, def_cmap, opt_border_bg, &border_bg, &exact);
 
 	XSetLineAttributes(dpy, DefaultGC(dpy, screen), 1, LineSolid, CapButt,
 	    JoinBevel);

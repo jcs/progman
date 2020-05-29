@@ -43,8 +43,8 @@
 #define DEF_BEVEL_LIGHT "white"
 
 /* Borders */
-#define DEF_BD "#c0c7c8"
-#define DEF_BDF "black"
+#define DEF_BORDER_BG "#c0c7c8"
+#define DEF_BORDER_FG "black"
 
 /* Default root color is unchanged */
 #define DEF_ROOTBG NULL
@@ -247,8 +247,8 @@ extern XColor unfocused_bg;
 extern XColor button_bg;
 extern XColor bevel_dark;
 extern XColor bevel_light;
-extern XColor bd;
-extern XColor bdf;
+extern XColor border_fg;
+extern XColor border_bg;
 extern GC pixmap_gc;
 extern GC invert_gc;
 extern Pixmap close_pm;
@@ -285,8 +285,8 @@ extern char *opt_unfocused_bg;
 extern char *opt_button_bg;
 extern char *opt_bevel_dark;
 extern char *opt_bevel_light;
-extern char *opt_bd;
-extern char *opt_bdf;
+extern char *opt_border_fg;
+extern char *opt_border_bg;
 extern char *opt_root_bg;
 extern int opt_bevel;
 extern int opt_bw;
