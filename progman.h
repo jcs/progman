@@ -46,18 +46,25 @@
 #define DEF_BD "#c0c7c8"
 #define DEF_BDF "black"
 
+/* Default root color is unchanged */
+#define DEF_ROOTBG NULL
+
 #ifdef HIDPI
 #define DEF_FONT "Microsoft Sans Serif:bold:size=14"
 #define DEF_ICONFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 6
 #define DEF_BW 6
+#define DEF_EDGE_RES 80
+#define ICON_SIZE 64
 #else
 #define DEF_FONT "system:size=13"
 #define DEF_ICONFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 3
 #define DEF_BW 3
+#define DEF_EDGE_RES 40
+#define ICON_SIZE 32
 #endif
 
 #define DEF_NDESKS 5
@@ -66,14 +73,6 @@
 #define DEF_TERMINAL "xterm"
 
 #define DOUBLE_CLICK_MSEC 250
-
-#ifdef HIDPI
-#define DEF_EDGE_RES 80
-#define ICON_SIZE 64
-#else
-#define DEF_EDGE_RES 40
-#define ICON_SIZE 32
-#endif
 
 /* End of options */
 
@@ -284,11 +283,12 @@ extern char *opt_bg;
 extern char *opt_unfocused_fg;
 extern char *opt_unfocused_bg;
 extern char *opt_button_bg;
-extern int opt_bevel;
 extern char *opt_bevel_dark;
 extern char *opt_bevel_light;
 extern char *opt_bd;
 extern char *opt_bdf;
+extern char *opt_root_bg;
+extern int opt_bevel;
 extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;

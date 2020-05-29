@@ -123,6 +123,7 @@ char *opt_bevel_dark = DEF_BEVEL_DARK;
 char *opt_bevel_light = DEF_BEVEL_LIGHT;
 char *opt_bd = DEF_BD;
 char *opt_bdf = DEF_BDF;
+char *opt_root_bg = DEF_ROOTBG;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
@@ -211,6 +212,8 @@ read_config(char *inifile)
 			opt_pad = atoi(val);
 		else if (strcmp(key, "edgeresist") == 0)
 			opt_edge_resist = atoi(val);
+		else if (strcmp(key, "root_bgcolor") == 0)
+			opt_root_bg = strdup(val);
 		else if (strcmp(key, "launcher") == 0)
 			opt_launcher = strdup(val);
 		else if (strcmp(key, "terminal") == 0)
@@ -234,6 +237,7 @@ setup_display(void)
 	XSetWindowAttributes sattr;
 	XWindowAttributes attr;
 	XIconSize *xis;
+	XColor root_bg;
 	int shape_err;
 	Window qroot, qparent, *wins;
 	unsigned int nwins, i;
@@ -330,6 +334,12 @@ setup_display(void)
 	XFree(xis);
 
 	find_supported_atoms();
+
+	if (opt_root_bg != NULL && strlen(opt_root_bg)) {
+		XAllocNamedColor(dpy, def_cmap, opt_root_bg, &root_bg, &exact);
+		XSetWindowBackground(dpy, root, root_bg.pixel);
+		XClearWindow(dpy, root);
+	}
 
 	set_atoms(root, net_num_desks, XA_CARDINAL, &ndesks, 1);
 	get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL);
