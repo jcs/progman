@@ -427,7 +427,7 @@ place_icon(client_t *c)
 	s.right = DisplayWidth(dpy, screen) - s.right;
 	s.bottom = DisplayHeight(dpy, screen) - s.bottom;
 
-	isize = ICON_SIZE * 2;
+	isize = ICON_SIZE * 2.25;
 
 	for (y = s.bottom - isize; y >= s.top; y -= isize) {
 		for (x = s.left + ICON_SIZE; x < s.right - isize; x += isize) {
