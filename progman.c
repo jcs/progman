@@ -273,18 +273,20 @@ setup_display(void)
 	resize_ne_curs = XCreateFontCursor(dpy, XC_top_right_corner);
 	resize_se_curs = XCreateFontCursor(dpy, XC_bottom_right_corner);
 
+#define alloc_color(val, var, name) \
+	if (!XAllocNamedColor(dpy, def_cmap, val, var, &exact)) \
+		warnx("invalid %s value \"%s\"", name, val);
+
 	def_cmap = DefaultColormap(dpy, screen);
-	XAllocNamedColor(dpy, def_cmap, opt_fg, &fg, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bg, &bg, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_unfocused_fg, &unfocused_fg,
-	    &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_unfocused_bg, &unfocused_bg,
-	    &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_button_bg, &button_bg, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bevel_dark, &bevel_dark, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_bevel_light, &bevel_light, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_border_fg, &border_fg, &exact);
-	XAllocNamedColor(dpy, def_cmap, opt_border_bg, &border_bg, &exact);
+	alloc_color(opt_fg, &fg, "fgcolor");
+	alloc_color(opt_bg, &bg, "opt_fg");
+	alloc_color(opt_unfocused_fg, &unfocused_fg, "unfocused_fgcolor");
+	alloc_color(opt_unfocused_bg, &unfocused_bg, "unfocused_bgcolor");
+	alloc_color(opt_button_bg, &button_bg, "button_bgcolor");
+	alloc_color(opt_bevel_dark, &bevel_dark, "bevel_darkcolor");
+	alloc_color(opt_bevel_light, &bevel_light, "bevel_lightcolor");
+	alloc_color(opt_border_fg, &border_fg, "border_fgcolor");
+	alloc_color(opt_border_bg, &border_bg, "border_bgcolor");
 
 	XSetLineAttributes(dpy, DefaultGC(dpy, screen), 1, LineSolid, CapButt,
 	    JoinBevel);
