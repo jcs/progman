@@ -273,7 +273,7 @@ handle_configure_request(XConfigureRequestEvent *e)
 	XConfigureWindow(dpy, e->window, e->value_mask, &wc);
 
 	/* top client may not be the focused one now */
-	if ((c = top_client()))
+	if ((c = top_client()) && IS_ON_CUR_DESK(c))
 		focus_client(c, FOCUS_FORCE);
 }
 
@@ -299,8 +299,10 @@ handle_circulate_request(XCirculateRequestEvent *e)
 			} else
 				XLowerWindow(dpy, e->window);
 		} else {
-			if (c)
+			if (c && IS_ON_CUR_DESK(c))
 				focus_client(c, FOCUS_FORCE);
+			else if (c)
+				adjust_client_order(c, ORDER_TOP);
 			else
 				XRaiseWindow(dpy, e->window);
 		}
