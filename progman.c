@@ -243,6 +243,7 @@ setup_display(void)
 	XWindowAttributes attr;
 	XIconSize *xis;
 	XColor root_bg;
+	Pixmap rootpx;
 	int shape_err;
 	Window qroot, qparent, *wins;
 	unsigned int nwins, i;
@@ -342,11 +343,17 @@ setup_display(void)
 
 	find_supported_atoms();
 
-	if (opt_root_bg != NULL && strlen(opt_root_bg)) {
-		XAllocNamedColor(dpy, def_cmap, opt_root_bg, &root_bg, &exact);
-		XSetWindowBackground(dpy, root, root_bg.pixel);
+	if (opt_root_bg != NULL && strlen(opt_root_bg) &&
+	    XAllocNamedColor(dpy, def_cmap, opt_root_bg, &root_bg, &exact)) {
+		rootpx = XCreatePixmap(dpy, root, 1, 1,
+		    DefaultDepth(dpy, screen));
+		XSetForeground(dpy, pixmap_gc, root_bg.pixel);
+		XFillRectangle(dpy, rootpx, pixmap_gc, 0, 0, 1, 1);
+		XSetWindowBackgroundPixmap(dpy, root, rootpx);
 		XClearWindow(dpy, root);
-	}
+		set_atoms(root, xrootpmap_id, XA_PIXMAP, &rootpx, 1);
+	} else if (opt_root_bg)
+		warnx("invalid root_bgcolor value \"%s\"", opt_root_bg);
 
 	set_atoms(root, net_num_desks, XA_CARDINAL, &ndesks, 1);
 	get_atoms(root, net_cur_desk, XA_CARDINAL, 0, &cur_desk, 1, NULL);

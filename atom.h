@@ -39,6 +39,7 @@ extern Atom wm_change_state;
 extern Atom wm_delete;
 extern Atom wm_protos;
 extern Atom wm_state;
+extern Atom xrootpmap_id;
 extern Atom net_wm_state_add;
 extern Atom net_wm_state_rm;
 extern Atom net_wm_state_toggle;

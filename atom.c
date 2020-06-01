@@ -35,6 +35,7 @@ Atom wm_change_state;
 Atom wm_delete;
 Atom wm_protos;
 Atom wm_state;
+Atom xrootpmap_id;
 Atom net_wm_state_add;
 Atom net_wm_state_rm;
 Atom net_wm_state_toggle;
@@ -83,6 +84,8 @@ find_supported_atoms(void)
 	net_wm_state_rm = 0;
 	net_wm_state_add = 1;
 	net_wm_state_toggle = 2;
+
+	xrootpmap_id = XInternAtom(dpy, "_XROOTPMAP_ID", False);
 
 	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_active_window, 1);
