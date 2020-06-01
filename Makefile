@@ -27,6 +27,7 @@ PKGLIBS=	x11 xft xext xpm gtk+-2.0
 CC?=		cc
 CFLAGS+=	-O2 -Wall -Wunused \
 		-Wunused -Wmissing-prototypes -Wstrict-prototypes \
+		-Wpointer-sign \
 		`pkg-config --cflags ${PKGLIBS}`
 LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 

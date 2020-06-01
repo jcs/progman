@@ -20,6 +20,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -155,7 +159,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	pipe2(exitmsg, O_CLOEXEC);
+	if (pipe2(exitmsg, O_CLOEXEC) != 0)
+		err(1, "pipe2");
 
 	act.sa_handler = sig_handler;
 	act.sa_flags = 0;
@@ -384,7 +389,8 @@ sig_handler(int signum)
 	case SIGINT:
 	case SIGTERM:
 	case SIGHUP:
-		write(exitmsg[1], &exitmsg, 1);
+		if (!write(exitmsg[1], &exitmsg, 1))
+			warn("failed to exit cleanly");
 		break;
 	case SIGCHLD:
 		while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0 ||

@@ -1197,8 +1197,9 @@ get_client_icon(client_t *c)
 {
 	XWMHints *hints;
 	Window junkw;
-	int junki, depth;
-	long w, h;
+	unsigned long w, h;
+	unsigned int depth;
+	int junki;
 
 	/* try through atom */
 	if (get_atoms(c->win, net_wm_icon, XA_CARDINAL, 0, &w, 1, NULL) &&
@@ -1216,8 +1217,8 @@ get_client_icon(client_t *c)
 	}
 
 	XGetGeometry(dpy, hints->icon_pixmap, &junkw, &junki, &junki,
-	    (unsigned int *)&c->icon_geom.w,
-	    (unsigned int *)&c->icon_geom.h, &junki, &depth);
+	    (unsigned int *)&c->icon_geom.w, (unsigned int *)&c->icon_geom.h,
+	    (unsigned int *)&junki, &depth);
 	c->icon_pixmap = hints->icon_pixmap;
 	c->icon_depth = depth;
 
