@@ -949,7 +949,7 @@ constrain_frame(client_t *c)
 	if (c->frame_geom.x < s.left) {
 		delta = s.left - c->frame_geom.x;
 		c->frame_geom.x += delta;
-		c->geom.x -= delta;
+		c->geom.x += delta;
 	}
 	if (c->frame_geom.y < s.top) {
 		delta = s.top - c->frame_geom.y;
@@ -959,14 +959,14 @@ constrain_frame(client_t *c)
 
 	h = DisplayHeight(dpy, screen) - s.top - s.bottom;
 	if (c->frame_geom.y + c->frame_geom.h > h) {
-		delta = h - c->frame_geom.y - c->frame_geom.h;
+		delta = c->frame_geom.y + c->frame_geom.h - h;
 		c->frame_geom.h -= delta;
 		c->geom.h -= delta;
 	}
 
 	w = DisplayWidth(dpy, screen) - s.left - s.right;
 	if (c->frame_geom.x + c->frame_geom.w > w) {
-		delta = w - c->frame_geom.x - c->frame_geom.w;
+		delta = c->frame_geom.x + c->frame_geom.w - w;
 		c->frame_geom.w -= delta;
 		c->geom.w -= delta;
 	}

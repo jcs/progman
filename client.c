@@ -263,9 +263,11 @@ map_client(client_t *c)
 		XFree(c->icon_name);
 	c->icon_name = get_wm_icon_name(c->win);
 
-	if (c->state & STATE_ICONIFIED)
+	if (c->state & STATE_ICONIFIED) {
+		XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
+		send_config(c);
 		adjust_client_order(c, ORDER_ICONIFIED_TOP);
-	else {
+	} else {
 		/* we haven't drawn anything yet, setup at the right place */
 		recalc_frame(c);
 		XMoveResizeWindow(dpy, c->frame,
@@ -286,6 +288,7 @@ map_client(client_t *c)
 			redraw_frame(c, None);
 		}
 
+		send_config(c);
 		flush_expose_client(c);
 	}
 
@@ -317,6 +320,10 @@ init_geom(client_t *c, strut_t *s)
 	int mouse_x, mouse_y;
 
 	if (c->state & (STATE_ZOOMED | STATE_FULLSCREEN)) {
+		/*
+		 * For zoomed windows, we'll adjust later to accommodate the
+		 * titlebar
+		 */
 		c->geom.x = s->top;
 		c->geom.y = s->left;
 		c->geom.w = wmax;
@@ -497,8 +504,6 @@ reparent(client_t *c, strut_t *s)
 	XSetWindowBorderWidth(dpy, c->win, 0);
 	XReparentWindow(dpy, c->win, c->frame, c->resize_w_geom.w,
 	    c->titlebar_geom.y + c->titlebar_geom.h + 1);
-	XResizeWindow(dpy, c->win, c->geom.w, c->geom.h);
-	send_config(c);
 }
 
 void
