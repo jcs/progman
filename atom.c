@@ -25,7 +25,6 @@
 #include <string.h>
 #include <limits.h>
 #include <X11/Xutil.h>
-#include <X11/Xatom.h>
 #include "common.h"
 #include "atom.h"
 
