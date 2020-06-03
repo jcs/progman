@@ -19,44 +19,16 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <err.h>
-#include <X11/Xlib.h>
+#include "harness.h"
 
-#include "../atom.h"
-#include "../common.h"
-
-int
-main(int argc, char **argv)
+void
+setup(int argc, char **argv)
 {
-	Window win;
-	XEvent ev;
-	int screen;
-
-	dpy = XOpenDisplay(NULL);
-	if (!dpy)
-		err(1, "can't open $DISPLAY");
-
-	screen = DefaultScreen(dpy);
-	root = RootWindow(dpy, screen);
-
-	find_supported_atoms();
-
-	win = XCreateWindow(dpy, root, 0, 0, 200, 100, 0,
-	    DefaultDepth(dpy, screen), CopyFromParent,
-	    DefaultVisual(dpy, screen), 0, NULL);
-	if (!win)
-		err(1, "XCreateWindow");
-
-	XSetWindowBackground(dpy, win, WhitePixel(dpy, screen));
-
 	set_atoms(win, net_wm_state, XA_ATOM, &net_wm_state_above, 1);
 	set_atoms(win, net_wm_wintype, XA_ATOM, &net_wm_type_utility, 1);
+}
 
-	XMapWindow(dpy, win);
-	while (XNextEvent(dpy, &ev))
-		;
-
-	return 0;
+void
+process_event(XEvent *ev)
+{
 }

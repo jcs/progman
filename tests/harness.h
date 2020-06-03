@@ -19,27 +19,18 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "harness.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <err.h>
+#include <string.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
-void
-setup(int argc, char **argv)
-{
-	XSizeHints *hints;
+#include "../atom.h"
+#include "../common.h"
 
-	hints = XAllocSizeHints();
-	if (!hints)
-		err(1, "XAllocSizeHints");
+extern Window win;
+extern int screen;
 
-	hints->flags = PMinSize | PMaxSize;
-	hints->min_width = 300;
-	hints->min_height = 200;
-	hints->max_width = 300;
-	hints->max_height = 200;
-
-	XSetWMNormalHints(dpy, win, hints);
-}
-
-void
-process_event(XEvent *ev)
-{
-}
+extern void setup(int, char **);
+extern void process_event(XEvent *ev);

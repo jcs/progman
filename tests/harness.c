@@ -20,26 +20,59 @@
  */
 
 #include "harness.h"
+#include <libgen.h>
 
-void
-setup(int argc, char **argv)
+Window win;
+int screen;
+
+int
+main(int argc, char **argv)
 {
-	XSizeHints *hints;
+	XEvent ev;
+	XTextProperty name;
+	char *title = basename(argv[0]);
+	int screen;
 
-	hints = XAllocSizeHints();
-	if (!hints)
-		err(1, "XAllocSizeHints");
+	dpy = XOpenDisplay(NULL);
+	if (!dpy)
+		err(1, "can't open $DISPLAY");
 
-	hints->flags = PMinSize | PMaxSize;
-	hints->min_width = 300;
-	hints->min_height = 200;
-	hints->max_width = 300;
-	hints->max_height = 200;
+	screen = DefaultScreen(dpy);
+	root = RootWindow(dpy, screen);
 
-	XSetWMNormalHints(dpy, win, hints);
-}
+	find_supported_atoms();
 
-void
-process_event(XEvent *ev)
-{
+	win = XCreateWindow(dpy, root, 0, 0, 300, 200, 0,
+	    DefaultDepth(dpy, screen), CopyFromParent,
+	    DefaultVisual(dpy, screen), 0, NULL);
+	if (!win)
+		err(1, "XCreateWindow");
+
+	if (!XStringListToTextProperty(&title, 1, &name))
+		err(1, "!XStringListToTextProperty");
+	XSetWMName(dpy, win, &name);
+
+	XSetWindowBackground(dpy, win, WhitePixel(dpy, screen));
+	XSelectInput(dpy, win, KeyPressMask);
+
+	setup(argc, argv);
+
+	XMapWindow(dpy, win);
+
+	for (;;) {
+		XNextEvent(dpy, &ev);
+
+		switch (ev.type) {
+		case KeyPress: {
+			KeySym kc = lookup_keysym(&ev.xkey);
+			if (kc == XK_Escape)
+				exit(0);
+			break;
+		}
+		}
+
+		process_event(&ev);
+	}
+
+	return 0;
 }
