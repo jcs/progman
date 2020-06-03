@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include "common.h"
 
 Display *dpy;
@@ -70,4 +71,12 @@ send_xmessage(Window t, Window w, Atom a, unsigned long x, unsigned long mask)
 	e.data.l[1] = CurrentTime;
 
 	return XSendEvent(dpy, t, False, mask, (XEvent *)&e);
+}
+
+KeySym
+lookup_keysym(XKeyEvent *e)
+{
+	KeySym keysym;
+	XLookupString(e, NULL, 512, &keysym, NULL);
+	return keysym;
 }

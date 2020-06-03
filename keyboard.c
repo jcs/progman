@@ -48,14 +48,6 @@ bind_keys(void)
 	    GrabModeAsync, GrabModeAsync);
 }
 
-KeySym
-lookup_keysym(XKeyEvent *e)
-{
-	KeySym keysym;
-	XLookupString(e, NULL, 512, &keysym, NULL);
-	return keysym;
-}
-
 void
 handle_key_event(XKeyEvent *e)
 {
