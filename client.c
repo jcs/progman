@@ -512,30 +512,41 @@ recalc_frame(client_t *c)
 	int borw = 0;
 	int buts = font->ascent + font->descent + (2 * opt_pad) + 2;
 
+	if (buts < close_pm_attrs.width)
+	    buts = close_pm_attrs.width;
+
 	if (c->win_type == net_wm_type_dock ||
 	    c->win_type == net_wm_type_menu ||
 	    c->win_type == net_wm_type_splash ||
 	    c->win_type == net_wm_type_desk)
 		c->frame_style = FRAME_NONE;
 	else if (c->win_type == net_wm_type_utility)
-		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE);
+		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE |
+		    FRAME_CLOSE | FRAME_TITLEBAR);
 	else if (c->state & (STATE_DOCK | STATE_FULLSCREEN))
 		c->frame_style = FRAME_NONE;
 	else if (c->state & STATE_ZOOMED)
 		c->frame_style = FRAME_ALL & ~(FRAME_BORDER | FRAME_RESIZABLE);
-	else {
+	else
 		c->frame_style = FRAME_ALL;
 
-		if ((c->size.flags & PMinSize) && (c->size.flags & PMaxSize) &&
-		    c->size.min_width == c->size.max_width &&
-		    c->size.min_height == c->size.max_height)
-			c->frame_style &= ~(FRAME_RESIZABLE | FRAME_ZOOM);
-	}
+	if ((c->size.flags & PMinSize) && (c->size.flags & PMaxSize) &&
+	    c->size.min_width == c->size.max_width &&
+	    c->size.min_height == c->size.max_height)
+		c->frame_style &= ~(FRAME_RESIZABLE | FRAME_ZOOM);
 
 	if (c->frame_style & FRAME_RESIZABLE)
 		borw = opt_bw + 2;
 	else if (c->frame_style & FRAME_BORDER)
 		borw = 1;
+
+	if (c->win_type == net_wm_type_utility) {
+		buts = (2 * opt_pad) + 2;
+		if (buts < utility_close_pm_attrs.width)
+		    buts = utility_close_pm_attrs.width;
+		if (c->frame_style & FRAME_RESIZABLE)
+			borw = (opt_bw / 2) + 2;
+	}
 
 	if (c->frame_style & FRAME_RESIZABLE) {
 		c->resize_nw_geom.x = 0;
@@ -749,6 +760,8 @@ redraw_frame(client_t *c, Window only)
 {
 	XftColor *txft;
 	XGlyphInfo extents;
+	Pixmap *pm, *pm_mask;
+	XpmAttributes *pm_attrs;
 	int x, y, tw;
 
 	if (!c || (c->frame_style & FRAME_NONE) || !c->frame)
@@ -836,12 +849,23 @@ redraw_frame(client_t *c, Window only)
 			    c->close_geom.x, c->close_geom.y, c->close_geom.w,
 			    c->close_geom.h);
 			XMapWindow(dpy, c->close);
-			x = (c->close_geom.w / 2) - (close_pm_attrs.width / 2);
-			y = (c->close_geom.h / 2) - (close_pm_attrs.height / 2);
-			XSetClipMask(dpy, pixmap_gc, close_pm_mask);
+
+			if (c->win_type == net_wm_type_utility) {
+				pm = &utility_close_pm;
+				pm_mask = &utility_close_pm_mask;
+				pm_attrs = &utility_close_pm_attrs;
+			} else {
+				pm = &close_pm;
+				pm_mask = &close_pm_mask;
+				pm_attrs = &close_pm_attrs;
+			}
+
+			x = (c->close_geom.w / 2) - (pm_attrs->width / 2);
+			y = (c->close_geom.h / 2) - (pm_attrs->height / 2);
+			XSetClipMask(dpy, pixmap_gc, *pm_mask);
 			XSetClipOrigin(dpy, pixmap_gc, x, y);
-			XCopyArea(dpy, close_pm, c->close, pixmap_gc, 0, 0,
-			    close_pm_attrs.width, close_pm_attrs.height, x, y);
+			XCopyArea(dpy, *pm, c->close, pixmap_gc, 0, 0,
+			    pm_attrs->width, pm_attrs->height, x, y);
 			if (c->close_pressed)
 				XCopyArea(dpy, c->close, c->close, invert_gc,
 				    0, 0, c->close_geom.w, c->close_geom.h, 0,
@@ -875,7 +899,7 @@ redraw_frame(client_t *c, Window only)
 			XMapWindow(dpy, c->titlebar);
 			XClearWindow(dpy, c->titlebar);
 
-			if (c->name) {
+			if (c->name && (c->win_type != net_wm_type_utility)) {
 				XftTextExtentsUtf8(dpy, font,
 				    (FcChar8 *)c->name, strlen(c->name),
 				    &extents);
@@ -943,38 +967,29 @@ redraw_frame(client_t *c, Window only)
 			XSetWindowBackground(dpy, c->zoom, button_bg.pixel);
 			XClearWindow(dpy, c->zoom);
 			XMapWindow(dpy, c->zoom);
+
 			if (c->state & STATE_ZOOMED) {
-				x = (c->zoom_geom.w / 2) -
-				    (unzoom_pm_attrs.width / 2) -
-				    (opt_bevel / 2);
-				y = (c->zoom_geom.h / 2) -
-				    (unzoom_pm_attrs.height / 2) -
-				    (opt_bevel / 2);
-				if (c->zoom_pressed) {
-					x += 2;
-					y += 2;
-				}
-				XSetClipMask(dpy, pixmap_gc, unzoom_pm_mask);
-				XSetClipOrigin(dpy, pixmap_gc, x, y);
-				XCopyArea(dpy, unzoom_pm, c->zoom, pixmap_gc,
-				    0, 0, unzoom_pm_attrs.width,
-				    unzoom_pm_attrs.height, x, y);
+				pm = &unzoom_pm;
+				pm_mask = &unzoom_pm_mask;
+				pm_attrs = &unzoom_pm_attrs;
 			} else {
-				x = (c->zoom_geom.w / 2) -
-				    (zoom_pm_attrs.width / 2) - (opt_bevel / 2);
-				y = (c->zoom_geom.h / 2) -
-				    (zoom_pm_attrs.height / 2) -
-				    (opt_bevel / 2);
-				if (c->zoom_pressed) {
-					x += 2;
-					y += 2;
-				}
-				XSetClipMask(dpy, pixmap_gc, zoom_pm_mask);
-				XSetClipOrigin(dpy, pixmap_gc, x, y);
-				XCopyArea(dpy, zoom_pm, c->zoom, pixmap_gc, 0,
-				    0, zoom_pm_attrs.width,
-				    zoom_pm_attrs.height, x, y);
+				pm = &zoom_pm;
+				pm_mask = &zoom_pm_mask;
+				pm_attrs = &zoom_pm_attrs;
 			}
+
+			x = (c->zoom_geom.w / 2) - (pm_attrs->width / 2) -
+			    (opt_bevel / 2);
+			y = (c->zoom_geom.h / 2) - (pm_attrs->height / 2) -
+			    (opt_bevel / 2);
+			if (c->zoom_pressed) {
+				x += 2;
+				y += 2;
+			}
+			XSetClipMask(dpy, pixmap_gc, *pm_mask);
+			XSetClipOrigin(dpy, pixmap_gc, x, y);
+			XCopyArea(dpy, *pm, c->zoom, pixmap_gc, 0, 0,
+			    pm_attrs->width, pm_attrs->height, x, y);
 			bevel(c->zoom, c->zoom_geom, c->zoom_pressed);
 			XSetForeground(dpy, DefaultGC(dpy, screen),
 			    border_fg.pixel);

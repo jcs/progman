@@ -46,12 +46,14 @@
 
 #ifdef HIDPI
 #include "icons/close_hidpi.xpm"
+#include "icons/utility_close_hidpi.xpm"
 #include "icons/iconify_hidpi.xpm"
 #include "icons/zoom_hidpi.xpm"
 #include "icons/unzoom_hidpi.xpm"
 #include "icons/default_icon_hidpi.xpm"
 #else
 #include "icons/close.xpm"
+#include "icons/utility_close.xpm"
 #include "icons/iconify.xpm"
 #include "icons/zoom.xpm"
 #include "icons/unzoom.xpm"
@@ -91,6 +93,9 @@ GC invert_gc;
 Pixmap close_pm;
 Pixmap close_pm_mask;
 XpmAttributes close_pm_attrs;
+Pixmap utility_close_pm;
+Pixmap utility_close_pm_mask;
+XpmAttributes utility_close_pm_attrs;
 Pixmap iconify_pm;
 Pixmap iconify_pm_mask;
 XpmAttributes iconify_pm_attrs;
@@ -322,6 +327,8 @@ setup_display(void)
 
 	XpmCreatePixmapFromData(dpy, root, close_xpm, &close_pm, &close_pm_mask,
 	    &close_pm_attrs);
+	XpmCreatePixmapFromData(dpy, root, utility_close_xpm, &utility_close_pm,
+	    &utility_close_pm_mask, &utility_close_pm_attrs);
 	XpmCreatePixmapFromData(dpy, root, iconify_xpm, &iconify_pm,
 	    &iconify_pm_mask, &iconify_pm_attrs);
 	XpmCreatePixmapFromData(dpy, root, zoom_xpm, &zoom_pm, &zoom_pm_mask,
@@ -464,6 +471,8 @@ cleanup(void)
 	XFreeGC(dpy, invert_gc);
 	XFreePixmap(dpy, close_pm);
 	XFreePixmap(dpy, close_pm_mask);
+	XFreePixmap(dpy, utility_close_pm);
+	XFreePixmap(dpy, utility_close_pm_mask);
 	XFreePixmap(dpy, iconify_pm);
 	XFreePixmap(dpy, iconify_pm_mask);
 	XFreePixmap(dpy, zoom_pm);
