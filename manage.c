@@ -577,7 +577,7 @@ zoom_client(client_t *c)
 	recalc_frame(c);
 
 	c->geom.x = s.left;
-	c->geom.y = s.top + c->titlebar_geom.h + (c->titlebar_geom.h ? 1 : 0);
+	c->geom.y = s.top + c->titlebar_geom.h;
 	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
 	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom - c->geom.y;
 
