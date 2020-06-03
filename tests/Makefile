@@ -21,10 +21,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 
-PREFIX?=	/usr/local
-X11BASE?=	/usr/X11R6
-
-PKGLIBS=	x11 xft xext xpm gtk+-2.0
+PKGLIBS=	x11
 
 CC?=		cc
 CFLAGS+=	-O2 -Wall -Wunused \
@@ -33,60 +30,19 @@ CFLAGS+=	-O2 -Wall -Wunused \
 		`pkg-config --cflags ${PKGLIBS}`
 LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 
-# uncomment to enable debugging
-#CFLAGS+=	-g -DDEBUG=1
-
-# uncomment for HiDPI displays
-#CFLAGS+=	-DHIDPI=1
-
-# uncomment to use gdk-pixbuf to rescale icons
-PKGLIBS+=	gdk-pixbuf-xlib-2.0
-CFLAGS+=	-DUSE_GDK_PIXBUF
-
-BINDIR=		$(PREFIX)/bin
-MANDIR=		$(PREFIX)/man/man1
-
-PROGMAN_SRC=	atom.c \
-		client.c \
-		common.c \
-		events.c \
-		keyboard.c \
-		manage.c \
-		menu.c \
-		parser.c \
-		progman.c
-
-AEMENU_SRC=	aemenu.c \
-		atom.c \
-		common.c \
-		menu.c \
-		parser.c
-
-PROGMAN_OBJ=	${PROGMAN_SRC:.c=.o}
-AEMENU_OBJ=	${AEMENU_SRC:.c=.o}
-
-OBJ=		$(PROGMAN_OBJ) \
-		$(AEMENU_OBJ)
-
-BIN=		progman aemenu
-MAN=		progman.1
+BIN=		border-no-titlebar \
+		no-resize
 
 all: $(BIN)
 
-$(PROGMAN_OBJ): progman.h
+common.o: ../common.c
 
-progman: $(PROGMAN_OBJ)
-	$(CC) -o $@ $(PROGMAN_OBJ) $(LDFLAGS)
+atom.o: ../atom.c
 
-aemenu: $(AEMENU_OBJ) progman.h
-	$(CC) -o $@ $(AEMENU_OBJ) $(LDFLAGS)
-
-install: all
-	mkdir -p $(BINDIR) $(MANDIR)
-	install -s $(BIN) $(BINDIR)
-	install -m 644 $(MAN) $(MANDIR)
+$(BIN): atom.o common.o $(BIN).c
+	$(CC) $(CFLAGS) -o $@ $@.c atom.o common.o $(LDFLAGS)
 
 clean:
-	rm -f $(BIN) $(OBJ)
+	rm -f $(BIN) *.o
 
 .PHONY: all install clean
