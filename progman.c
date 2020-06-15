@@ -152,15 +152,6 @@ main(int argc, char **argv)
 
 	setlocale(LC_ALL, "");
 
-	/* parsing the config file may need dpy */
-	dpy = XOpenDisplay(NULL);
-	if (!dpy)
-		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
-
-	XSetErrorHandler(handle_xerror);
-	screen = DefaultScreen(dpy);
-	root = RootWindow(dpy, screen);
-
 	while ((ch = getopt(argc, argv, "c:")) != -1) {
 		switch (ch) {
 		case 'c':
@@ -171,6 +162,15 @@ main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	/* parsing the config file may need dpy, so connect early */
+	dpy = XOpenDisplay(NULL);
+	if (!dpy)
+		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
+
+	XSetErrorHandler(handle_xerror);
+	screen = DefaultScreen(dpy);
+	root = RootWindow(dpy, screen);
 
 	/* setup default key bindings before config which may override them */
 	bind_key("alt+tab", "cycle");
