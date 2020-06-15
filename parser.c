@@ -54,6 +54,7 @@ find_ini_section(FILE *stream, char *section)
 
 	snprintf(marker, sizeof(marker), "[%s]\n", section);
 
+	fseek(stream, 0, SEEK_SET);
 	while (fgets(buf, sizeof(buf), stream)) {
 		if (buf[0] == '#' || buf[0] == '\n')
 			continue;
