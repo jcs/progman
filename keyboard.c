@@ -244,13 +244,8 @@ handle_key_event(XKeyEvent *e)
 		}
 	}
 
-	if (!action) {
-		warnx("received %s key event for key %ld with modifiers "
-		    "0x%x we didn't bind for?",
-		    e->type == KeyRelease ? "KeyRelease" : "KeyPress",
-		    kc, e->state);
+	if (!action)
 		return;
-	}
 
 	switch (key_actions[i].action) {
 	case ACTION_CYCLE:
