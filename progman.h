@@ -70,7 +70,6 @@
 #define DEF_NDESKS 5
 
 #define DEF_LAUNCHER "aemenu --launch"
-#define DEF_TERMINAL "xterm"
 
 #define DOUBLE_CLICK_MSEC 250
 
@@ -109,6 +108,25 @@ struct geom {
 	long y;
 	long w;
 	long h;
+};
+
+/* key_action_t action */
+enum {
+	ACTION_NONE = -1,
+	ACTION_CYCLE = 1,
+	ACTION_REVERSE_CYCLE,
+	ACTION_DESK,
+	ACTION_CLOSE,
+	ACTION_EXEC,
+};
+
+typedef struct key_action key_action_t;
+struct key_action {
+	KeySym key;
+	unsigned int mod;
+	int action;
+	int iarg;
+	char *sarg;
 };
 
 /* client_t state */
@@ -296,7 +314,6 @@ extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
 extern char *opt_launcher;
-extern char *opt_terminal;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
@@ -374,7 +391,6 @@ extern const char *frame_name(client_t *, Window);
 
 /* keyboard.c */
 extern void bind_keys(void);
-extern KeySym lookup_keysym(XKeyEvent *);
 extern void handle_key_event(XKeyEvent *);
 
 #endif	/* PROGMAN_H */

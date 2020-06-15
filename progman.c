@@ -137,7 +137,6 @@ int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
-char *opt_terminal = DEF_TERMINAL;
 char *opt_launcher = DEF_LAUNCHER;
 
 static void cleanup(void);
@@ -148,21 +147,47 @@ int
 main(int argc, char **argv)
 {
 	struct sigaction act;
+	char *config = NULL;
 	int ch;
 
 	setlocale(LC_ALL, "");
-	read_config(NULL);
+
+	/* parsing the config file may need dpy */
+	dpy = XOpenDisplay(NULL);
+	if (!dpy)
+		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
+
+	XSetErrorHandler(handle_xerror);
+	screen = DefaultScreen(dpy);
+	root = RootWindow(dpy, screen);
 
 	while ((ch = getopt(argc, argv, "c:")) != -1) {
 		switch (ch) {
 		case 'c':
-			read_config(optarg);
+			config = strdup(optarg);
 			break;
 		default:
 			printf("usage: %s [-c <config file>]\n", argv[0]);
 			exit(1);
 		}
 	}
+
+	/* setup default key bindings before config which may override them */
+	bind_key("alt+tab", "cycle");
+	bind_key("shift+alt+tab", "reverse_cycle");
+	bind_key("alt+f4", "close");
+	bind_key("alt+1", "desk 0");
+	bind_key("alt+2", "desk 1");
+	bind_key("alt+3", "desk 2");
+	bind_key("alt+4", "desk 3");
+	bind_key("alt+5", "desk 4");
+	bind_key("alt+6", "desk 5");
+	bind_key("alt+7", "desk 6");
+	bind_key("alt+8", "desk 7");
+	bind_key("alt+9", "desk 8");
+	bind_key("alt+0", "desk 9");
+
+	read_config(config);
 
 	if (pipe2(exitmsg, O_CLOEXEC) != 0)
 		err(1, "pipe2");
@@ -175,7 +200,6 @@ main(int argc, char **argv)
 	sigaction(SIGCHLD, &act, NULL);
 
 	setup_display();
-	bind_keys();
 	event_loop();
 	cleanup();
 
@@ -194,48 +218,49 @@ read_config(char *inifile)
 		return;
 	}
 
-	if (!find_ini_section(ini, "progman"))
-		goto done;
+	if (find_ini_section(ini, "progman")) {
+		while (get_ini_kv(ini, &key, &val)) {
+			if (strcmp(key, "font") == 0)
+				opt_font = strdup(val);
+			else if (strcmp(key, "iconfont") == 0)
+				opt_iconfont = strdup(val);
+			else if (strcmp(key, "fgcolor") == 0)
+				opt_fg = strdup(val);
+			else if (strcmp(key, "bgcolor") == 0)
+				opt_bg = strdup(val);
+			else if (strcmp(key, "unfocused_fgcolor") == 0)
+				opt_unfocused_fg = strdup(val);
+			else if (strcmp(key, "unfocused_bgcolor") == 0)
+				opt_unfocused_bg = strdup(val);
+			else if (strcmp(key, "button_bgcolor") == 0)
+				opt_button_bg = strdup(val);
+			else if (strcmp(key, "border_fgcolor") == 0)
+				opt_border_fg = strdup(val);
+			else if (strcmp(key, "border_bgcolor") == 0)
+				opt_border_bg = strdup(val);
+			else if (strcmp(key, "border_width") == 0)
+				opt_bw = atoi(val);
+			else if (strcmp(key, "title_padding") == 0)
+				opt_pad = atoi(val);
+			else if (strcmp(key, "edgeresist") == 0)
+				opt_edge_resist = atoi(val);
+			else if (strcmp(key, "root_bgcolor") == 0)
+				opt_root_bg = strdup(val);
+			else if (strcmp(key, "launcher") == 0)
+				opt_launcher = strdup(val);
+			else
+				warnx("unknown key \"%s\" and value \"%s\" in "
+				    "ini", key, val);
 
-	while (get_ini_kv(ini, &key, &val)) {
-		if (strcmp(key, "font") == 0)
-			opt_font = strdup(val);
-		else if (strcmp(key, "iconfont") == 0)
-			opt_iconfont = strdup(val);
-		else if (strcmp(key, "fgcolor") == 0)
-			opt_fg = strdup(val);
-		else if (strcmp(key, "bgcolor") == 0)
-			opt_bg = strdup(val);
-		else if (strcmp(key, "unfocused_fgcolor") == 0)
-			opt_unfocused_fg = strdup(val);
-		else if (strcmp(key, "unfocused_bgcolor") == 0)
-			opt_unfocused_bg = strdup(val);
-		else if (strcmp(key, "button_bgcolor") == 0)
-			opt_button_bg = strdup(val);
-		else if (strcmp(key, "border_fgcolor") == 0)
-			opt_border_fg = strdup(val);
-		else if (strcmp(key, "border_bgcolor") == 0)
-			opt_border_bg = strdup(val);
-		else if (strcmp(key, "border_width") == 0)
-			opt_bw = atoi(val);
-		else if (strcmp(key, "title_padding") == 0)
-			opt_pad = atoi(val);
-		else if (strcmp(key, "edgeresist") == 0)
-			opt_edge_resist = atoi(val);
-		else if (strcmp(key, "root_bgcolor") == 0)
-			opt_root_bg = strdup(val);
-		else if (strcmp(key, "launcher") == 0)
-			opt_launcher = strdup(val);
-		else if (strcmp(key, "terminal") == 0)
-			opt_terminal = strdup(val);
-		else
-			warnx("unknown key \"%s\" and value \"%s\" in ini\n",
-			    key, val);
-
-		free(key);
-		free(val);
+			free(key);
+			free(val);
+		}
 	}
-done:
+
+	if (find_ini_section(ini, "keyboard"))
+		while (get_ini_kv(ini, &key, &val))
+			bind_key(key, val);
+
 	fclose(ini);
 }
 
@@ -254,13 +279,6 @@ setup_display(void)
 	unsigned int nwins, i;
 	client_t *c;
 
-	dpy = XOpenDisplay(NULL);
-	if (!dpy)
-		err(1, "can't open $DISPLAY \"%s\"", getenv("DISPLAY"));
-
-	XSetErrorHandler(handle_xerror);
-	screen = DefaultScreen(dpy);
-	root = RootWindow(dpy, screen);
 	focused = NULL;
 	dragging = NULL;
 

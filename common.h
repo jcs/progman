@@ -40,6 +40,6 @@ extern Window root;
 extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
-extern KeySym lookup_keysym(XKeyEvent *);
+extern void bind_key(char *, char *);
 
 #endif	/* PROGMAN_COMMON_H */
