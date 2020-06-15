@@ -396,6 +396,7 @@ setup_display(void)
 			c = new_client(wins[i]);
 			c->placed = 1;
 			map_client(c);
+			map_if_desk(c);
 		}
 	}
 	XFree(wins);
