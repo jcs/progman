@@ -43,6 +43,7 @@ setup_switch_atoms(void)
 	net_cur_desk = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
 	net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
 	net_wm_desk = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+	net_wm_icon_name = XInternAtom(dpy, "_NET_WM_ICON_NAME", False);
 	net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
 	net_wm_state_skipt = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR",
 	    False);
@@ -60,17 +61,20 @@ snprint_wm_name(char *buf, size_t len, Window w)
 {
 	char *n;
 
-	if ((n = get_wm_name(w))) {
-		if (get_wm_state(w) == NormalState) {
+	if (get_wm_state(w) == NormalState) {
+		if ((n = get_wm_name(w))) {
 			if (snprintf(buf, len, "%s", n) > len)
 				strcpy(buf + len - 4, "...");
-		} else {
+			XFree(n);
+		} else
+			snprintf(buf, len, "%#lx", w);
+	} else {
+		if ((n = get_wm_icon_name(w))) {
 			if (snprintf(buf, len, "[%s]", n) > len)
 				strcpy(buf + len - 5, "...]");
-		}
-		XFree(n);
-	} else {
-		snprintf(buf, len, "%#lx", w);
+			XFree(n);
+		} else
+			snprintf(buf, len, "[%#lx]", w);
 	}
 }
 
@@ -122,19 +126,21 @@ raise_win(Window w)
 	send_xmessage(root, w, net_active_window, 0, SubstructureNotifyMask);
 }
 
-static void
+static int
 do_launch_menu(FILE *ini, void *menu, make_item_func make_item_cb)
 {
 	char *key, *val;
 
 	if (!find_ini_section(ini, "launcher"))
-		return;
+		return 1;
 
 	while (get_ini_kv(ini, &key, &val)) {
 		make_item_cb(menu, key, val);
 		free(key);
 		free(val);
 	}
+
+	return 0;
 }
 
 void
@@ -144,8 +150,14 @@ make_launch_menu(char *inifile, void *menu, make_item_func make_item_cb)
 
 	ini = open_ini(inifile);
 	if (!ini)
-		errx(1, "can't find progman.ini");
+		goto fallback;
 
-	do_launch_menu(ini, menu, make_item_cb);
+	if (do_launch_menu(ini, menu, make_item_cb) != 0)
+		goto fallback;
+
 	fclose(ini);
+	return;
+
+fallback:
+	make_item_cb(menu, "xterm", "xterm");
 }
