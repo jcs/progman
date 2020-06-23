@@ -1613,7 +1613,7 @@ void *
 word_wrap_xft(char *str, char delim, XftFont *font, int width, int *nlines)
 {
 	XGlyphInfo extents;
-	void *lines = NULL;
+	struct xft_line_t *lines = NULL;
 	char *curstr;
 	int x, lastdelim;
 	int alloced = 10;
@@ -1629,8 +1629,7 @@ start_wrap:
 	curstr = str;
 
 	for (x = 0; ; x++) {
-		struct xft_line_t *line = lines +
-		    (sizeof(struct xft_line_t) * nline);
+		struct xft_line_t *line = &lines[nline];
 		int tx;
 
 		if (curstr[x] != delim && curstr[x] != '\0')
