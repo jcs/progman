@@ -44,7 +44,6 @@ PKGLIBS+=	gdk-pixbuf-xlib-2.0
 CFLAGS+=	-DUSE_GDK_PIXBUF
 
 BINDIR=		$(PREFIX)/bin
-MANDIR=		$(PREFIX)/man/man1
 
 PROGMAN_SRC=	atom.c \
 		client.c \
@@ -69,7 +68,6 @@ OBJ=		$(PROGMAN_OBJ) \
 		$(AEMENU_OBJ)
 
 BIN=		progman aemenu
-MAN=		progman.1
 
 all: $(BIN)
 
@@ -84,7 +82,6 @@ aemenu: $(AEMENU_OBJ) progman.h
 install: all
 	mkdir -p $(BINDIR) $(MANDIR)
 	install -s $(BIN) $(BINDIR)
-	install -m 644 $(MAN) $(MANDIR)
 
 clean:
 	rm -f $(BIN) $(OBJ)
