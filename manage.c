@@ -646,13 +646,7 @@ goto_desk(int new_desk)
 			    1);
 		}
 
-		if (!IS_ON_CUR_DESK(c)) {
-			if (c->state & STATE_ICONIFIED) {
-				XUnmapWindow(dpy, c->icon);
-				XUnmapWindow(dpy, c->icon_label);
-			} else
-				XUnmapWindow(dpy, c->frame);
-		} else {
+		if (IS_ON_CUR_DESK(c)) {
 			if (c->state & STATE_ICONIFIED) {
 				XMapWindow(dpy, c->icon);
 				XMapWindow(dpy, c->icon_label);
@@ -662,6 +656,12 @@ goto_desk(int new_desk)
 
 				XMapWindow(dpy, c->frame);
 			}
+		} else {
+			if (c->state & STATE_ICONIFIED) {
+				XUnmapWindow(dpy, c->icon);
+				XUnmapWindow(dpy, c->icon_label);
+			} else
+				XUnmapWindow(dpy, c->frame);
 		}
 
 		send_config(c);
