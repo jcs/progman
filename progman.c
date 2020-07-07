@@ -155,6 +155,8 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "c:")) != -1) {
 		switch (ch) {
 		case 'c':
+			if (config)
+				free(config);
 			config = strdup(optarg);
 			break;
 		default:
@@ -188,6 +190,9 @@ main(int argc, char **argv)
 	bind_key("alt+0", "desk 9");
 
 	read_config(config);
+
+	if (config)
+		free(config);
 
 	if (pipe2(exitmsg, O_CLOEXEC) != 0)
 		err(1, "pipe2");
