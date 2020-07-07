@@ -231,7 +231,7 @@ remove_atom(Window w, Atom a, Atom type, unsigned long remove)
 	if (!read)
 		return;
 
-	new = malloc((read + left) * sizeof *new);
+	new = malloc((read + left) * sizeof(*new));
 	if (new == NULL)
 		err(1, "malloc");
 	if (read && tmp != remove)
@@ -247,9 +247,11 @@ remove_atom(Window w, Atom a, Atom type, unsigned long remove)
 
 	if (j)
 		XChangeProperty(dpy, w, a, type, 32, PropModeReplace,
-		    (unsigned char *) new, j);
+		    (unsigned char *)new, j);
 	else
 		XDeleteProperty(dpy, w, a);
+
+	free(new);
 }
 
 /*
