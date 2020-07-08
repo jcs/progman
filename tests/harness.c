@@ -64,7 +64,7 @@ main(int argc, char **argv)
 
 		switch (ev.type) {
 		case KeyPress: {
-			KeySym kc = lookup_keysym(&ev.xkey);
+			KeySym kc = XLookupKeysym(&ev.xkey, 0);
 			if (kc == XK_Escape)
 				exit(0);
 			break;
