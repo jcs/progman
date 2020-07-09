@@ -175,6 +175,7 @@ struct client {
 	Window zoom;
 	geom_t zoom_geom;
 	Bool zoom_pressed;
+	int border_width;
 	Window resize_nw;
 	geom_t resize_nw_geom;
 	Window resize_n;
