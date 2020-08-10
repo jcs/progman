@@ -30,7 +30,8 @@ CFLAGS+=	-O2 -Wall -Wunused \
 		`pkg-config --cflags ${PKGLIBS}`
 LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 
-BIN=		no-resize \
+BIN=		geometry \
+		no-resize \
 		win-type-utility
 
 all: $(BIN)
@@ -39,7 +40,7 @@ common.o: ../common.c
 atom.o: ../atom.c
 harness.o: harness.c
 
-$(BIN): atom.o common.o harness.o $(BIN).c
+$(BIN): atom.o common.o harness.o $@.c
 	$(CC) $(CFLAGS) -o $@ $@.c atom.o common.o harness.o $(LDFLAGS)
 
 clean:
