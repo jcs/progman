@@ -375,15 +375,21 @@ init_geom(client_t *c, strut_t *s)
 	    CAN_PLACE_SELF(win_type))
 		return;
 
-	/*
-	 * At this point, maybe nothing was set, or something went horribly
-	 * wrong and the values are garbage. So, make a guess, based on the
-	 * pointer.
-	 */
-	if (!c->placed && c->geom.x <= 0 && c->geom.y <= 0) {
-		get_pointer(&mouse_x, &mouse_y);
-		recalc_map(c, c->geom, mouse_x, mouse_y, mouse_x, mouse_y, s,
-		    NULL);
+	if (!c->placed) {
+		if (c->geom.x <= 0 && c->geom.y <= 0) {
+			/* Place the window near the cursor */
+			get_pointer(&mouse_x, &mouse_y);
+			recalc_map(c, c->geom, mouse_x, mouse_y, mouse_x,
+			    mouse_y, s, NULL);
+		} else {
+			/*
+			 * Place the window's frame where the window requested
+			 * to be
+			 */
+			recalc_frame(c);
+			c->geom.x += c->border_width;
+			c->geom.y += c->border_width + c->titlebar_geom.h;
+		}
 	}
 
 	/*
@@ -404,10 +410,11 @@ init_geom(client_t *c, strut_t *s)
 	recalc_frame(c);
 
 	/* only move already-placed windows if they're off-screen */
-	if (!c->placed &&
+	if (c->placed &&
 	    (c->frame_geom.x < s->left || c->geom.y <= s->top)) {
 		c->geom.x += (c->geom.x - c->frame_geom.x);
 		c->geom.y += (c->geom.y - c->frame_geom.y);
+		recalc_frame(c);
 	}
 
 #ifdef DEBUG
@@ -914,7 +921,8 @@ redraw_frame(client_t *c, Window only)
 			    0, 0, c->close_geom.w - 1,
 			    c->close_geom.h - 1);
 
-			if (!(c->frame_style & FRAME_RESIZABLE)) {
+			if ((c->frame_style & FRAME_BORDER) &&
+			    !(c->frame_style & FRAME_RESIZABLE)) {
 				XSetForeground(dpy, DefaultGC(dpy, screen),
 				    WhitePixel(dpy, screen));
 				XDrawLine(dpy, c->close,
@@ -973,7 +981,8 @@ redraw_frame(client_t *c, Window only)
 			    0, c->titlebar_geom.h - 1, c->titlebar_geom.w + 1,
 			    c->titlebar_geom.h - 1);
 
-			if (!(c->frame_style & FRAME_RESIZABLE)) {
+			if ((c->frame_style & FRAME_BORDER) &&
+			    !(c->frame_style & FRAME_RESIZABLE)) {
 				XSetForeground(dpy, DefaultGC(dpy, screen),
 				    WhitePixel(dpy, screen));
 				XDrawLine(dpy, c->titlebar,
