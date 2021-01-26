@@ -24,27 +24,37 @@
 #include <string.h>
 #include "common.h"
 #include "parser.h"
+#include "progman_ini.h"
 
 /*
  * If the user specifies an ini file, return NULL immediately if it's not
  * found; otherwise, search for the usual suspects.
  */
-
 FILE *
 open_ini(char *inifile)
 {
-	FILE *ini;
+	FILE *ini = NULL;
 	char buf[BUF_SIZE];
 
-	if (inifile)
-		return fopen(inifile, "r");
+	if (inifile) {
+		ini = fopen(inifile, "r");
+		if (!ini)
+			err(1, "can't open config file %s", inifile);
+
+		return ini;
+	}
 
 	snprintf(buf, sizeof(buf), "%s/.config/progman/progman.ini",
 	    getenv("HOME"));
 	if ((ini = fopen(buf, "r")))
 		return ini;
 
-	return NULL;
+	/* load compiled-in defaults */
+	ini = fmemopen(progman_ini, sizeof(progman_ini), "r");
+	if (!ini || sizeof(progman_ini) == 0)
+		errx(1, "no compiled-in default config file");
+
+	return ini;
 }
 
 int

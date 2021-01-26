@@ -298,6 +298,7 @@ extern Cursor resize_nw_curs;
 extern Cursor resize_sw_curs;
 extern Cursor resize_ne_curs;
 extern Cursor resize_se_curs;
+extern char *opt_config_file;
 extern char *opt_font;
 extern char *opt_iconfont;
 extern char *opt_fg;

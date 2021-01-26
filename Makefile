@@ -37,7 +37,7 @@ LDFLAGS+=	`pkg-config --libs ${PKGLIBS}`
 #CFLAGS+=	-g -DDEBUG=1
 
 # uncomment for HiDPI displays
-#CFLAGS+=	-DHIDPI=1
+CFLAGS+=	-DHIDPI=1
 
 # uncomment to use gdk-pixbuf to rescale icons
 PKGLIBS+=	gdk-pixbuf-xlib-2.0
@@ -71,7 +71,10 @@ BIN=		progman aemenu
 
 all: $(BIN)
 
-$(PROGMAN_OBJ): progman.h
+$(PROGMAN_OBJ): progman.h progman_ini.h
+
+progman_ini.h:	progman.ini
+	xxd -i progman.ini > $@
 
 progman: $(PROGMAN_OBJ)
 	$(CC) -o $@ $(PROGMAN_OBJ) $(LDFLAGS)

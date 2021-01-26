@@ -121,6 +121,7 @@ Cursor resize_se_curs;
 
 int exitmsg[2];
 
+char *opt_config_file = NULL;
 char *opt_font = DEF_FONT;
 char *opt_iconfont = DEF_ICONFONT;
 char *opt_fg = DEF_FG;
@@ -140,14 +141,13 @@ int opt_edge_resist = DEF_EDGE_RES;
 char *opt_launcher = DEF_LAUNCHER;
 
 static void cleanup(void);
-static void read_config(char *);
+static void read_config(void);
 static void setup_display(void);
 
 int
 main(int argc, char **argv)
 {
 	struct sigaction act;
-	char *config = NULL;
 	int ch;
 
 	setlocale(LC_ALL, "");
@@ -155,9 +155,9 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "c:")) != -1) {
 		switch (ch) {
 		case 'c':
-			if (config)
-				free(config);
-			config = strdup(optarg);
+			if (opt_config_file)
+				free(opt_config_file);
+			opt_config_file = strdup(optarg);
 			break;
 		default:
 			printf("usage: %s [-c <config file>]\n", argv[0]);
@@ -174,25 +174,7 @@ main(int argc, char **argv)
 	screen = DefaultScreen(dpy);
 	root = RootWindow(dpy, screen);
 
-	/* setup default key bindings before config which may override them */
-	bind_key("alt+tab", "cycle");
-	bind_key("shift+alt+tab", "reverse_cycle");
-	bind_key("alt+f4", "close");
-	bind_key("alt+1", "desk 0");
-	bind_key("alt+2", "desk 1");
-	bind_key("alt+3", "desk 2");
-	bind_key("alt+4", "desk 3");
-	bind_key("alt+5", "desk 4");
-	bind_key("alt+6", "desk 5");
-	bind_key("alt+7", "desk 6");
-	bind_key("alt+8", "desk 7");
-	bind_key("alt+9", "desk 8");
-	bind_key("alt+0", "desk 9");
-
-	read_config(config);
-
-	if (config)
-		free(config);
+	read_config();
 
 	if (pipe2(exitmsg, O_CLOEXEC) != 0)
 		err(1, "pipe2");
@@ -212,16 +194,12 @@ main(int argc, char **argv)
 }
 
 static void
-read_config(char *inifile)
+read_config(void)
 {
-	FILE *ini;
+	FILE *ini = NULL;
 	char *key, *val;
 
-	if (!(ini = open_ini(inifile))) {
-		if (inifile)
-			err(1, "can't open config file \"%s\"", inifile);
-		return;
-	}
+	ini = open_ini(opt_config_file);
 
 	if (find_ini_section(ini, "progman")) {
 		while (get_ini_kv(ini, &key, &val)) {
