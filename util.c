@@ -31,10 +31,6 @@
 #include <X11/Xutil.h>
 #include "progman.h"
 
-Display *dpy;
-Window root;
-client_t *cycle_head;
-
 void
 fork_exec(char *cmd)
 {

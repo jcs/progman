@@ -25,8 +25,7 @@
 #include <string.h>
 #include <limits.h>
 #include <X11/Xutil.h>
-#include "common.h"
-#include "atom.h"
+#include "progman.h"
 
 Atom net_supported;
 Atom utf8_string;

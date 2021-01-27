@@ -47,13 +47,13 @@ BINDIR=		$(PREFIX)/bin
 
 SRC=		atom.c \
 		client.c \
-		common.c \
 		events.c \
 		keyboard.c \
 		launcher.c \
 		manage.c \
 		parser.c \
-		progman.c
+		progman.c \
+		util.c
 
 OBJ=		${SRC:.c=.o}
 

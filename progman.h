@@ -28,7 +28,6 @@
 #include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
 #include <X11/xpm.h>
-#include "common.h"
 #include "atom.h"
 
 /* Default options */
@@ -75,6 +74,8 @@
 
 #define DOUBLE_CLICK_MSEC 250
 
+#define BUF_SIZE 2048
+
 /* End of options */
 
 #define SubMask (SubstructureRedirectMask|SubstructureNotifyMask)
@@ -87,6 +88,8 @@
     (t) == net_wm_type_menu || (t) == net_wm_type_splash || \
     (t) == net_wm_type_desk)
 #define HAS_DECOR(t) (!CAN_PLACE_SELF(t))
+#define DESK_ALL 0xFFFFFFFF
+#define IS_ON_DESK(w, d) (w == d || w == DESK_ALL)
 #define IS_ON_CUR_DESK(c) \
 	(IS_ON_DESK((c)->desk, cur_desk) || (c)->state & STATE_ICONIFIED)
 #define IS_RESIZE_WIN(c, w) (w == c->resize_nw || w == c->resize_w || \
@@ -110,6 +113,28 @@ struct geom {
 	long y;
 	long w;
 	long h;
+};
+
+/* keyboard and launcher actions */
+typedef struct action action_t;
+struct action {
+	KeySym key;
+	unsigned int mod;
+	int action;
+	int iarg;
+	char *sarg;
+};
+
+/* types of actions in action_t.action */
+enum {
+	ACTION_INVALID = -2,
+	ACTION_NONE = -1,
+	ACTION_CYCLE = 1,
+	ACTION_REVERSE_CYCLE,
+	ACTION_DESK,
+	ACTION_CLOSE,
+	ACTION_EXEC,
+	ACTION_QUIT,
 };
 
 /* client_t state */
@@ -230,6 +255,8 @@ enum {
 };	/* focus_client */
 
 /* progman.c */
+extern Display *dpy;
+extern Window root;
 extern client_t *focused, *dragging;
 extern int screen;
 extern unsigned long cur_desk;
@@ -390,5 +417,13 @@ extern void launcher_setup(void);
 extern void launcher_show(XButtonEvent *);
 extern void launcher_programs_free(void);
 extern client_t *cycle_head;
+
+/* util.c */
+extern void fork_exec(char *);
+extern int get_pointer(int *, int *);
+extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
+extern void bind_key(char *, char *);
+extern void take_action(action_t *);
+extern action_t *parse_action(char *, char *);
 
 #endif	/* PROGMAN_H */

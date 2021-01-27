@@ -22,7 +22,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
-#include "common.h"
+#include "progman.h"
 #include "parser.h"
 #include "progman_ini.h"
 

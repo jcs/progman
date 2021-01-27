@@ -64,6 +64,9 @@
 #define WAIT_ANY (-1)
 #endif
 
+Display *dpy;
+Window root;
+client_t *cycle_head;
 client_t *focused, *dragging;
 int screen;
 unsigned long ndesks = DEF_NDESKS;
