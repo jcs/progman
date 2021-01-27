@@ -112,25 +112,6 @@ struct geom {
 	long h;
 };
 
-/* key_action_t action */
-enum {
-	ACTION_NONE = -1,
-	ACTION_CYCLE = 1,
-	ACTION_REVERSE_CYCLE,
-	ACTION_DESK,
-	ACTION_CLOSE,
-	ACTION_EXEC,
-};
-
-typedef struct key_action key_action_t;
-struct key_action {
-	KeySym key;
-	unsigned int mod;
-	int action;
-	int iarg;
-	char *sarg;
-};
-
 /* client_t state */
 enum {
 	STATE_NORMAL = 0,
@@ -324,6 +305,9 @@ extern int opt_edge_resist;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
+/* progman.c */
+void quit(void);
+
 /* event.c */
 extern void event_loop(void);
 extern int handle_xerror(Display *, XErrorEvent *);
@@ -405,5 +389,6 @@ extern Window launcher_win;
 extern void launcher_setup(void);
 extern void launcher_show(XButtonEvent *);
 extern void launcher_programs_free(void);
+extern client_t *cycle_head;
 
 #endif	/* PROGMAN_H */

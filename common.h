@@ -24,6 +24,27 @@
 
 #include <X11/Xlib.h>
 
+/* action_t action */
+enum {
+	ACTION_INVALID = -2,
+	ACTION_NONE = -1,
+	ACTION_CYCLE = 1,
+	ACTION_REVERSE_CYCLE,
+	ACTION_DESK,
+	ACTION_CLOSE,
+	ACTION_EXEC,
+	ACTION_QUIT,
+};
+
+typedef struct action action_t;
+struct action {
+	KeySym key;
+	unsigned int mod;
+	int action;
+	int iarg;
+	char *sarg;
+};
+
 /* Hooray for magic numbers */
 
 #define DESK_ALL 0xFFFFFFFF
@@ -41,5 +62,7 @@ extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
 extern void bind_key(char *, char *);
+extern void take_action(action_t *);
+extern action_t *parse_action(char *, char *);
 
 #endif	/* PROGMAN_COMMON_H */

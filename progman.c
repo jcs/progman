@@ -417,8 +417,7 @@ sig_handler(int signum)
 	case SIGINT:
 	case SIGTERM:
 	case SIGHUP:
-		if (!write(exitmsg[1], &exitmsg, 1))
-			warn("failed to exit cleanly");
+		quit();
 		break;
 	case SIGCHLD:
 		while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0 ||
@@ -426,6 +425,16 @@ sig_handler(int signum)
 			;
 		break;
 	}
+}
+
+void
+quit(void)
+{
+	if (write(exitmsg[1], &exitmsg, 1))
+		return;
+
+	warn("failed to exit cleanly");
+	exit(0);
 }
 
 int

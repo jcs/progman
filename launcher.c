@@ -26,7 +26,7 @@
 
 struct program {
 	char *name;
-	char *path;
+	action_t *action;
 	struct program *next;
 };
 
@@ -74,6 +74,7 @@ launcher_reload(void)
 	struct program *program = NULL;
 	XSizeHints *hints;
 	XGlyphInfo extents;
+	action_t *action;
 	char *key, *val;
 	int tw;
 
@@ -90,6 +91,10 @@ launcher_reload(void)
 		goto done;
 
 	while (get_ini_kv(ini, &key, &val)) {
+		action = parse_action(key, val);
+		if (action == NULL)
+			continue;
+
 		program = malloc(sizeof(struct program));
 		if (!program)
 			err(1, "malloc");
@@ -112,9 +117,7 @@ launcher_reload(void)
 		launcher_height += launcher_item_height;
 
 		program->name = strdup(key);
-		program->path = strdup(val);
-
-		printf("%s -> %s\n", key, val);
+		program->action = action;
 
 		free(key);
 		free(val);
@@ -155,6 +158,7 @@ launcher_show(XButtonEvent *e)
 
 	c = new_client(launcher_win);
 	c->placed = 1;
+	c->desk = cur_desk;
 	map_client(c);
 	map_if_desk(c);
 
@@ -200,14 +204,16 @@ close_launcher:
 	XUnmapWindow(dpy, launcher_win);
 	del_client(c, DEL_WITHDRAW);
 
-	if (launcher_highlighted >= 0) {
-		for (x = 0, program = program_head; program;
-		    program = program->next, x++) {
-			if (x == launcher_highlighted) {
-				fork_exec(program->path);
-				break;
-			}
-		}
+	if (launcher_highlighted < 0)
+		return;
+
+	for (x = 0, program = program_head; program;
+	    program = program->next, x++) {
+		if (x != launcher_highlighted)
+			continue;
+
+		take_action(program->action);
+		break;
 	}
 }
 
@@ -221,8 +227,11 @@ launcher_programs_free(void)
 
 		if (program->name)
 			free(program->name);
-		if (program->path)
-			free(program->path);
+		if (program->action) {
+			if (program->action->sarg)
+				free(program->action->sarg);
+			free(program->action);
+		}
 		program = program->next;
 		free(t);
 	}
