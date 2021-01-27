@@ -1,6 +1,3 @@
-aewm
-aedesk
-aemenu
-aepanel
-aesession
+progman
+progman_ini.h
 *.o

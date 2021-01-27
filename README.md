@@ -28,5 +28,5 @@ default.
 - [Theme support](https://github.com/jcs/progman/tree/master/themes)
 - Optional HiDPI support by defining `-DHIDPI` in `Makefile`, to double-size
   images, icons, and borders
-- Right-clicking on the desktop launches the `launcher` defined in
-  `progman.ini`, which is `aemenu` by default (left over from aewm)
+- Right-clicking on the desktop shows a launcher menu containing programs
+  listed in `progman.ini`

@@ -77,6 +77,8 @@ XftFont *font;
 XftFont *iconfont;
 XftColor xft_fg;
 XftColor xft_fg_unfocused;
+XftColor xft_launcher;
+XftColor xft_launcher_highlighted;
 
 Colormap def_cmap;
 XColor fg;
@@ -88,6 +90,8 @@ XColor bevel_dark;
 XColor bevel_light;
 XColor border_fg;
 XColor border_bg;
+XColor launcher_fg;
+XColor launcher_bg;
 GC pixmap_gc;
 GC invert_gc;
 Pixmap close_pm;
@@ -131,14 +135,15 @@ char *opt_unfocused_bg = DEF_UNFOCUSED_BG;
 char *opt_button_bg = DEF_BUTTON_BG;
 char *opt_bevel_dark = DEF_BEVEL_DARK;
 char *opt_bevel_light = DEF_BEVEL_LIGHT;
-char *opt_border_bg = DEF_BORDER_BG;
 char *opt_border_fg = DEF_BORDER_FG;
+char *opt_border_bg = DEF_BORDER_BG;
+char *opt_launcher_fg = DEF_LAUNCHER_FG;
+char *opt_launcher_bg = DEF_LAUNCHER_BG;
 char *opt_root_bg = DEF_ROOTBG;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
-char *opt_launcher = DEF_LAUNCHER;
 
 static void cleanup(void);
 static void read_config(void);
@@ -187,6 +192,7 @@ main(int argc, char **argv)
 	sigaction(SIGCHLD, &act, NULL);
 
 	setup_display();
+	launcher_setup();
 	event_loop();
 	cleanup();
 
@@ -221,6 +227,10 @@ read_config(void)
 				opt_border_fg = strdup(val);
 			else if (strcmp(key, "border_bgcolor") == 0)
 				opt_border_bg = strdup(val);
+			else if (strcmp(key, "launcher_fgcolor") == 0)
+				opt_launcher_fg = strdup(val);
+			else if (strcmp(key, "launcher_bgcolor") == 0)
+				opt_launcher_bg = strdup(val);
 			else if (strcmp(key, "border_width") == 0)
 				opt_bw = atoi(val);
 			else if (strcmp(key, "title_padding") == 0)
@@ -229,8 +239,6 @@ read_config(void)
 				opt_edge_resist = atoi(val);
 			else if (strcmp(key, "root_bgcolor") == 0)
 				opt_root_bg = strdup(val);
-			else if (strcmp(key, "launcher") == 0)
-				opt_launcher = strdup(val);
 			else
 				warnx("unknown key \"%s\" and value \"%s\" in "
 				    "ini", key, val);
@@ -294,22 +302,24 @@ setup_display(void)
 	alloc_color(opt_bevel_light, &bevel_light, "bevel_lightcolor");
 	alloc_color(opt_border_fg, &border_fg, "border_fgcolor");
 	alloc_color(opt_border_bg, &border_bg, "border_bgcolor");
+	alloc_color(opt_launcher_fg, &launcher_fg, "launcher_fgcolor");
+	alloc_color(opt_launcher_bg, &launcher_bg, "launcher_bgcolor");
 
 	XSetLineAttributes(dpy, DefaultGC(dpy, screen), 1, LineSolid, CapButt,
 	    JoinBevel);
 	XSetFillStyle(dpy, DefaultGC(dpy, screen), FillSolid);
 
-	xft_fg.color.red = fg.red;
-	xft_fg.color.green = fg.green;
-	xft_fg.color.blue = fg.blue;
-	xft_fg.color.alpha = 0xffff;
-	xft_fg.pixel = fg.pixel;
+#define create_xft_color(_xft, _pixel) \
+	(_xft).color.red = (_pixel).red; \
+	(_xft).color.green = (_pixel).green; \
+	(_xft).color.blue = (_pixel).blue; \
+	(_xft).color.alpha = 0xffff; \
+	(_xft).pixel = (_pixel).pixel;
 
-	xft_fg_unfocused.color.red = unfocused_fg.red;
-	xft_fg_unfocused.color.green = unfocused_fg.green;
-	xft_fg_unfocused.color.blue = unfocused_fg.blue;
-	xft_fg_unfocused.color.alpha = 0xffff;
-	xft_fg_unfocused.pixel = unfocused_fg.pixel;
+	create_xft_color(xft_fg, fg);
+	create_xft_color(xft_fg_unfocused, unfocused_fg);
+	create_xft_color(xft_launcher, launcher_fg);
+	create_xft_color(xft_launcher_highlighted, launcher_bg);
 
 	font = XftFontOpenName(dpy, screen, opt_font);
 	if (!font)
@@ -492,6 +502,8 @@ cleanup(void)
 
 	XDeleteProperty(dpy, root, net_supported);
 	XDeleteProperty(dpy, root, net_client_list);
+
+	launcher_programs_free();
 
 	XCloseDisplay(dpy);
 	exit(0);

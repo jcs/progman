@@ -43,8 +43,12 @@
 #define DEF_BEVEL_LIGHT "white"
 
 /* Borders */
-#define DEF_BORDER_BG "#c0c7c8"
 #define DEF_BORDER_FG "black"
+#define DEF_BORDER_BG "#c0c7c8"
+
+/* Launcher */
+#define DEF_LAUNCHER_FG "black"
+#define DEF_LAUNCHER_BG "#c0c7c8"
 
 /* Default root color is unchanged */
 #define DEF_ROOTBG NULL
@@ -68,8 +72,6 @@
 #endif
 
 #define DEF_NDESKS 5
-
-#define DEF_LAUNCHER "aemenu --launch"
 
 #define DOUBLE_CLICK_MSEC 250
 
@@ -258,6 +260,8 @@ extern XftFont *font;
 extern XftFont *iconfont;
 extern XftColor xft_fg;
 extern XftColor xft_fg_unfocused;
+extern XftColor xft_launcher;
+extern XftColor xft_launcher_highlighted;
 extern Colormap cmap;
 extern XColor fg;
 extern XColor bg;
@@ -268,6 +272,8 @@ extern XColor bevel_dark;
 extern XColor bevel_light;
 extern XColor border_fg;
 extern XColor border_bg;
+extern XColor launcher_fg;
+extern XColor launcher_bg;
 extern GC pixmap_gc;
 extern GC invert_gc;
 extern Pixmap close_pm;
@@ -315,7 +321,6 @@ extern int opt_bevel;
 extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
-extern char *opt_launcher;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
@@ -394,5 +399,11 @@ extern const char *frame_name(client_t *, Window);
 /* keyboard.c */
 extern void bind_keys(void);
 extern void handle_key_event(XKeyEvent *);
+
+/* launcher.c */
+extern Window launcher_win;
+extern void launcher_setup(void);
+extern void launcher_show(XButtonEvent *);
+extern void launcher_programs_free(void);
 
 #endif	/* PROGMAN_H */

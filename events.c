@@ -45,8 +45,6 @@ static void handle_cmap_change(XColormapEvent *);
 static void handle_expose_event(XExposeEvent *);
 static void handle_shape_change(XShapeEvent *);
 
-static int root_button_pressed = 0;
-
 static XEvent ev;
 
 void
@@ -148,12 +146,14 @@ handle_button_press(XButtonEvent *e)
 		    (fc->state & STATE_ICONIFIED)) {
 			c = fc;
 			e->window = c->icon;
+		} else if (e->button == Button3) {
+			launcher_show(e);
 		}
+
+		return;
 	}
 
-	if (e->window == root) {
-		root_button_pressed = e->button;
-	} else if (c && (c->state & STATE_DOCK)) {
+	if (c && (c->state & STATE_DOCK)) {
 		/* pass button event through */
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	} else if (c) {
@@ -191,10 +191,7 @@ handle_button_release(XButtonEvent *e)
 		}
 	}
 
-	if (e->window == root && root_button_pressed == Button3) {
-		fork_exec(opt_launcher);
-		root_button_pressed = 0;
-	} else if (c) {
+	if (c) {
 		if (find_client(e->window, MATCH_FRAME))
 			user_action(c, e->window, e->x, e->y, e->button, 0);
 
