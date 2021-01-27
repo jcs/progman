@@ -377,11 +377,13 @@ do_iconify(client_t *c)
 	c->icon = XCreateWindow(dpy, root, c->icon_geom.x, c->icon_geom.h,
 	    c->icon_geom.w, c->icon_geom.h, 0, CopyFromParent, CopyFromParent,
 	    CopyFromParent, CWBackPixel | CWEventMask, &attrs);
+	set_atoms(c->icon, net_wm_wintype, XA_ATOM, &net_wm_type_desk, 1);
 	XMapWindow(dpy, c->icon);
 
 	c->icon_label = XCreateWindow(dpy, root, 0, 0, c->icon_geom.w,
 	    c->icon_geom.h, 0, CopyFromParent, CopyFromParent, CopyFromParent,
 	    CWBackPixel | CWEventMask, &attrs);
+	set_atoms(c->icon_label, net_wm_wintype, XA_ATOM, &net_wm_type_desk, 1);
 	XMapWindow(dpy, c->icon_label);
 	c->icon_xftdraw = XftDrawCreate(dpy, (Drawable)c->icon_label,
 	    DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
