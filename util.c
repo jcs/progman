@@ -100,6 +100,8 @@ parse_action(char *prefix, char *action)
 		iaction = ACTION_CLOSE;
 	else if (strcmp(taction, "exec") == 0)
 		iaction = ACTION_EXEC;
+	else if (strcmp(taction, "restart") == 0)
+		iaction = ACTION_RESTART;
 	else if (strcmp(taction, "quit") == 0)
 		iaction = ACTION_QUIT;
 	else if (taction[0] == '\n' || taction[0] == '\0')
@@ -194,6 +196,10 @@ take_action(action_t *action)
 		break;
 	case ACTION_EXEC:
 		fork_exec(action->sarg);
+		break;
+	case ACTION_RESTART:
+		cleanup();
+		execlp(orig_argv0, orig_argv0, NULL);
 		break;
 	case ACTION_QUIT:
 		quit();

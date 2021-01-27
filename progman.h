@@ -134,6 +134,7 @@ enum {
 	ACTION_DESK,
 	ACTION_CLOSE,
 	ACTION_EXEC,
+	ACTION_RESTART,
 	ACTION_QUIT,
 };
 
@@ -255,6 +256,7 @@ enum {
 };	/* focus_client */
 
 /* progman.c */
+extern char *orig_argv0;
 extern Display *dpy;
 extern Window root;
 extern client_t *focused, *dragging;
@@ -333,6 +335,7 @@ extern void sig_handler(int signum);
 extern int exitmsg[2];
 
 /* progman.c */
+void cleanup(void);
 void quit(void);
 
 /* event.c */

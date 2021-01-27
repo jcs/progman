@@ -64,6 +64,7 @@
 #define WAIT_ANY (-1)
 #endif
 
+char *orig_argv0;
 Display *dpy;
 Window root;
 client_t *cycle_head;
@@ -148,15 +149,16 @@ int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
 
-static void cleanup(void);
-static void read_config(void);
-static void setup_display(void);
+void read_config(void);
+void setup_display(void);
 
 int
 main(int argc, char **argv)
 {
 	struct sigaction act;
 	int ch;
+
+	orig_argv0 = strdup(argv[0]);
 
 	setlocale(LC_ALL, "");
 
@@ -202,7 +204,7 @@ main(int argc, char **argv)
 	return 0;
 }
 
-static void
+void
 read_config(void)
 {
 	FILE *ini = NULL;
@@ -258,7 +260,7 @@ read_config(void)
 	fclose(ini);
 }
 
-static void
+void
 setup_display(void)
 {
 	XGCValues gv;
@@ -466,10 +468,11 @@ ignore_xerror(Display * dpy, XErrorEvent * e)
  * We use XQueryTree here to preserve the window stacking order, since the
  * order in our linked list is different.
  */
-static void
+void
 cleanup(void)
 {
 	unsigned int nwins, i;
+	XSetWindowAttributes sattr;
 	Window qroot, qparent, *wins;
 	client_t *c;
 
@@ -519,6 +522,9 @@ cleanup(void)
 
 	launcher_programs_free();
 
+	/* resign as "the" window manager */
+	sattr.event_mask = 0;
+	XChangeWindowAttributes(dpy, root, CWEventMask, &sattr);
+
 	XCloseDisplay(dpy);
-	exit(0);
 }

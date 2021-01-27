@@ -149,8 +149,6 @@ launcher_show(XButtonEvent *e)
 	struct program *program;
 	int x, y, mx, my, prev_highlighted;
 
-	/* TODO: reload ini if it's changed since we last looked at it */
-
 	x = e->x_root;
 	y = e->y_root;
 	XMoveResizeWindow(dpy, launcher_win, x, y, launcher_width,
