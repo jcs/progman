@@ -387,7 +387,9 @@ setup_display(void)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = 0; i < nwins; i++) {
+		XSetErrorHandler(ignore_xerror);
 		XGetWindowAttributes(dpy, wins[i], &attr);
+		XSetErrorHandler(handle_xerror);
 		if (!attr.override_redirect && attr.map_state == IsViewable) {
 			c = new_client(wins[i]);
 			c->placed = 1;

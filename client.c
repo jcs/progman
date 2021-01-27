@@ -79,7 +79,9 @@ new_client(Window w)
 	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
 	XGetTransientForHint(dpy, c->win, &c->trans);
 
+	XSetErrorHandler(ignore_xerror);
 	XGetWindowAttributes(dpy, c->win, &attr);
+	XSetErrorHandler(handle_xerror);
 	c->geom.x = attr.x;
 	c->geom.y = attr.y;
 	c->geom.w = attr.width;
@@ -168,7 +170,9 @@ find_client_at_coords(Window w, int x, int y)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = nwins - 1; i > 0; i--) {
+		XSetErrorHandler(ignore_xerror);
 		XGetWindowAttributes(dpy, wins[i], &attr);
+		XSetErrorHandler(handle_xerror);
 		if (!(c = find_client(wins[i], MATCH_ANY)))
 			continue;
 
@@ -212,7 +216,9 @@ top_client(void)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = nwins - 1; i > 0; i--) {
+		XSetErrorHandler(ignore_xerror);
 		XGetWindowAttributes(dpy, wins[i], &attr);
+		XSetErrorHandler(handle_xerror);
 		if ((c = find_client(wins[i], MATCH_FRAME)) &&
 		    !(c->state & STATE_ICONIFIED)) {
 		    	foundc = c;
@@ -1534,7 +1540,9 @@ collect_struts(client_t *c, strut_t *s)
 		if (!IS_ON_CUR_DESK(p) || p == c)
 			continue;
 
+		XSetErrorHandler(ignore_xerror);
 		XGetWindowAttributes(dpy, p->win, &attr);
+		XSetErrorHandler(handle_xerror);
 		if (attr.map_state == IsViewable && get_strut(p->win, &temp)) {
 			if (temp.left > s->left)
 				s->left = temp.left;

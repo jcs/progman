@@ -186,8 +186,10 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off, unsigned long *ret,
 	unsigned long *p;
 	unsigned char *data = NULL;
 
+	XSetErrorHandler(ignore_xerror);
 	XGetWindowProperty(dpy, w, a, off, nitems, False, type, &real_type,
 	    &real_format, &items_read, &bytes_left, &data);
+	XSetErrorHandler(handle_xerror);
 
 	if (real_format == 32 && items_read) {
 		p = (unsigned long *)data;
