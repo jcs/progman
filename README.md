@@ -16,7 +16,7 @@ default.
 
 ### Features
 
-- Window minimizing, drawing icons and labels on the root/desktop.
+- Window minimizing, drawing icons and labels on the root/desktop
 - Window maximizing and full-screen support (via `_NET_WM_STATE_FULLSCREEN`)
 - Window shading by double-clicking on a window titlebar
 - Window moving by holding down `Alt` and clicking anywhere on a window
