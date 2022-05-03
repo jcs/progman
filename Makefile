@@ -65,7 +65,7 @@ $(OBJ):		progman.h Makefile
 parser.o:	progman.h progman_ini.h
 
 progman_ini.h: progman.ini
-	xxd -i progman.ini > $@
+	xxd -i progman.ini > $@ || rm -f progman_ini.h
 
 progman: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(LDFLAGS)
@@ -75,6 +75,6 @@ install: all
 	install -s $(BIN) $(BINDIR)
 
 clean:
-	rm -f $(BIN) $(OBJ)
+	rm -f $(BIN) $(OBJ) progman_ini.h
 
 .PHONY: all install clean
