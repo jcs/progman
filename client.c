@@ -530,7 +530,8 @@ recalc_frame(client_t *c)
 	if (c->win_type == net_wm_type_dock ||
 	    c->win_type == net_wm_type_menu ||
 	    c->win_type == net_wm_type_splash ||
-	    c->win_type == net_wm_type_desk)
+	    c->win_type == net_wm_type_desk ||
+	    c->win_type == kde_net_wm_window_type_override)
 		c->frame_style = FRAME_NONE;
 	else if (c->win_type == net_wm_type_utility)
 		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE |

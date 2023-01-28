@@ -27,6 +27,7 @@
 #include <X11/Xutil.h>
 #include "progman.h"
 
+Atom kde_net_wm_window_type_override;
 Atom net_active_window;
 Atom net_client_list;
 Atom net_client_stack;
@@ -83,6 +84,11 @@ find_supported_atoms(void)
 	net_wm_state_toggle = 2;
 
 	xrootpmap_id = XInternAtom(dpy, "_XROOTPMAP_ID", False);
+
+	kde_net_wm_window_type_override = XInternAtom(dpy,
+	    "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
+	append_atoms(root, net_supported, XA_ATOM,
+	    &kde_net_wm_window_type_override, 1);
 
 	net_active_window = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_active_window, 1);

@@ -34,6 +34,7 @@ struct strut {
 
 typedef struct strut strut_t;
 
+extern Atom kde_net_wm_window_type_override;
 extern Atom net_active_window;
 extern Atom net_client_list;
 extern Atom net_client_stack;
