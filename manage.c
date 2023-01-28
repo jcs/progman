@@ -1347,7 +1347,7 @@ dump_removal(client_t *c, int mode)
 }
 
 void
-dump_clients()
+dump_clients(void)
 {
 	client_t *c;
 
