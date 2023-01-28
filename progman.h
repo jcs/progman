@@ -218,7 +218,8 @@ struct client {
 	Bool placed;
 	Bool shaped;
 	int state;
-	Atom win_type;
+#define MAX_WIN_TYPE_ATOMS 5
+	Atom win_type[MAX_WIN_TYPE_ATOMS];
 	int old_bw;
 };
 
@@ -354,6 +355,7 @@ extern client_t *find_client_at_coords(Window, int, int);
 extern client_t *top_client(void);
 extern client_t *prev_focused(int);
 extern void map_client(client_t *);
+extern int has_win_type(client_t *, Atom);
 extern void recalc_frame(client_t *);
 extern int set_wm_state(client_t *, unsigned long);
 extern void check_states(client_t *);

@@ -318,12 +318,13 @@ init_geom(client_t *c, strut_t *s)
 #ifdef DEBUG
 	geom_t size_flags = { 0 };
 #endif
-	Atom win_type;
+	unsigned long win_type, read, left;
 	int screen_x = DisplayWidth(dpy, screen);
 	int screen_y = DisplayHeight(dpy, screen);
 	int wmax = screen_x - s->left - s->right;
 	int hmax = screen_y - s->top - s->bottom;
 	int mouse_x, mouse_y;
+	int i;
 
 	if (c->state & (STATE_ZOOMED | STATE_FULLSCREEN)) {
 		/*
@@ -377,9 +378,14 @@ init_geom(client_t *c, strut_t *s)
 	 * we need to read the size hints to get that position before
 	 * returning.
 	 */
-	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &win_type, 1, NULL) &&
-	    CAN_PLACE_SELF(win_type))
-		return;
+	for (i = 0, left = 1; left; i += read) {
+		read = get_atoms(c->win, net_wm_wintype, XA_ATOM, i, &win_type,
+		    1, &left);
+		if (!read)
+			break;
+		if (CAN_PLACE_SELF(win_type))
+			return;
+	}
 
 	if (!c->placed) {
 		if (c->geom.x <= 0 && c->geom.y <= 0) {
@@ -519,6 +525,19 @@ reparent(client_t *c, strut_t *s)
 	    c->titlebar_geom.y + c->titlebar_geom.h + 1);
 }
 
+int
+has_win_type(client_t *c, Atom type)
+{
+	int i;
+
+	for (i = 0; i < (sizeof(c->win_type) / sizeof(c->win_type[0])); i++) {
+		if (c->win_type[i] == type)
+			return 1;
+	}
+
+	return 0;
+}
+
 void
 recalc_frame(client_t *c)
 {
@@ -527,13 +546,13 @@ recalc_frame(client_t *c)
 	if (buts < close_pm_attrs.width)
 	    buts = close_pm_attrs.width;
 
-	if (c->win_type == net_wm_type_dock ||
-	    c->win_type == net_wm_type_menu ||
-	    c->win_type == net_wm_type_splash ||
-	    c->win_type == net_wm_type_desk ||
-	    c->win_type == kde_net_wm_window_type_override)
+	if (has_win_type(c, net_wm_type_dock) ||
+	    has_win_type(c, net_wm_type_menu) ||
+	    has_win_type(c, net_wm_type_splash) ||
+	    has_win_type(c, net_wm_type_desk) ||
+	    has_win_type(c, kde_net_wm_window_type_override))
 		c->frame_style = FRAME_NONE;
-	else if (c->win_type == net_wm_type_utility)
+	else if (has_win_type(c, net_wm_type_utility))
 		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE |
 		    FRAME_CLOSE | FRAME_TITLEBAR);
 	else if (c->state & (STATE_DOCK | STATE_FULLSCREEN))
@@ -554,7 +573,7 @@ recalc_frame(client_t *c)
 	else
 		c->border_width = 0;
 
-	if (c->win_type == net_wm_type_utility) {
+	if (has_win_type(c, net_wm_type_utility)) {
 		/* use tiny titlebar with no window title */
 		buts = (2 * opt_pad) + 2;
 		if (buts < utility_close_pm_attrs.width)
@@ -718,14 +737,22 @@ check_states(client_t *c)
 	c->state = STATE_NORMAL;
 	c->frame_style = FRAME_ALL;
 
-	if (get_atoms(c->win, net_wm_wintype, XA_ATOM, 0, &c->win_type, 1,
-	    NULL)) {
+	for (i = 0; i < MAX_WIN_TYPE_ATOMS; i++) {
+		if (get_atoms(c->win, net_wm_wintype, XA_ATOM, i,
+		    &c->win_type[i], 1, &left)) {
 #ifdef DEBUG
-		dump_name(c, __func__, "wm_wintype", XGetAtomName(dpy,
-		    c->win_type));
+			dump_name(c, __func__, "wm_wintype", XGetAtomName(dpy,
+			    c->win_type[i]));
 #endif
-		if (c->win_type == net_wm_type_dock)
-			c->state |= STATE_DOCK;
+			if (c->win_type[i] == net_wm_type_dock)
+				c->state |= STATE_DOCK;
+		}
+
+		if (!left)
+			break;
+
+		if (left && i == MAX_WIN_TYPE_ATOMS - 1)
+			warnx("client has too many _NET_WM_WINDOW_TYPE atoms");
 	}
 
 	if (get_wm_state(c->win) == IconicState) {
@@ -896,7 +923,7 @@ redraw_frame(client_t *c, Window only)
 			    c->close_geom.h);
 			XMapWindow(dpy, c->close);
 
-			if (c->win_type == net_wm_type_utility) {
+			if (has_win_type(c, net_wm_type_utility)) {
 				pm = &utility_close_pm;
 				pm_mask = &utility_close_pm_mask;
 				pm_attrs = &utility_close_pm_attrs;
@@ -960,7 +987,7 @@ redraw_frame(client_t *c, Window only)
 			XMapWindow(dpy, c->titlebar);
 			XClearWindow(dpy, c->titlebar);
 
-			if (c->name && (c->win_type != net_wm_type_utility)) {
+			if (c->name && !has_win_type(c, net_wm_type_utility)) {
 				XftTextExtentsUtf8(dpy, font,
 				    (FcChar8 *)c->name, strlen(c->name),
 				    &extents);
