@@ -34,23 +34,13 @@ struct strut {
 
 typedef struct strut strut_t;
 
-extern Atom net_supported;
-extern Atom utf8_string;
-extern Atom wm_change_state;
-extern Atom wm_delete;
-extern Atom wm_protos;
-extern Atom wm_state;
-extern Atom xrootpmap_id;
-extern Atom net_wm_state_add;
-extern Atom net_wm_state_rm;
-extern Atom net_wm_state_toggle;
-
 extern Atom net_active_window;
 extern Atom net_client_list;
 extern Atom net_client_stack;
 extern Atom net_close_window;
 extern Atom net_cur_desk;
 extern Atom net_num_desks;
+extern Atom net_supported;
 extern Atom net_supporting_wm;
 extern Atom net_wm_desk;
 extern Atom net_wm_icon;
@@ -58,13 +48,16 @@ extern Atom net_wm_icon_name;
 extern Atom net_wm_name;
 extern Atom net_wm_state;
 extern Atom net_wm_state_above;
+extern Atom net_wm_state_add;
 extern Atom net_wm_state_below;
 extern Atom net_wm_state_fs;
 extern Atom net_wm_state_mh;
 extern Atom net_wm_state_mv;
+extern Atom net_wm_state_rm;
 extern Atom net_wm_state_shaded;
 extern Atom net_wm_state_skipp;
 extern Atom net_wm_state_skipt;
+extern Atom net_wm_state_toggle;
 extern Atom net_wm_strut;
 extern Atom net_wm_strut_partial;
 extern Atom net_wm_type_desk;
@@ -73,6 +66,12 @@ extern Atom net_wm_type_menu;
 extern Atom net_wm_type_splash;
 extern Atom net_wm_type_utility;
 extern Atom net_wm_wintype;
+extern Atom utf8_string;
+extern Atom wm_change_state;
+extern Atom wm_delete;
+extern Atom wm_protos;
+extern Atom wm_state;
+extern Atom xrootpmap_id;
 
 extern void find_supported_atoms(void);
 extern unsigned long get_atoms(Window, Atom, Atom, unsigned long,

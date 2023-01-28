@@ -27,23 +27,13 @@
 #include <X11/Xutil.h>
 #include "progman.h"
 
-Atom net_supported;
-Atom utf8_string;
-Atom wm_change_state;
-Atom wm_delete;
-Atom wm_protos;
-Atom wm_state;
-Atom xrootpmap_id;
-Atom net_wm_state_add;
-Atom net_wm_state_rm;
-Atom net_wm_state_toggle;
-
 Atom net_active_window;
 Atom net_client_list;
 Atom net_client_stack;
 Atom net_close_window;
 Atom net_cur_desk;
 Atom net_num_desks;
+Atom net_supported;
 Atom net_supporting_wm;
 Atom net_wm_desk;
 Atom net_wm_icon;
@@ -51,13 +41,16 @@ Atom net_wm_icon_name;
 Atom net_wm_name;
 Atom net_wm_state;
 Atom net_wm_state_above;
+Atom net_wm_state_add;
 Atom net_wm_state_below;
 Atom net_wm_state_fs;
 Atom net_wm_state_mh;
 Atom net_wm_state_mv;
+Atom net_wm_state_rm;
 Atom net_wm_state_shaded;
 Atom net_wm_state_skipp;
 Atom net_wm_state_skipt;
+Atom net_wm_state_toggle;
 Atom net_wm_strut;
 Atom net_wm_strut_partial;
 Atom net_wm_type_desk;
@@ -66,6 +59,12 @@ Atom net_wm_type_menu;
 Atom net_wm_type_splash;
 Atom net_wm_type_utility;
 Atom net_wm_wintype;
+Atom utf8_string;
+Atom wm_change_state;
+Atom wm_delete;
+Atom wm_protos;
+Atom wm_state;
+Atom xrootpmap_id;
 
 static char *get_string_atom(Window, Atom, Atom);
 static char *_get_wm_name(Window, int);
