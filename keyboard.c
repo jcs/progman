@@ -26,17 +26,17 @@
 #include <stdlib.h>
 #include "progman.h"
 
-static action_t *key_actions;
-static int nkey_actions = 0;
+action_t *key_actions = NULL;
+int nkey_actions = 0;
 static int cycle_key = 0;
 
 void
-bind_key(char *key, char *action)
+bind_key(int type, char *key, char *action)
 {
 	char *tkey, *sep;
 	KeySym k = 0;
 	action_t *taction;
-	int x, mod = 0, iaction = -1, overwrite, aidx;
+	int x, mod = 0, iaction = -1, button = 0, overwrite, aidx;
 
 	tkey = strdup(key);
 	for (x = 0; tkey[x] != '\0'; x++)
@@ -69,8 +69,10 @@ bind_key(char *key, char *action)
 		tkey = (sep + 1);
 	}
 
-	/* modifiers have been parsed, only the key should remain */
-	if (tkey[0] != '\0') {
+	/* modifiers have been parsed, only the key or button should remain */
+	if (strncmp(tkey, "mouse", 5) == 0 && tkey[5] > '0' && tkey[5] <= '9')
+		button = tkey[5] - '0';
+	else if (tkey[0] != '\0') {
 		k = XStringToKeysym(tkey);
 		if (k == 0) {
 			tkey[0] = toupper(tkey[0]);
@@ -83,7 +85,7 @@ bind_key(char *key, char *action)
 		}
 	}
 
-	/* action can be "cycle" or "exec xterm -g 80x50" */
+	/* action can be e.g., "cycle" or "exec xterm -g 80x50" */
 	taction = parse_action(key, action);
 	if (taction == NULL)
 		return;
@@ -91,7 +93,10 @@ bind_key(char *key, char *action)
 	/* if we're overriding an existing config, replace it in key_actions */
 	overwrite = 0;
 	for (x = 0; x < nkey_actions; x++) {
-		if (key_actions[x].key == k && key_actions[x].mod == mod) {
+		if (key_actions[x].type == type &&
+		    key_actions[x].key == k &&
+		    key_actions[x].mod == mod &&
+		    key_actions[x].button == button) {
 			overwrite = 1;
 			aidx = x;
 			break;
@@ -110,10 +115,13 @@ bind_key(char *key, char *action)
 	if (taction->action == ACTION_NONE) {
 		key_actions[aidx].key = -1;
 		key_actions[aidx].mod = -1;
+		key_actions[aidx].button = 0;
 	} else {
 		key_actions[aidx].key = k;
 		key_actions[aidx].mod = mod;
+		key_actions[aidx].button = button;
 	}
+	key_actions[aidx].type = type;
 	key_actions[aidx].action = taction->action;
 	key_actions[aidx].iarg = taction->iarg;
 	if (overwrite && key_actions[aidx].sarg)
@@ -128,18 +136,21 @@ bind_key(char *key, char *action)
 
 #ifdef DEBUG
 	if (key_actions[aidx].action == ACTION_NONE)
-		printf("%s(%s): unbinding key %ld with mod mask 0x%x\n",
-		    __func__, key, k, mod);
+		printf("%s(%s): unbinding key %ld/button %d with "
+		    "mod mask 0x%x\n", __func__, key, k, button, mod);
 	else
-		printf("%s(%s): binding key %ld with mod mask 0x%x to action "
-		    "\"%s\"\n", __func__, key, k, mod, action);
+		printf("%s(%s): binding key %ld/button %d with mod mask 0x%x "
+		    "to action \"%s\"\n", __func__, key, k, button, mod,
+		    action);
 #endif
 
-	if (overwrite && iaction == ACTION_NONE)
-		XUngrabKey(dpy, XKeysymToKeycode(dpy, k), mod, root);
-	else if (!overwrite)
-		XGrabKey(dpy, XKeysymToKeycode(dpy, k), mod, root, False,
-		    GrabModeAsync, GrabModeAsync);
+	if (type == BINDING_TYPE_KEYBOARD) {
+		if (overwrite && iaction == ACTION_NONE)
+			XUngrabKey(dpy, XKeysymToKeycode(dpy, k), mod, root);
+		else if (!overwrite)
+			XGrabKey(dpy, XKeysymToKeycode(dpy, k), mod, root,
+			    False, GrabModeAsync, GrabModeAsync);
+	}
 }
 
 void
@@ -180,8 +191,9 @@ handle_key_event(XKeyEvent *e)
 	}
 
 	for (i = 0; i < nkey_actions; i++) {
-		if (key_actions[i].key == kc && key_actions[i].mod == e->state)
-		{
+		if (key_actions[i].type == BINDING_TYPE_KEYBOARD &&
+		    key_actions[i].key == kc &&
+		    key_actions[i].mod == e->state) {
 			action = &key_actions[i];
 			break;
 		}

@@ -138,19 +138,19 @@ static void
 handle_button_press(XButtonEvent *e)
 {
 	client_t *c = find_client(e->window, MATCH_ANY);
+	int i;
 
-	/* clicking inside transparent icons may fall through to the root */
 	if (e->window == root) {
 		client_t *fc;
+		/*
+		 * Clicking inside transparent icons may fall through to the
+		 * root, so check for an iconified client here
+		 */
 		if ((fc = find_client_at_coords(e->window, e->x, e->y)) &&
 		    (fc->state & STATE_ICONIFIED)) {
 			c = fc;
 			e->window = c->icon;
-		} else if (e->button == Button3) {
-			launcher_show(e);
 		}
-
-		return;
 	}
 
 	if (c && (c->state & STATE_DOCK)) {
@@ -173,6 +173,15 @@ handle_button_press(XButtonEvent *e)
 
 			/* pass button event through */
 			XAllowEvents(dpy, ReplayPointer, CurrentTime);
+		}
+	} else if (e->window == root) {
+		for (i = 0; i < nkey_actions; i++) {
+			if (key_actions[i].type == BINDING_TYPE_DESKTOP &&
+			    key_actions[i].mod == e->state &&
+			    key_actions[i].button == e->button) {
+				take_action(&key_actions[i]);
+				break;
+			}
 		}
 	}
 }

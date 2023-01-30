@@ -149,8 +149,12 @@ launcher_show(XButtonEvent *e)
 	struct program *program;
 	int x, y, mx, my, prev_highlighted;
 
-	x = e->x_root;
-	y = e->y_root;
+	if (e) {
+		x = e->x_root;
+		y = e->y_root;
+	} else
+		get_pointer(&x, &y);
+
 	XMoveResizeWindow(dpy, launcher_win, x, y, launcher_width,
 	    launcher_height);
 
@@ -163,6 +167,11 @@ launcher_show(XButtonEvent *e)
 	launcher_highlighted = prev_highlighted = 0;
 	launcher_redraw();
 
+	/*
+	 * If we launched from a mouse button down event, grab the pointer to
+	 * watch for it to be released, otherwise we launched from the keyboard
+	 * and we'll dismiss on click
+	 */
 	if (XGrabPointer(dpy, root, False, MouseMask, GrabModeAsync,
 	    GrabModeAsync, root, None, CurrentTime) != GrabSuccess) {
 		warnx("failed grabbing pointer");
@@ -170,7 +179,8 @@ launcher_show(XButtonEvent *e)
 	}
 
 	for (;;) {
-		XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &ev);
+		XMaskEvent(dpy, PointerMotionMask | ButtonPressMask |
+		    ButtonReleaseMask, &ev);
 
 		switch (ev.type) {
 		case MotionNotify: {
@@ -191,6 +201,8 @@ launcher_show(XButtonEvent *e)
 			prev_highlighted = launcher_highlighted;
 			break;
 		}
+		case ButtonPress:
+			break;
 		case ButtonRelease:
 			goto close_launcher;
 			break;

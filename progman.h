@@ -115,15 +115,25 @@ struct geom {
 	long h;
 };
 
-/* keyboard and launcher actions */
+/* types of bindings */
+enum {
+	BINDING_TYPE_KEYBOARD,
+	BINDING_TYPE_DESKTOP,
+};
+
+/* keyboard and mouse bindings */
 typedef struct action action_t;
 struct action {
+	int type;
 	KeySym key;
 	unsigned int mod;
+	unsigned int button;
 	int action;
 	int iarg;
 	char *sarg;
 };
+extern action_t *key_actions;
+extern int nkey_actions;
 
 /* types of actions in action_t.action */
 enum {
@@ -136,6 +146,7 @@ enum {
 	ACTION_DESK_PREVIOUS,
 	ACTION_CLOSE,
 	ACTION_EXEC,
+	ACTION_LAUNCHER,
 	ACTION_RESTART,
 	ACTION_QUIT,
 };
@@ -431,7 +442,7 @@ extern client_t *cycle_head;
 extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
-extern void bind_key(char *, char *);
+extern void bind_key(int, char *, char *);
 extern void take_action(action_t *);
 extern action_t *parse_action(char *, char *);
 

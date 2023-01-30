@@ -257,7 +257,11 @@ read_config(void)
 
 	if (find_ini_section(ini, "keyboard"))
 		while (get_ini_kv(ini, &key, &val))
-			bind_key(key, val);
+			bind_key(BINDING_TYPE_KEYBOARD, key, val);
+
+	if (find_ini_section(ini, "desktop"))
+		while (get_ini_kv(ini, &key, &val))
+			bind_key(BINDING_TYPE_DESKTOP, key, val);
 
 	fclose(ini);
 }

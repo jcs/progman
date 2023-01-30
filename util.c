@@ -100,6 +100,8 @@ parse_action(char *prefix, char *action)
 		iaction = ACTION_CLOSE;
 	else if (strcmp(taction, "exec") == 0)
 		iaction = ACTION_EXEC;
+	else if (strcmp(taction, "launcher") == 0)
+		iaction = ACTION_LAUNCHER;
 	else if (strcmp(taction, "restart") == 0)
 		iaction = ACTION_RESTART;
 	else if (strcmp(taction, "quit") == 0)
@@ -210,6 +212,9 @@ take_action(action_t *action)
 		break;
 	case ACTION_EXEC:
 		fork_exec(action->sarg);
+		break;
+	case ACTION_LAUNCHER:
+		launcher_show(NULL);
 		break;
 	case ACTION_RESTART:
 		cleanup();
