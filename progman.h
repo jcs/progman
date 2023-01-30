@@ -207,10 +207,12 @@ struct client {
 	geom_t icon_label_geom;
 	Pixmap icon_pixmap;
 	Pixmap icon_mask;
+	int icon_managed;
 	GC icon_gc;
 	char *icon_name;
 	XftDraw *icon_xftdraw;
 	int icon_depth;
+	XWMHints *wm_hints;
 	XSizeHints size;
 	Colormap cmap;
 	int ignore_unmap;

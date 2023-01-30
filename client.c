@@ -51,7 +51,6 @@ new_client(Window w)
 {
 	client_t *c;
 	XWindowAttributes attr;
-	XWMHints *wmhints;
 	long supplied;
 
 	c = malloc(sizeof *c);
@@ -116,9 +115,11 @@ new_client(Window w)
 
 	check_states(c);
 
-	wmhints = XGetWMHints(dpy, c->win);
-	if (wmhints && (wmhints->flags & StateHint) &&
-	    wmhints->initial_state == IconicState)
+	if (c->wm_hints)
+		XFree(c->wm_hints);
+	c->wm_hints = XGetWMHints(dpy, c->win);
+	if (c->wm_hints && (c->wm_hints->flags & StateHint) &&
+	    c->wm_hints->initial_state == IconicState)
 		c->state = STATE_ICONIFIED;
 
 #ifdef DEBUG
@@ -1338,7 +1339,6 @@ bevel(Window win, geom_t geom, int pressed)
 void
 get_client_icon(client_t *c)
 {
-	XWMHints *hints;
 	Window junkw;
 	unsigned long w, h;
 	unsigned int depth;
@@ -1350,23 +1350,33 @@ get_client_icon(client_t *c)
 	    	/* TODO */
 	}
 
+	if (c->icon_managed) {
+		if (c->icon_pixmap)
+			XFreePixmap(dpy, c->icon_pixmap);
+		if (c->icon_mask)
+			XFreePixmap(dpy, c->icon_mask);
+		c->icon_managed = 0;
+	}
+
 	/* fallback to WMHints */
-	hints = XGetWMHints(dpy, c->win);
-	if (!hints || !(hints->flags & IconPixmapHint)) {
+	if (c->wm_hints)
+		XFree(c->wm_hints);
+	c->wm_hints = XGetWMHints(dpy, c->win);
+	if (!c->wm_hints || !(c->wm_hints->flags & IconPixmapHint)) {
 		c->icon_pixmap = default_icon_pm;
 		c->icon_depth = DefaultDepth(dpy, screen);
 		c->icon_mask = default_icon_pm_mask;
 		return;
 	}
 
-	XGetGeometry(dpy, hints->icon_pixmap, &junkw, &junki, &junki,
+	XGetGeometry(dpy, c->wm_hints->icon_pixmap, &junkw, &junki, &junki,
 	    (unsigned int *)&c->icon_geom.w, (unsigned int *)&c->icon_geom.h,
 	    (unsigned int *)&junki, &depth);
-	c->icon_pixmap = hints->icon_pixmap;
+	c->icon_pixmap = c->wm_hints->icon_pixmap;
 	c->icon_depth = depth;
 
-	if (hints->flags & IconMaskHint)
-		c->icon_mask = hints->icon_mask;
+	if (c->wm_hints->flags & IconMaskHint)
+		c->icon_mask = c->wm_hints->icon_mask;
 	else
 		c->icon_mask = None;
 
@@ -1449,10 +1459,18 @@ get_client_icon(client_t *c)
 			return;
 		}
 
+		if (c->icon_managed) {
+			if (c->icon_pixmap)
+				XFreePixmap(dpy, c->icon_pixmap);
+			if (c->icon_mask)
+				XFreePixmap(dpy, c->icon_mask);
+		}
+
 		gdk_pixbuf_xlib_render_pixmap_and_mask(scaled,
 		    &c->icon_pixmap, &c->icon_mask, 1);
 		c->icon_geom.w = sw;
 		c->icon_geom.h = sh;
+		c->icon_managed = 1;
 
 		g_object_unref(scaled);
 		g_object_unref(gp);
@@ -1699,6 +1717,13 @@ del_client(client_t *c, int mode)
 	}
 	if (c->icon_gc)
 		XFreeGC(dpy, c->icon_gc);
+	if (c->icon_managed) {
+		if (c->icon_pixmap)
+			XFreePixmap(dpy, c->icon_pixmap);
+		if (c->icon_mask)
+			XFreePixmap(dpy, c->icon_mask);
+		c->icon_managed = 0;
+	}
 
 	if (c->name)
 		XFree(c->name);
