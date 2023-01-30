@@ -635,7 +635,7 @@ goto_desk(int new_desk)
 {
 	client_t *c, *newfocus = NULL;
 
-	if (new_desk > ndesks)
+	if (new_desk >= ndesks || new_desk < 0)
 		return;
 
 	cur_desk = new_desk;

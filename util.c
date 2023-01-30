@@ -113,17 +113,23 @@ parse_action(char *prefix, char *action)
 	switch (iaction) {
 	case ACTION_DESK:
 		if (targ == NULL) {
-			warnx("%s: missing numeric argument for \"%s\"",
+			warnx("%s: missing argument for \"%s\"",
 			    prefix, taction);
 			goto done;
 		}
 
-     		errno = 0;
-		iarg = strtol(targ, NULL, 10);
-		if (errno != 0) {
-			warnx("%s: failed parsing numeric argument \"%s\" "
-			    "for \"%s\"", prefix, targ, taction);
-			goto done;
+		if (strcmp(targ, "next") == 0)
+			iaction = ACTION_DESK_NEXT;
+		else if (strcmp(targ, "previous") == 0)
+			iaction = ACTION_DESK_PREVIOUS;
+		else {
+			errno = 0;
+			iarg = strtol(targ, NULL, 10);
+			if (errno != 0) {
+				warnx("%s: failed parsing numeric argument "
+				    "\"%s\" for \"%s\"", prefix, targ, taction);
+				goto done;
+			}
 		}
 		break;
 	case ACTION_EXEC:
@@ -189,6 +195,14 @@ take_action(action_t *action)
 		break;
 	case ACTION_DESK:
 		goto_desk(action->iarg);
+		break;
+	case ACTION_DESK_NEXT:
+		if (cur_desk < ndesks - 1)
+			goto_desk(cur_desk + 1);
+		break;
+	case ACTION_DESK_PREVIOUS:
+		if (cur_desk > 0)
+			goto_desk(cur_desk - 1);
 		break;
 	case ACTION_CLOSE:
 		if (focused)
