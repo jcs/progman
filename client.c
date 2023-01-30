@@ -51,6 +51,7 @@ new_client(Window w)
 {
 	client_t *c;
 	XWindowAttributes attr;
+	XWMHints *wmhints;
 	long supplied;
 
 	c = malloc(sizeof *c);
@@ -114,6 +115,11 @@ new_client(Window w)
 	    None, move_curs);
 
 	check_states(c);
+
+	wmhints = XGetWMHints(dpy, c->win);
+	if (wmhints && (wmhints->flags & StateHint) &&
+	    wmhints->initial_state == IconicState)
+		c->state = STATE_ICONIFIED;
 
 #ifdef DEBUG
 	dump_name(c, __func__, "", c->name);
