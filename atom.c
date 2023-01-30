@@ -202,8 +202,11 @@ get_atoms(Window w, Atom a, Atom type, unsigned long off, unsigned long *ret,
 			*ret++ = *p++;
 		if (left)
 			*left = bytes_left;
-	} else
+	} else {
 		items_read = 0;
+		if (left)
+			*left = 0;
+	}
 
 	if (data != NULL)
 		XFree(data);
