@@ -174,6 +174,8 @@ main(int argc, char **argv)
 			exit(1);
 		}
 	}
+	argc -= optind;
+	argv += optind;
 
 	/* parsing the config file may need dpy, so connect early */
 	dpy = XOpenDisplay(NULL);
