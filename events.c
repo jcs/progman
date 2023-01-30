@@ -443,6 +443,16 @@ handle_property_change(XPropertyEvent *e)
 		fix_size(c);
 		redraw_frame(c, None);
 		send_config(c);
+	} else if (e->atom == XA_WM_HINTS) {
+		if (c->wm_hints)
+			XFree(c->wm_hints);
+		c->wm_hints = XGetWMHints(dpy, c->win);
+		if (c->wm_hints &&
+		    c->wm_hints->flags & (IconPixmapHint | IconMaskHint)) {
+			get_client_icon(c);
+			if (c->state & STATE_ICONIFIED)
+				redraw_icon(c, c->icon);
+		}
 	} else if (e->atom == net_wm_state || e->atom == wm_state) {
 		int was_state = c->state;
 		check_states(c);
