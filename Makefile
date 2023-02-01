@@ -38,6 +38,7 @@ PKGLIBS+=	gdk-pixbuf-xlib-2.0
 CFLAGS+=	-DUSE_GDK_PIXBUF
 
 # enable debugging; optional
+CFLAGS+=	-g
 #CFLAGS+=	-g -DDEBUG=1
 
 # use 2x icons, borders, fonts for HiDPI displays; optional

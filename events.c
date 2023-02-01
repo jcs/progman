@@ -381,8 +381,12 @@ handle_client_message(XClientMessageEvent *e)
 	if (e->window == root) {
 		if (e->message_type == net_cur_desk && e->format == 32)
 			goto_desk(e->data.l[0]);
-		else if (e->message_type == net_num_desks && e->format == 32)
+		else if (e->message_type == net_num_desks && e->format == 32) {
+			if (e->data.l[0] < ndesks)
+				/* TODO: move clients from deleted desks */
+				return;
 			ndesks = e->data.l[0];
+		}
 		return;
 	}
 
