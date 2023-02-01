@@ -7,7 +7,7 @@ the Windows 3 era.
 
 ### License
 
-progman is descended from aewm by Decklin Foster and retains its MIT license.
+MIT
 
 ### Compiling
 
