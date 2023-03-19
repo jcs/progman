@@ -903,27 +903,32 @@ fix_size(client_t *c)
 	int width_inc, height_inc;
 	int base_width, base_height;
 
-	if (c->size.flags & PMinSize) {
-		if (c->geom.w < c->size.min_width)
-			c->geom.w = c->size.min_width;
-		if (c->geom.h < c->size.min_height)
-			c->geom.h = c->size.min_height;
+	if (c->size_hints.flags & PMinSize) {
+		if (c->geom.w < c->size_hints.min_width)
+			c->geom.w = c->size_hints.min_width;
+		if (c->geom.h < c->size_hints.min_height)
+			c->geom.h = c->size_hints.min_height;
 	}
-	if (c->size.flags & PMaxSize) {
-		if (c->geom.w > c->size.max_width)
-			c->geom.w = c->size.max_width;
-		if (c->geom.h > c->size.max_height)
-			c->geom.h = c->size.max_height;
+	if (c->size_hints.flags & PMaxSize) {
+		if (c->geom.w > c->size_hints.max_width)
+			c->geom.w = c->size_hints.max_width;
+		if (c->geom.h > c->size_hints.max_height)
+			c->geom.h = c->size_hints.max_height;
 	}
 
-	if (c->size.flags & PResizeInc) {
-		width_inc = c->size.width_inc ? c->size.width_inc : 1;
-		height_inc = c->size.height_inc ? c->size.height_inc : 1;
-		base_width = (c->size.flags & PBaseSize) ? c->size.base_width :
-		    (c->size.flags & PMinSize) ? c->size.min_width : 0;
-		base_height = (c->size.flags & PBaseSize) ?
-		    c->size.base_height :
-		    (c->size.flags & PMinSize) ? c->size.min_height : 0;
+	if (c->size_hints.flags & PResizeInc) {
+		width_inc = c->size_hints.width_inc ?
+		    c->size_hints.width_inc : 1;
+		height_inc = c->size_hints.height_inc ?
+		    c->size_hints.height_inc : 1;
+		base_width = (c->size_hints.flags & PBaseSize) ?
+		    c->size_hints.base_width :
+		    ((c->size_hints.flags & PMinSize) ?
+		    c->size_hints.min_width : 0);
+		base_height = (c->size_hints.flags & PBaseSize) ?
+		    c->size_hints.base_height :
+		    (c->size_hints.flags & PMinSize) ?
+		    c->size_hints.min_height : 0;
 		c->geom.w -= (c->geom.w - base_width) % width_inc;
 		c->geom.h -= (c->geom.h - base_height) % height_inc;
 	}
@@ -1291,10 +1296,10 @@ frame_name(client_t *c, Window w)
 static const char *
 show_grav(client_t *c)
 {
-	if (!(c->size.flags & PWinGravity))
+	if (!(c->size_hints.flags & PWinGravity))
 		return "no grav (NW)";
 
-	switch (c->size.win_gravity) {
+	switch (c->size_hints.win_gravity) {
 	SHOW(UnmapGravity)
 	SHOW(NorthWestGravity)
 	SHOW(NorthGravity)

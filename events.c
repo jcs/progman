@@ -428,7 +428,6 @@ handle_property_change(XPropertyEvent *e)
 #ifdef DEBUG
 	char *atom;
 #endif
-	long supplied;
 
 	if (!(c = find_client(e->window, MATCH_WINDOW)))
 		return;
@@ -452,7 +451,7 @@ handle_property_change(XPropertyEvent *e)
 		if (c->state & STATE_ICONIFIED)
 			redraw_icon(c, c->icon_label);
 	} else if (e->atom == XA_WM_NORMAL_HINTS) {
-		XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
+		update_size_hints(c);
 		fix_size(c);
 		redraw_frame(c, None);
 		send_config(c);

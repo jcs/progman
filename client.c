@@ -51,7 +51,6 @@ new_client(Window w)
 {
 	client_t *c;
 	XWindowAttributes attr;
-	long supplied;
 
 	c = malloc(sizeof *c);
 	memset(c, 0, sizeof(*c));
@@ -76,7 +75,7 @@ new_client(Window w)
 	c->icon_label = None;
 	c->icon_gc = None;
 
-	XGetWMNormalHints(dpy, c->win, &c->size, &supplied);
+	update_size_hints(c);
 	XGetTransientForHint(dpy, c->win, &c->trans);
 
 	XSetErrorHandler(ignore_xerror);
@@ -309,6 +308,30 @@ map_client(client_t *c)
 	XUngrabServer(dpy);
 }
 
+void
+update_size_hints(client_t *c)
+{
+	long supplied;
+
+	XGetWMNormalHints(dpy, c->win, &c->size_hints, &supplied);
+
+	/* Discard bogus hints */
+	if ((c->size_hints.flags & PAspect) &&
+	    (c->size_hints.min_aspect.x < 1 || c->size_hints.min_aspect.y < 1 ||
+	    c->size_hints.max_aspect.x < 1 || c->size_hints.max_aspect.y < 1))
+		c->size_hints.flags &= ~PAspect;
+	if ((c->size_hints.flags & PMaxSize) && c->size_hints.max_width < 1)
+		c->size_hints.flags &= ~PMaxSize;
+	if ((c->size_hints.flags & PMinSize) && c->size_hints.min_width < 1)
+		c->size_hints.flags &= ~PMinSize;
+	if ((c->size_hints.flags & PResizeInc) &&
+	    (c->size_hints.width_inc < 1 || c->size_hints.height_inc < 1))
+		c->size_hints.flags &= ~PResizeInc;
+	if ((c->size_hints.flags & (USSize | PSize)) &&
+	    (c->size_hints.width < 1 || c->size_hints.height < 1))
+		c->size_hints.flags &= ~(USSize|PSize);
+}
+
 /*
  * When we're ready to map, we have two things to consider: the literal
  * geometry of the window (what the client passed to XCreateWindow), and the
@@ -353,30 +376,30 @@ init_geom(client_t *c, strut_t *s)
 	 * of whether the user or the program specified them. We'll distinguish
 	 * between the two cases later, if we need to.
 	 */
-	if (c->size.flags & (USSize | PSize)) {
+	if (c->size_hints.flags & (USSize | PSize)) {
 #ifdef DEBUG
-		size_flags.w = c->size.width;
-		size_flags.h = c->size.height;
+		size_flags.w = c->size_hints.width;
+		size_flags.h = c->size_hints.height;
 #endif
-		if (c->size.width > 0)
-			c->geom.w = c->size.width;
-		if (c->size.height > 0)
-			c->geom.h = c->size.height;
+		if (c->size_hints.width > 0)
+			c->geom.w = c->size_hints.width;
+		if (c->size_hints.height > 0)
+			c->geom.h = c->size_hints.height;
 	}
 
-	if (c->size.flags & (USPosition | PPosition)) {
+	if (c->size_hints.flags & (USPosition | PPosition)) {
 #ifdef DEBUG
-		size_flags.x = c->size.x;
-		size_flags.y = c->size.y;
+		size_flags.x = c->size_hints.x;
+		size_flags.y = c->size_hints.y;
 #endif
-		if (c->size.x > 0)
-			c->geom.x = c->size.x;
-		if (c->size.y > 0)
-			c->geom.y = c->size.y;
+		if (c->size_hints.x >= 0)
+			c->geom.x = c->size_hints.x;
+		if (c->size_hints.y >= 0)
+			c->geom.y = c->size_hints.y;
 	}
 
 #ifdef DEBUG
-	if (c->size.flags & (USSize | PSize | USPosition | PPosition))
+	if (c->size_hints.flags & (USSize | PSize | USPosition | PPosition))
 		dump_geom(c, size_flags, "init_geom size flags");
 #endif
 
@@ -569,9 +592,10 @@ recalc_frame(client_t *c)
 	else
 		c->frame_style = FRAME_ALL;
 
-	if ((c->size.flags & PMinSize) && (c->size.flags & PMaxSize) &&
-	    c->size.min_width == c->size.max_width &&
-	    c->size.min_height == c->size.max_height)
+	if ((c->size_hints.flags & PMinSize) &&
+	    (c->size_hints.flags & PMaxSize) &&
+	    c->size_hints.min_width == c->size_hints.max_width &&
+	    c->size_hints.min_height == c->size_hints.max_height)
 		c->frame_style &= ~(FRAME_RESIZABLE | FRAME_ZOOM |
 		    FRAME_ICONIFY);
 

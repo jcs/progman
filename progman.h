@@ -226,7 +226,7 @@ struct client {
 	XftDraw *icon_xftdraw;
 	int icon_depth;
 	XWMHints *wm_hints;
-	XSizeHints size;
+	XSizeHints size_hints;
 	Colormap cmap;
 	int ignore_unmap;
 	unsigned long desk;
@@ -370,6 +370,7 @@ extern client_t *find_client_at_coords(Window, int, int);
 extern client_t *top_client(void);
 extern client_t *prev_focused(int);
 extern void map_client(client_t *);
+extern void update_size_hints(client_t *);
 extern int has_win_type(client_t *, Atom);
 extern void recalc_frame(client_t *);
 extern int set_wm_state(client_t *, unsigned long);
