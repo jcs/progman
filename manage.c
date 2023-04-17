@@ -411,6 +411,8 @@ uniconify_client(client_t *c)
 	XDestroyWindow(dpy, c->icon);
 	c->icon = None;
 	c->ignore_unmap++;
+	XftDrawDestroy(c->icon_xftdraw);
+	c->icon_xftdraw = None;
 	XDestroyWindow(dpy, c->icon_label);
 	c->icon_label = None;
 
