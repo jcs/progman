@@ -70,6 +70,7 @@ Window root;
 client_t *cycle_head;
 client_t *focused, *dragging;
 int screen;
+int ignore_xerrors = 0;
 unsigned long ndesks = DEF_NDESKS;
 unsigned long cur_desk = 0;
 unsigned int focus_order = 0;
@@ -395,9 +396,9 @@ setup_display(void)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = 0; i < nwins; i++) {
-		XSetErrorHandler(ignore_xerror);
+		ignore_xerrors++;
 		XGetWindowAttributes(dpy, wins[i], &attr);
-		XSetErrorHandler(handle_xerror);
+		ignore_xerrors--;
 		if (!attr.override_redirect && attr.map_state == IsViewable) {
 			c = new_client(wins[i]);
 			c->placed = 1;
@@ -458,15 +459,11 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 	if (e->error_code == BadAccess && e->resourceid == root)
 		errx(1, "root window unavailable");
 
-	XGetErrorText(dpy, e->error_code, msg, sizeof msg);
-	warnx("X error (%#lx): %s", e->resourceid, msg);
+	if (!ignore_xerrors) {
+		XGetErrorText(dpy, e->error_code, msg, sizeof msg);
+		warnx("X error (%#lx): %s", e->resourceid, msg);
+	}
 
-	return 0;
-}
-
-int
-ignore_xerror(Display * dpy, XErrorEvent * e)
-{
 	return 0;
 }
 

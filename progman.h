@@ -277,6 +277,7 @@ extern Display *dpy;
 extern Window root;
 extern client_t *focused, *dragging;
 extern int screen;
+extern int ignore_xerrors;
 extern unsigned long cur_desk;
 extern unsigned long ndesks;
 extern Bool shape_support;
@@ -357,7 +358,6 @@ void quit(void);
 /* event.c */
 extern void event_loop(void);
 extern int handle_xerror(Display *, XErrorEvent *);
-extern int ignore_xerror(Display *, XErrorEvent *);
 extern void handle_unmap_event(XUnmapEvent *);
 #ifdef DEBUG
 extern void show_event(XEvent);

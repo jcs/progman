@@ -78,9 +78,9 @@ new_client(Window w)
 	update_size_hints(c);
 	XGetTransientForHint(dpy, c->win, &c->trans);
 
-	XSetErrorHandler(ignore_xerror);
+	ignore_xerrors++;
 	XGetWindowAttributes(dpy, c->win, &attr);
-	XSetErrorHandler(handle_xerror);
+	ignore_xerrors--;
 	c->geom.x = attr.x;
 	c->geom.y = attr.y;
 	c->geom.w = attr.width;
@@ -176,9 +176,9 @@ find_client_at_coords(Window w, int x, int y)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = nwins - 1; i > 0; i--) {
-		XSetErrorHandler(ignore_xerror);
+		ignore_xerrors++;
 		XGetWindowAttributes(dpy, wins[i], &attr);
-		XSetErrorHandler(handle_xerror);
+		ignore_xerrors--;
 		if (!(c = find_client(wins[i], MATCH_ANY)))
 			continue;
 
@@ -222,9 +222,9 @@ top_client(void)
 
 	XQueryTree(dpy, root, &qroot, &qparent, &wins, &nwins);
 	for (i = nwins - 1; i > 0; i--) {
-		XSetErrorHandler(ignore_xerror);
+		ignore_xerrors++;
 		XGetWindowAttributes(dpy, wins[i], &attr);
-		XSetErrorHandler(handle_xerror);
+		ignore_xerrors--;
 		if ((c = find_client(wins[i], MATCH_FRAME)) &&
 		    !(c->state & STATE_ICONIFIED)) {
 		    	foundc = c;
@@ -1616,9 +1616,9 @@ collect_struts(client_t *c, strut_t *s)
 		if (!IS_ON_CUR_DESK(p) || p == c)
 			continue;
 
-		XSetErrorHandler(ignore_xerror);
+		ignore_xerrors++;
 		XGetWindowAttributes(dpy, p->win, &attr);
-		XSetErrorHandler(handle_xerror);
+		ignore_xerrors--;
 		if (attr.map_state == IsViewable && get_strut(p->win, &temp)) {
 			if (temp.left > s->left)
 				s->left = temp.left;
@@ -1700,8 +1700,9 @@ del_client(client_t *c, int mode)
 {
 	client_t *next;
 
+	XSync(dpy, False);
 	XGrabServer(dpy);
-	XSetErrorHandler(ignore_xerror);
+	ignore_xerrors++;
 
 #ifdef DEBUG
 	dump_name(c, __func__, mode == DEL_WITHDRAW ? "withdraw" : "", c->name);
@@ -1726,12 +1727,13 @@ del_client(client_t *c, int mode)
 	remove_atom(root, net_client_list, XA_WINDOW, c->win);
 	remove_atom(root, net_client_stack, XA_WINDOW, c->win);
 
+	if (c->xftdraw)
+		XftDrawDestroy(c->xftdraw);
+
 	XReparentWindow(dpy, c->win, root, c->geom.x, c->geom.y);
 	XRemoveFromSaveSet(dpy, c->win);
 	XDestroyWindow(dpy, c->frame);
 
-	if (c->xftdraw)
-		XftDrawDestroy(c->xftdraw);
 	if (c->icon_xftdraw)
 		XftDrawDestroy(c->icon_xftdraw);
 	if (c->icon) {
@@ -1769,7 +1771,7 @@ del_client(client_t *c, int mode)
 	free(c);
 
 	XSync(dpy, False);
-	XSetErrorHandler(handle_xerror);
+	ignore_xerrors--;
 	XUngrabServer(dpy);
 }
 
