@@ -403,7 +403,8 @@ handle_client_message(XClientMessageEvent *e)
 	else if (e->message_type == net_active_window) {
 		c->desk = cur_desk;
 		map_if_desk(c);
-		uniconify_client(c);
+		if (c->state == STATE_ICONIFIED)
+			uniconify_client(c);
 		focus_client(c, FOCUS_NORMAL);
 	} else if (e->message_type == net_wm_state &&
 	    e->data.l[1] == net_wm_state_fs) {
