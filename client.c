@@ -58,22 +58,6 @@ new_client(Window w)
 	c->name = get_wm_name(w);
 	c->icon_name = get_wm_icon_name(w);
 	c->win = w;
-	c->frame = None;
-	c->resize_nw = None;
-	c->resize_n = None;
-	c->resize_ne = None;
-	c->resize_e = None;
-	c->resize_se = None;
-	c->resize_s = None;
-	c->resize_sw = None;
-	c->resize_w = None;
-	c->titlebar = None;
-	c->close = None;
-	c->iconify = None;
-	c->zoom = None;
-	c->icon = None;
-	c->icon_label = None;
-	c->icon_gc = None;
 
 	update_size_hints(c);
 	XGetTransientForHint(dpy, c->win, &c->trans);
