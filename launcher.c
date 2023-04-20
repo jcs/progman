@@ -164,7 +164,10 @@ launcher_show(XButtonEvent *e)
 	map_client(c);
 	map_if_desk(c);
 
-	launcher_highlighted = prev_highlighted = 0;
+	x = c->geom.x;
+	y = c->geom.y;
+
+	launcher_highlighted = prev_highlighted = -1;
 	launcher_redraw();
 
 	/*
