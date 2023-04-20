@@ -356,30 +356,44 @@ init_geom(client_t *c, strut_t *s)
 	}
 
 	/*
+	 * If size/position hints are zero but the initial XGetWindowAttributes
+	 * reported non-zero, ignore these hint values
+	 */
+	if (c->size_hints.width == 0 && c->geom.w != 0 &&
+	    c->size_hints.height == 0 && c->geom.h != 0)
+		c->size_hints.flags &= ~(USSize|PSize);
+	if (c->size_hints.x == 0 && c->geom.x != 0 &&
+	    c->size_hints.y == 0 && c->geom.y != 0)
+		c->size_hints.flags &= ~(USPosition|PPosition);
+
+	/*
 	 * Here, we merely set the values; they're in the same place regardless
 	 * of whether the user or the program specified them. We'll distinguish
 	 * between the two cases later, if we need to.
 	 */
-	if (c->size_hints.flags & (USSize | PSize)) {
-#ifdef DEBUG
-		size_flags.w = c->size_hints.width;
-		size_flags.h = c->size_hints.height;
-#endif
-		if (c->size_hints.width > 0)
+	if (c->size_hints.flags & (USSize|PSize)) {
+		if (c->size_hints.width >= 0)
 			c->geom.w = c->size_hints.width;
 		if (c->size_hints.height > 0)
 			c->geom.h = c->size_hints.height;
+
+#ifdef DEBUG
+		size_flags.w = c->size_hints.width;
+		size_flags.h = c->size_hints.height;
+		dump_geom(c, c->geom, "init_geom size_hints w/h");
+#endif
 	}
 
 	if (c->size_hints.flags & (USPosition | PPosition)) {
-#ifdef DEBUG
-		size_flags.x = c->size_hints.x;
-		size_flags.y = c->size_hints.y;
-#endif
 		if (c->size_hints.x >= 0)
 			c->geom.x = c->size_hints.x;
 		if (c->size_hints.y >= 0)
 			c->geom.y = c->size_hints.y;
+#ifdef DEBUG
+		size_flags.x = c->size_hints.x;
+		size_flags.y = c->size_hints.y;
+		dump_geom(c, c->geom, "init_geom size_hints x/y");
+#endif
 	}
 
 #ifdef DEBUG
