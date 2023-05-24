@@ -452,7 +452,7 @@ quit(void)
 }
 
 int
-handle_xerror(Display * dpy, XErrorEvent * e)
+handle_xerror(Display *dpy, XErrorEvent *e)
 {
 	char msg[255];
 
@@ -460,7 +460,7 @@ handle_xerror(Display * dpy, XErrorEvent * e)
 		errx(1, "root window unavailable");
 
 	if (!ignore_xerrors) {
-		XGetErrorText(dpy, e->error_code, msg, sizeof msg);
+		XGetErrorText(dpy, e->error_code, msg, sizeof(msg));
 		warnx("X error (%#lx): %s", e->resourceid, msg);
 	}
 
