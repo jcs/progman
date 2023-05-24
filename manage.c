@@ -1174,9 +1174,13 @@ adjust_client_order(client_t *c, int where)
 				continue;
 			}
 
-			/* place ahead of this first iconfied client */
 			if (pp)
+				/* place ahead of this first iconfied client */
 				pp->next = c;
+			else
+				/* no previous non-iconified clients */
+				focused = c;
+
 			if (c != p)
 				c->next = p;
 			break;
