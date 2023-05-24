@@ -1796,23 +1796,20 @@ start_wrap:
 		struct xft_line_t *line = &lines[nline];
 		int tx;
 
-		if (curstr[x] != delim && curstr[x] != '\0')
+		if (curstr[x] != delim && curstr[x] != '\n' &&
+		    curstr[x] != '\0')
 			continue;
 
 		XftTextExtentsUtf8(dpy, font, (FcChar8 *)curstr, x, &extents);
 
-		if (curstr[x] == delim) {
-			if (extents.xOff < width) {
-				/* keep eating words */
-				lastdelim = x;
-				continue;
-			}
+		if (curstr[x] == delim && extents.xOff < width) {
+			/* keep eating words */
+			lastdelim = x;
+			continue;
 		}
 
 		if (extents.xOff > width) {
-			if (lastdelim != -1)
-				x = lastdelim;
-			else {
+			if (lastdelim == -1) {
 				/*
 				 * We can't break this long line, make
 				 * our label width this wide and start
@@ -1822,6 +1819,7 @@ start_wrap:
 				width = extents.xOff;
 				goto start_wrap;
 			}
+			x = lastdelim;
 		}
 
 		/* trim leading and trailing spaces */
