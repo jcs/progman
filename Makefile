@@ -66,7 +66,7 @@ $(OBJ):		progman.h Makefile
 parser.o:	progman.h progman_ini.h
 
 progman_ini.h: progman.ini
-	xxd -i progman.ini > $@ || rm -f progman_ini.h
+	xxd -i progman.ini > $@ || (rm -f progman_ini.h; exit 1)
 
 progman: $(OBJ)
 	$(CC) -o $@ $(OBJ) $(LDFLAGS)
