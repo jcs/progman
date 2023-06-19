@@ -17,8 +17,9 @@ default.
 ### Features
 
 - Window minimizing, drawing icons and labels on the root/desktop
-- Window maximizing and full-screen support (via `_NET_WM_STATE_FULLSCREEN`)
-- Window shading by double-clicking on a window titlebar
+- Window maximizing by double-clicking on a window titlebar, and full-screen
+  support (via `_NET_WM_STATE_FULLSCREEN`)
+- Window shading by right-clicking on a window titlebar
 - Window moving by holding down `Alt` and clicking anywhere on a window
 - Built-in keyboard binding support by adding items to the `[keyboard]`
   section of `~/.config/progman/progman.ini` such as `Win+L = exec xlock`
