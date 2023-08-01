@@ -41,9 +41,6 @@ CFLAGS+=	-DUSE_GDK_PIXBUF
 CFLAGS+=	-g
 #CFLAGS+=	-g -DDEBUG=1
 
-# use 2x icons, borders, fonts for HiDPI displays; optional
-CFLAGS+=	-DHIDPI=1
-
 BINDIR=		$(PREFIX)/bin
 
 SRC=		atom.c \

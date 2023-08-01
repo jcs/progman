@@ -44,21 +44,18 @@
 #include "atom.h"
 #include "parser.h"
 
-#ifdef HIDPI
-#include "icons/close_hidpi.xpm"
-#include "icons/utility_close_hidpi.xpm"
-#include "icons/iconify_hidpi.xpm"
-#include "icons/zoom_hidpi.xpm"
-#include "icons/unzoom_hidpi.xpm"
-#include "icons/default_icon_hidpi.xpm"
-#else
 #include "icons/close.xpm"
 #include "icons/utility_close.xpm"
 #include "icons/iconify.xpm"
 #include "icons/zoom.xpm"
 #include "icons/unzoom.xpm"
 #include "icons/default_icon.xpm"
-#endif
+#include "icons/hidpi-close.xpm"
+#include "icons/hidpi-utility_close.xpm"
+#include "icons/hidpi-iconify.xpm"
+#include "icons/hidpi-zoom.xpm"
+#include "icons/hidpi-unzoom.xpm"
+#include "icons/hidpi-default_icon.xpm"
 
 #ifndef WAIT_ANY
 #define WAIT_ANY (-1)
@@ -149,9 +146,13 @@ int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
+int opt_scale = DEF_SCALE;
+int icon_size = ICON_SIZE_MULT * DEF_SCALE;
 
 void read_config(void);
 void setup_display(void);
+void scale_icon(void *xpm, void *hidpi_xpm, Pixmap *pm, Pixmap *pm_mask,
+    XpmAttributes *xpm_attrs);
 
 int
 main(int argc, char **argv)
@@ -239,15 +240,34 @@ read_config(void)
 				opt_launcher_fg = strdup(val);
 			else if (strcmp(key, "launcher_bgcolor") == 0)
 				opt_launcher_bg = strdup(val);
-			else if (strcmp(key, "border_width") == 0)
-				opt_bw = atoi(val);
-			else if (strcmp(key, "title_padding") == 0)
-				opt_pad = atoi(val);
-			else if (strcmp(key, "edgeresist") == 0)
-				opt_edge_resist = atoi(val);
 			else if (strcmp(key, "root_bgcolor") == 0)
 				opt_root_bg = strdup(val);
-			else
+			else if (strcmp(key, "border_width") == 0) {
+				opt_bw = atoi(val);
+				if (opt_bw < 0) {
+					warnx("invalid value for border_width");
+					opt_bw = DEF_BW;
+				}
+			} else if (strcmp(key, "title_padding") == 0) {
+				opt_pad = atoi(val);
+				if (opt_pad < 0) {
+					warnx("invalid value for "
+					    "title_padding");
+					opt_pad = DEF_PAD;
+				}
+			} else if (strcmp(key, "edgeresist") == 0) {
+				opt_edge_resist = atoi(val);
+				if (opt_edge_resist < 0) {
+					warnx("invalid value for edgeresist");
+					opt_edge_resist = DEF_EDGE_RES;
+				}
+			} else if (strcmp(key, "scale") == 0) {
+				opt_scale = atoi(val);
+				if (opt_scale < 0) {
+					warnx("invalid value for scale");
+					opt_scale = DEF_SCALE;
+				}
+			} else
 				warnx("unknown key \"%s\" and value \"%s\" in "
 				    "ini", key, val);
 
@@ -348,24 +368,25 @@ setup_display(void)
 	invert_gc = XCreateGC(dpy, root,
 	    GCFunction | GCSubwindowMode | GCLineWidth, &gv);
 
-	XpmCreatePixmapFromData(dpy, root, close_xpm, &close_pm, &close_pm_mask,
+	scale_icon(close_xpm, hidpi_close_xpm, &close_pm, &close_pm_mask,
 	    &close_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, utility_close_xpm, &utility_close_pm,
-	    &utility_close_pm_mask, &utility_close_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, iconify_xpm, &iconify_pm,
+	scale_icon(utility_close_xpm, hidpi_utility_close_xpm,
+	    &utility_close_pm, &utility_close_pm_mask, &utility_close_pm_attrs);
+	scale_icon(iconify_xpm, hidpi_iconify_xpm, &iconify_pm,
 	    &iconify_pm_mask, &iconify_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, zoom_xpm, &zoom_pm, &zoom_pm_mask,
+	scale_icon(zoom_xpm, hidpi_zoom_xpm, &zoom_pm, &zoom_pm_mask,
 	    &zoom_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, unzoom_xpm, &unzoom_pm,
-	    &unzoom_pm_mask, &unzoom_pm_attrs);
-	XpmCreatePixmapFromData(dpy, root, default_icon_xpm, &default_icon_pm,
+	scale_icon(unzoom_xpm, hidpi_unzoom_xpm, &unzoom_pm, &unzoom_pm_mask,
+	    &unzoom_pm_attrs);
+	scale_icon(default_icon_xpm, hidpi_default_icon_xpm, &default_icon_pm,
 	    &default_icon_pm_mask, &default_icon_pm_attrs);
 
+	icon_size = ICON_SIZE_MULT * opt_scale;
 	xis = XAllocIconSize();
-	xis->min_width = ICON_SIZE;
-	xis->min_height = ICON_SIZE;
-	xis->max_width = ICON_SIZE;
-	xis->max_height = ICON_SIZE;
+	xis->min_width = icon_size;
+	xis->min_height = icon_size;
+	xis->max_width = icon_size;
+	xis->max_height = icon_size;
 	xis->width_inc = 1;
 	xis->height_inc = 1;
 	XSetIconSizes(dpy, root, xis, 1);
@@ -422,6 +443,70 @@ setup_display(void)
 }
 
 void
+scale_icon(void *xpm, void *hidpi_xpm, Pixmap *pm, Pixmap *pm_mask,
+    XpmAttributes *xpm_attrs)
+{
+	GC scale_gc, mask_scale_gc;
+	Pixmap pm_scaled, pm_scaled_mask;
+	int x, y, i, j;
+
+	if (opt_scale == 2) {
+		/* regular-sized icons are too big to 2x, so use hidpi ones */
+		if (XpmCreatePixmapFromData(dpy, root, hidpi_xpm, pm, pm_mask,
+		    xpm_attrs) != XpmSuccess)
+			err(1, "XpmCreatePixmapFromData");
+
+		return;
+	}
+
+	if (XpmCreatePixmapFromData(dpy, root, xpm, pm, pm_mask,
+	    xpm_attrs) != XpmSuccess)
+		err(1, "XpmCreatePixmapFromData");
+
+	if (opt_scale == 1)
+		return;
+
+	scale_gc = XCreateGC(dpy, *pm, 0, 0);
+	mask_scale_gc = XCreateGC(dpy, *pm_mask, 0, 0);
+
+	pm_scaled = XCreatePixmap(dpy, *pm,
+	    xpm_attrs->width * opt_scale, xpm_attrs->height * opt_scale,
+	    DefaultDepth(dpy, screen));
+	pm_scaled_mask = XCreatePixmap(dpy, *pm_mask,
+	    xpm_attrs->width * opt_scale, xpm_attrs->height * opt_scale,
+	    1);
+
+	for (y = 0; y < xpm_attrs->height; y++) {
+		for (x = 0; x < xpm_attrs->width; x++) {
+			for (i = 0; i < opt_scale; i++) {
+				for (j = 0; j < opt_scale; j++) {
+					XCopyArea(dpy, *pm, pm_scaled, scale_gc,
+					    x, y, 1, 1,
+					    (x * opt_scale) + i,
+					    (y * opt_scale) + j);
+					XCopyArea(dpy, *pm_mask, pm_scaled_mask,
+					    mask_scale_gc,
+					    x, y, 1, 1,
+					    (x * opt_scale) + i,
+					    (y * opt_scale) + j);
+				}
+			}
+		}
+	}
+
+	XFreeGC(dpy, scale_gc);
+	XFreeGC(dpy, mask_scale_gc);
+
+	xpm_attrs->width *= opt_scale;
+	xpm_attrs->height *= opt_scale;
+
+	XFreePixmap(dpy, *pm);
+	XFreePixmap(dpy, *pm_mask);
+	*pm = pm_scaled;
+	*pm_mask = pm_scaled_mask;
+}
+
+void
 sig_handler(int signum)
 {
 	pid_t pid;
@@ -462,6 +547,8 @@ handle_xerror(Display *dpy, XErrorEvent *e)
 	if (!ignore_xerrors) {
 		XGetErrorText(dpy, e->error_code, msg, sizeof(msg));
 		warnx("X error (%#lx): %s", e->resourceid, msg);
+		fflush(stdout);
+		fflush(stderr);
 	}
 
 	return 0;

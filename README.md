@@ -33,5 +33,4 @@ default.
   desktop to scroll through virtual desktops
 - Window cycling with `Alt+Tab` and `Shift+Alt+Tab`
 - [Theme support](https://github.com/jcs/progman/tree/master/themes)
-- Optional HiDPI support by defining `-DHIDPI` in `Makefile`, to double-size
-  images, icons, and borders
+- Optional HiDPI scaling support to magnify icons and buttons

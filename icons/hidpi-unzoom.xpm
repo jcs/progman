@@ -1,5 +1,5 @@
 /* XPM */
-static char * unzoom_xpm[] = {
+static char * hidpi_unzoom_xpm[] = {
 "13 18 2 1",
 " 	c None",
 ".	c #000000",

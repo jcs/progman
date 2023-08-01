@@ -1,5 +1,5 @@
 /* XPM */
-static char * close_xpm[] = {
+static char * hidpi_close_xpm[] = {
 "22 7 4 1",
 " 	c None",
 ".	c #000000",

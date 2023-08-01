@@ -1403,17 +1403,17 @@ get_client_icon(client_t *c)
 		c->icon_mask = None;
 
 #ifdef USE_GDK_PIXBUF
-	if (c->icon_geom.w > ICON_SIZE || c->icon_geom.h > ICON_SIZE) {
+	if (c->icon_geom.w > icon_size || c->icon_geom.h > icon_size) {
 		GdkPixbuf *gp, *mask, *scaled;
 		int sh, sw;
 
 		if (c->icon_geom.w > c->icon_geom.h) {
-			sw = ICON_SIZE;
-			sh = (ICON_SIZE / (double)c->icon_geom.w) *
+			sw = icon_size;
+			sh = (icon_size / (double)c->icon_geom.w) *
 			    c->icon_geom.h;
 		} else {
-			sh = ICON_SIZE;
-			sw = (ICON_SIZE / (double)c->icon_geom.h) *
+			sh = icon_size;
+			sw = (icon_size / (double)c->icon_geom.h) *
 			    c->icon_geom.w;
 		}
 
@@ -1505,12 +1505,7 @@ redraw_icon(client_t *c, Window only)
 {
 	XftColor *txft;
 	void *xft_lines;
-	int label_pad =
-#ifdef HIDPI
-		2;
-#else
-		4;
-#endif
+	int label_pad = 2 * opt_scale;
 	int nlines, x;
 
 #ifdef DEBUG
@@ -1521,8 +1516,8 @@ redraw_icon(client_t *c, Window only)
 		XClearWindow(dpy, c->icon);
 		XSetWindowBackground(dpy, c->icon, WhitePixel(dpy, screen));
 		XMoveResizeWindow(dpy, c->icon,
-		    c->icon_geom.x + ((ICON_SIZE - c->icon_geom.w) / 2),
-		    c->icon_geom.y + ((ICON_SIZE - c->icon_geom.h) / 2),
+		    c->icon_geom.x + ((icon_size - c->icon_geom.w) / 2),
+		    c->icon_geom.y + ((icon_size - c->icon_geom.h) / 2),
 		    c->icon_geom.w, c->icon_geom.h);
 		if (c->icon_mask) {
 			XShapeCombineMask(dpy, c->icon, ShapeBounding, 0, 0,
@@ -1563,18 +1558,16 @@ redraw_icon(client_t *c, Window only)
 		c->icon_name = strdup("(Unknown)");
 
 	xft_lines = word_wrap_xft(c->icon_name, ' ', iconfont,
-	    (ICON_SIZE * 2) - (label_pad * 2), &nlines);
+	    (icon_size * 2) - (label_pad * 2), &nlines);
 
-	c->icon_label_geom.y = c->icon_geom.y + ICON_SIZE + 10;
+	c->icon_label_geom.y = c->icon_geom.y + icon_size + 10;
 	c->icon_label_geom.h = label_pad;
 	c->icon_label_geom.w = label_pad;
 
 	for (x = 0; x < nlines; x++) {
-		struct xft_line_t *line;
-		int w;
-
-		line = xft_lines + (sizeof(struct xft_line_t) * x);
-		w = label_pad + line->xft_width + label_pad;
+		struct xft_line_t *line = xft_lines +
+		    (sizeof(struct xft_line_t) * x);
+		int w = label_pad + line->xft_width + label_pad;
 		if (w > c->icon_label_geom.w)
 			c->icon_label_geom.w = w;
 		c->icon_label_geom.h += iconfont->ascent + iconfont->descent;
@@ -1582,7 +1575,7 @@ redraw_icon(client_t *c, Window only)
 
 	c->icon_label_geom.h += label_pad;
 	c->icon_label_geom.x = c->icon_geom.x -
-	    ((c->icon_label_geom.w - ICON_SIZE) / 2);
+	    ((c->icon_label_geom.w - icon_size) / 2);
 
 	XMoveResizeWindow(dpy, c->icon_label,
 	    c->icon_label_geom.x, c->icon_label_geom.y,

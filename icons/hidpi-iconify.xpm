@@ -1,5 +1,5 @@
 /* XPM */
-static char * iconify_xpm[] = {
+static char * hidpi_iconify_xpm[] = {
 "13 9 2 1",
 " 	c None",
 ".	c #000000",

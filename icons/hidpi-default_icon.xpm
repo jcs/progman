@@ -1,5 +1,5 @@
 /* XPM */
-static char * default_icon_xpm[] = {
+static char * hidpi_default_icon_xpm[] = {
 "64 64 6 1",
 " 	c None",
 ".	c #000000",

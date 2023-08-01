@@ -384,9 +384,9 @@ do_iconify(client_t *c)
 	c->icon_name = get_wm_icon_name(c->win);
 
 	if (c->icon_geom.w < 1)
-		c->icon_geom.w = ICON_SIZE;
+		c->icon_geom.w = icon_size;
 	if (c->icon_geom.h < 1)
-		c->icon_geom.h = ICON_SIZE;
+		c->icon_geom.h = icon_size;
 
 	attrs.background_pixel = BlackPixel(dpy, screen);
 	attrs.event_mask = ButtonPressMask | ButtonReleaseMask |
@@ -454,19 +454,19 @@ place_icon(client_t *c)
 	s.right = DisplayWidth(dpy, screen) - s.right;
 	s.bottom = DisplayHeight(dpy, screen) - s.bottom;
 
-	isize = ICON_SIZE * 2.25;
+	isize = icon_size * 2.25;
 
 	for (y = s.bottom - isize; y >= s.top; y -= isize) {
-		for (x = s.left + ICON_SIZE; x < s.right - isize; x += isize) {
+		for (x = s.left + icon_size; x < s.right - isize; x += isize) {
 			int overlap = 0;
 
 			for (p = focused; p; p = p->next) {
 				if (p == c || !(p->state & STATE_ICONIFIED))
 					continue;
 
-				if ((p->icon_geom.x + ICON_SIZE >= x &&
+				if ((p->icon_geom.x + icon_size >= x &&
 				    p->icon_geom.x <= x) &&
-				    (p->icon_geom.y + ICON_SIZE >= y &&
+				    (p->icon_geom.y + icon_size >= y &&
 				    p->icon_geom.y <= y)) {
 					overlap = 1;
 					break;
@@ -808,8 +808,8 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		c->icon_label_geom.y += yd;
 
 		XMoveWindow(dpy, c->icon,
-		    c->icon_geom.x + ((ICON_SIZE - c->icon_geom.w) / 2),
-		    c->icon_geom.y + ((ICON_SIZE - c->icon_geom.h) / 2));
+		    c->icon_geom.x + ((icon_size - c->icon_geom.w) / 2),
+		    c->icon_geom.y + ((icon_size - c->icon_geom.h) / 2));
 		XMoveWindow(dpy, c->icon_label, c->icon_label_geom.x,
 		    c->icon_label_geom.y);
 		send_config(c);

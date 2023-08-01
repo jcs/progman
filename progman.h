@@ -52,23 +52,14 @@
 /* Default root color is unchanged */
 #define DEF_ROOTBG NULL
 
-#ifdef HIDPI
 #define DEF_FONT "Microsoft Sans Serif:bold:size=14"
 #define DEF_ICONFONT "Microsoft Sans Serif:size=11"
 #define DEF_BEVEL 2
 #define DEF_PAD 6
-#define DEF_BW 6
-#define DEF_EDGE_RES 80
-#define ICON_SIZE 64
-#else
-#define DEF_FONT "system:size=13"
-#define DEF_ICONFONT "Microsoft Sans Serif:size=11"
-#define DEF_BEVEL 2
-#define DEF_PAD 3
 #define DEF_BW 3
-#define DEF_EDGE_RES 40
-#define ICON_SIZE 32
-#endif
+#define DEF_EDGE_RES 80
+#define DEF_SCALE 2
+#define ICON_SIZE_MULT 32
 
 #define DEF_NDESKS 5
 
@@ -283,6 +274,7 @@ extern unsigned long ndesks;
 extern Bool shape_support;
 extern int shape_event;
 extern Window supporting_wm_win;
+extern int icon_size;
 extern XftFont *font;
 extern XftFont *iconfont;
 extern XftColor xft_fg;
@@ -348,6 +340,7 @@ extern int opt_bevel;
 extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
+extern int opt_scale;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
