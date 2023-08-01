@@ -22,8 +22,6 @@
 #ifndef PROGMAN_H
 #define PROGMAN_H
 
-#define VERSION "3.11.1"
-
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xft/Xft.h>
