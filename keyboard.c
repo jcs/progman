@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <strings.h>
 #include "progman.h"
 
 action_t *key_actions = NULL;
@@ -39,26 +40,27 @@ bind_key(int type, char *key, char *action)
 	int x, mod = 0, iaction = -1, button = 0, overwrite, aidx;
 
 	tkey = strdup(key);
-	for (x = 0; tkey[x] != '\0'; x++)
-		tkey[x] = tolower(tkey[x]);
 
 	/* key can be "shift+alt+f1" or "Super+Space" or just "ampersand" */
 	while ((sep = strchr(tkey, '+'))) {
 		*sep = '\0';
-		if (strcmp(tkey, "shift") == 0)
+		if (strcasecmp(tkey, "shift") == 0)
 			mod |= ShiftMask;
-		else if (strcmp(tkey, "control") == 0 ||
-		    strcmp(key, "ctrl") == 0 || strcmp(tkey, "ctl") == 0)
+		else if (strcasecmp(tkey, "control") == 0 ||
+		    strcasecmp(key, "ctrl") == 0 ||
+		    strcasecmp(tkey, "ctl") == 0)
 			mod |= ControlMask;
-		else if (strcmp(tkey, "alt") == 0 ||
-		    strcmp(key, "meta") == 0 || strcmp(key, "mod1") == 0)
+		else if (strcasecmp(tkey, "alt") == 0 ||
+		    strcasecmp(key, "meta") == 0 ||
+		    strcasecmp(key, "mod1") == 0)
 			mod |= Mod1Mask;
-		else if (strcmp(tkey, "mod2") == 0)
+		else if (strcasecmp(tkey, "mod2") == 0)
 			mod |= Mod2Mask;
-		else if (strcmp(tkey, "mod3") == 0)
+		else if (strcasecmp(tkey, "mod3") == 0)
 			mod |= Mod3Mask;
-		else if (strcmp(tkey, "super") == 0 ||
-		    strcmp(tkey, "win") == 0 || strcmp(tkey, "mod4") == 0)
+		else if (strcasecmp(tkey, "super") == 0 ||
+		    strcasecmp(tkey, "win") == 0 ||
+		    strcasecmp(tkey, "mod4") == 0)
 			mod |= Mod4Mask;
 		else {
 			warnx("failed parsing modifiers in \"%s\", skipping",
@@ -66,19 +68,25 @@ bind_key(int type, char *key, char *action)
 			return;
 		}
 
-		tkey = (sep + 1);
+		tkey = sep + 1;
 	}
 
 	/* modifiers have been parsed, only the key or button should remain */
-	if (strncmp(tkey, "mouse", 5) == 0 && tkey[5] > '0' && tkey[5] <= '9')
+	if (strncasecmp(tkey, "mouse", 5) == 0 &&
+	    tkey[5] > '0' && tkey[5] <= '9')
 		button = tkey[5] - '0';
 	else if (tkey[0] != '\0') {
-		k = XStringToKeysym(tkey);
-		if (k == 0) {
-			tkey[0] = toupper(tkey[0]);
-			k = XStringToKeysym(tkey);
+		if (tkey[1] == '\0') {
+			/*
+			 * Assume a single-character key is meant to be used as
+			 * its lower-case key, e.g., "Win+T" is mod4+t, not
+			 * mod4+T, and if the user wanted it a capital t, they
+			 * would specify it as "Win+Shift+T"
+			 */
+			tkey[0] = tolower(tkey[0]);
 		}
 
+		k = XStringToKeysym(tkey);
 		if (k == 0) {
 			warnx("failed parsing key \"%s\", skipping\n", tkey);
 			return;
