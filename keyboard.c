@@ -47,12 +47,12 @@ bind_key(int type, char *key, char *action)
 		if (strcasecmp(tkey, "shift") == 0)
 			mod |= ShiftMask;
 		else if (strcasecmp(tkey, "control") == 0 ||
-		    strcasecmp(key, "ctrl") == 0 ||
+		    strcasecmp(tkey, "ctrl") == 0 ||
 		    strcasecmp(tkey, "ctl") == 0)
 			mod |= ControlMask;
 		else if (strcasecmp(tkey, "alt") == 0 ||
-		    strcasecmp(key, "meta") == 0 ||
-		    strcasecmp(key, "mod1") == 0)
+		    strcasecmp(tkey, "meta") == 0 ||
+		    strcasecmp(tkey, "mod1") == 0)
 			mod |= Mod1Mask;
 		else if (strcasecmp(tkey, "mod2") == 0)
 			mod |= Mod2Mask;
@@ -63,8 +63,8 @@ bind_key(int type, char *key, char *action)
 		    strcasecmp(tkey, "mod4") == 0)
 			mod |= Mod4Mask;
 		else {
-			warnx("failed parsing modifiers in \"%s\", skipping",
-			    key);
+			warnx("failed parsing modifier \"%s\" in \"%s\", "
+			    "skipping", tkey, key);
 			return;
 		}
 
