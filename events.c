@@ -157,7 +157,8 @@ handle_button_press(XButtonEvent *e)
 		/* pass button event through */
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 	} else if (c) {
-		if (e->button == 1 && (e->state & Mod1Mask) &&
+		if (opt_drag_button && e->button == opt_drag_button &&
+		    (e->state & opt_drag_mod) &&
 		    !(c->state & (STATE_FULLSCREEN | STATE_ZOOMED |
 		    STATE_ICONIFIED))) {
 			/* alt+click, begin moving */

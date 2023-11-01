@@ -148,6 +148,8 @@ int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
 int opt_scale = DEF_SCALE;
 int icon_size = ICON_SIZE_MULT * DEF_SCALE;
+int opt_drag_button = 0;
+int opt_drag_mod = 0;
 
 void read_config(void);
 void setup_display(void);
@@ -213,6 +215,7 @@ read_config(void)
 {
 	FILE *ini = NULL;
 	char *key, *val;
+	action_t *act;
 
 	ini = open_ini(opt_config_file);
 
@@ -266,6 +269,15 @@ read_config(void)
 				if (opt_scale < 0) {
 					warnx("invalid value for scale");
 					opt_scale = DEF_SCALE;
+				}
+			} else if (strcmp(key, "drag_combo") == 0) {
+				act = bind_key(BINDING_TYPE_DRAG, val, "drag");
+				if (act == NULL)
+					warnx("invalid drag_combo \"%s\" in "
+					    "ini", val);
+				else {
+					opt_drag_button = act->button;
+					opt_drag_mod = act->mod;
 				}
 			} else
 				warnx("unknown key \"%s\" and value \"%s\" in "

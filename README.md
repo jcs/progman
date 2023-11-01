@@ -20,7 +20,8 @@ default.
 - Window maximizing by double-clicking on a window titlebar, and full-screen
   support (via `_NET_WM_STATE_FULLSCREEN`)
 - Window shading by right-clicking on a window titlebar
-- Window moving by holding down `Alt` and clicking anywhere on a window
+- Window moving by holding down `Alt` (configurable) and clicking anywhere on a
+  window
 - Built-in keyboard binding support by adding items to the `[keyboard]`
   section of `~/.config/progman/progman.ini` such as `Win+L = exec xlock`
 - Built-in mouse button binding on the desktop by adding items to the

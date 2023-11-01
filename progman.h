@@ -108,6 +108,7 @@ struct geom {
 enum {
 	BINDING_TYPE_KEYBOARD,
 	BINDING_TYPE_DESKTOP,
+	BINDING_TYPE_DRAG,
 };
 
 /* keyboard and mouse bindings */
@@ -138,6 +139,7 @@ enum {
 	ACTION_LAUNCHER,
 	ACTION_RESTART,
 	ACTION_QUIT,
+	ACTION_DRAG,
 };
 
 /* client_t state */
@@ -339,6 +341,8 @@ extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
 extern int opt_scale;
+extern int opt_drag_button;
+extern int opt_drag_mod;
 extern void sig_handler(int signum);
 extern int exitmsg[2];
 
@@ -434,7 +438,7 @@ extern client_t *cycle_head;
 extern void fork_exec(char *);
 extern int get_pointer(int *, int *);
 extern int send_xmessage(Window, Window, Atom, unsigned long, unsigned long);
-extern void bind_key(int, char *, char *);
+extern action_t *bind_key(int, char *, char *);
 extern void take_action(action_t *);
 extern action_t *parse_action(char *, char *);
 

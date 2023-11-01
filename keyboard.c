@@ -31,7 +31,7 @@ action_t *key_actions = NULL;
 int nkey_actions = 0;
 static int cycle_key = 0;
 
-void
+action_t *
 bind_key(int type, char *key, char *action)
 {
 	char *tkey, *sep;
@@ -65,7 +65,7 @@ bind_key(int type, char *key, char *action)
 		else {
 			warnx("failed parsing modifier \"%s\" in \"%s\", "
 			    "skipping", tkey, key);
-			return;
+			return NULL;
 		}
 
 		tkey = sep + 1;
@@ -89,14 +89,14 @@ bind_key(int type, char *key, char *action)
 		k = XStringToKeysym(tkey);
 		if (k == 0) {
 			warnx("failed parsing key \"%s\", skipping\n", tkey);
-			return;
+			return NULL;
 		}
 	}
 
 	/* action can be e.g., "cycle" or "exec xterm -g 80x50" */
 	taction = parse_action(key, action);
 	if (taction == NULL)
-		return;
+		return NULL;
 
 	/* if we're overriding an existing config, replace it in key_actions */
 	overwrite = 0;
@@ -159,6 +159,8 @@ bind_key(int type, char *key, char *action)
 			XGrabKey(dpy, XKeysymToKeycode(dpy, k), mod, root,
 			    False, GrabModeAsync, GrabModeAsync);
 	}
+
+	return &key_actions[aidx];
 }
 
 void

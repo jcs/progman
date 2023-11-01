@@ -106,6 +106,8 @@ parse_action(char *prefix, char *action)
 		iaction = ACTION_RESTART;
 	else if (strcmp(taction, "quit") == 0)
 		iaction = ACTION_QUIT;
+	else if (strcmp(taction, "drag") == 0)
+		iaction = ACTION_DRAG;
 	else if (taction[0] == '\n' || taction[0] == '\0')
 		iaction = ACTION_NONE;
 	else

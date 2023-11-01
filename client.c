@@ -91,10 +91,11 @@ new_client(Window w)
 	append_atoms(root, net_client_list, XA_WINDOW, &c->win, 1);
 	append_atoms(root, net_client_stack, XA_WINDOW, &c->win, 1);
 
-	/* setup for alt+click dragging */
-	XGrabButton(dpy, Button1, Mod1Mask, c->win, True,
-	    ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync,
-	    None, move_curs);
+	if (opt_drag_button)
+		/* setup for mod+click dragging */
+		XGrabButton(dpy, opt_drag_button, opt_drag_mod, c->win, True,
+		    ButtonPressMask | ButtonReleaseMask, GrabModeAsync,
+		    GrabModeAsync, None, move_curs);
 
 	check_states(c);
 
