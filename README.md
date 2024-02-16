@@ -1,7 +1,6 @@
 ## progman
 
-progman is a simple X11 window manager modeled after Program Manager from
-the Windows 3 era.
+progman is a simple X11 window manager modeled after the Windows 3 era.
 
 ![progman screenshot](https://jcs.org/images/progman-20200810.png)
 
