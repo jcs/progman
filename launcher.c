@@ -44,6 +44,7 @@ launcher_setup(void)
 {
 	XTextProperty name;
 	char *title = "Programs";
+	XSizeHints *hints;
 
 	launcher_reload();
 
@@ -52,6 +53,20 @@ launcher_setup(void)
 	    DefaultVisual(dpy, screen), 0, NULL);
 	if (!launcher_win)
 		err(1, "XCreateWindow");
+
+	hints = XAllocSizeHints();
+	if (!hints)
+		err(1, "XAllocSizeHints");
+
+	hints->flags = PMinSize | PMaxSize;
+	hints->min_width = launcher_width;
+	hints->min_height = launcher_height;
+	hints->max_width = launcher_width;
+	hints->max_height = launcher_height;
+
+	XSetWMNormalHints(dpy, launcher_win, hints);
+
+	XFree(hints);
 
 	if (!XStringListToTextProperty(&title, 1, &name))
 		err(1, "XStringListToTextProperty");
@@ -72,7 +87,6 @@ launcher_reload(void)
 {
 	FILE *ini;
 	struct program *program = NULL;
-	XSizeHints *hints;
 	XGlyphInfo extents;
 	action_t *action;
 	char *key, *val;
@@ -125,20 +139,6 @@ launcher_reload(void)
 
 done:
 	fclose(ini);
-
-	hints = XAllocSizeHints();
-	if (!hints)
-		err(1, "XAllocSizeHints");
-
-	hints->flags = PMinSize | PMaxSize;
-	hints->min_width = launcher_width;
-	hints->min_height = launcher_height;
-	hints->max_width = launcher_width;
-	hints->max_height = launcher_height;
-
-	XSetWMNormalHints(dpy, launcher_win, hints);
-
-	XFree(hints);
 }
 
 void
