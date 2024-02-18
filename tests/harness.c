@@ -22,8 +22,10 @@
 #include "harness.h"
 #include <libgen.h>
 
-Window win;
+Display *dpy;
+Window win, root;
 int screen;
+int ignore_xerrors = 0;
 
 int
 main(int argc, char **argv)

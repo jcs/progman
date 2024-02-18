@@ -21,7 +21,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 
-PKGLIBS=	x11
+PKGLIBS=	x11 xft
 
 CC?=		cc
 CFLAGS+=	-O2 -Wall -Wunused \
@@ -36,12 +36,11 @@ BIN=		geometry \
 
 all: $(BIN)
 
-common.o: ../common.c
 atom.o: ../atom.c
 harness.o: harness.c
 
-$(BIN): atom.o common.o harness.o $@.c
-	$(CC) $(CFLAGS) -o $@ $@.c atom.o common.o harness.o $(LDFLAGS)
+$(BIN): atom.o harness.o $@.c
+	$(CC) $(CFLAGS) -o $@ $@.c atom.o harness.o $(LDFLAGS)
 
 clean:
 	rm -f $(BIN) *.o

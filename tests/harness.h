@@ -27,8 +27,8 @@
 #include <X11/Xutil.h>
 
 #include "../atom.h"
-#include "../common.h"
 
+extern Display *dpy;
 extern Window win;
 extern int screen;
 
