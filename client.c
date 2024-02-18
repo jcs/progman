@@ -844,7 +844,7 @@ redraw_frame(client_t *c, Window only)
 	XpmAttributes *pm_attrs;
 	int x, y, tw;
 
-	if (!c || (c->frame_style & FRAME_NONE) || !c->frame)
+	if (!c || (c->frame_style == FRAME_NONE) || !c->frame)
 		return;
 
 	if (!IS_ON_CUR_DESK(c))

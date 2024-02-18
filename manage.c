@@ -493,7 +493,7 @@ place_icon(client_t *c)
 void
 shade_client(client_t *c)
 {
-	if (c->state != STATE_NORMAL || (c->frame_style & FRAME_NONE))
+	if (c->state != STATE_NORMAL || (c->frame_style == FRAME_NONE))
 		return;
 
 	c->state |= STATE_SHADED;
