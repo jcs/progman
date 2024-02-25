@@ -608,10 +608,9 @@ zoom_client(client_t *c)
 	c->geom.w = DisplayWidth(dpy, screen) - s.left - s.right;
 	c->geom.h = DisplayHeight(dpy, screen) - s.top - s.bottom - c->geom.y;
 
-	redraw_frame(c, None);
-
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mv, 1);
 	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_mh, 1);
+	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
 }
@@ -624,10 +623,10 @@ unzoom_client(client_t *c)
 
 	c->geom = c->save;
 	c->state &= ~STATE_ZOOMED;
-	redraw_frame(c, None);
 
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mv);
 	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_mh);
+	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
 }
