@@ -574,6 +574,7 @@ unfullscreen_client(client_t *c)
 	c->geom = c->save;
 	c->state &= ~STATE_FULLSCREEN;
 
+	recalc_frame(c);
 	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
