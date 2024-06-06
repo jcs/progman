@@ -64,6 +64,7 @@ extern Atom net_wm_strut_partial;
 extern Atom net_wm_type_desk;
 extern Atom net_wm_type_dock;
 extern Atom net_wm_type_menu;
+extern Atom net_wm_type_notif;
 extern Atom net_wm_type_splash;
 extern Atom net_wm_type_utility;
 extern Atom net_wm_wintype;

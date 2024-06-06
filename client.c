@@ -248,7 +248,8 @@ map_client(client_t *c)
 	} else {
 		/* we're not allowing WithdrawnState */
 		set_wm_state(c, NormalState);
-		if (!(c->state & STATE_DOCK))
+		if (!((c->state & STATE_DOCK) ||
+		    has_win_type(c, net_wm_type_notif)))
 			want_raise = 1;
 	}
 
@@ -581,6 +582,8 @@ recalc_frame(client_t *c)
 	    has_win_type(c, net_wm_type_desk) ||
 	    has_win_type(c, kde_net_wm_window_type_override))
 		c->frame_style = FRAME_NONE;
+	else if (has_win_type(c, net_wm_type_notif))
+		c->frame_style = FRAME_BORDER;
 	else if (has_win_type(c, net_wm_type_utility))
 		c->frame_style = (FRAME_BORDER | FRAME_RESIZABLE |
 		    FRAME_CLOSE | FRAME_TITLEBAR);

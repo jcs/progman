@@ -57,6 +57,7 @@ Atom net_wm_strut_partial;
 Atom net_wm_type_desk;
 Atom net_wm_type_dock;
 Atom net_wm_type_menu;
+Atom net_wm_type_notif;
 Atom net_wm_type_splash;
 Atom net_wm_type_utility;
 Atom net_wm_wintype;
@@ -161,6 +162,10 @@ find_supported_atoms(void)
 
 	net_wm_type_menu = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
 	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_menu, 1);
+
+	net_wm_type_notif = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION",
+	    False);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_utility, 1);
 
 	net_wm_type_splash = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH",
 	    False);

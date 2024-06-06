@@ -75,7 +75,7 @@
     NorthWestGravity)
 #define CAN_PLACE_SELF(t) ((t) == net_wm_type_dock || \
     (t) == net_wm_type_menu || (t) == net_wm_type_splash || \
-    (t) == net_wm_type_desk)
+    (t) == net_wm_type_desk || (t) == net_wm_type_notif)
 #define HAS_DECOR(t) (!CAN_PLACE_SELF(t))
 #define DESK_ALL 0xFFFFFFFF
 #define IS_ON_DESK(w, d) (w == d || w == DESK_ALL)
