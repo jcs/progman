@@ -826,14 +826,20 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		/* left edge */
 		if (newx - c->resize_w_geom.w >= (long)s->left ||
 		    newx - c->resize_w_geom.w < (long)s->left -
-		    opt_edge_resist)
+		    opt_edge_resist) {
 			c->geom.x = newx;
+		} else {
+			c->geom.x = (long)s->left + c->resize_w_geom.w;
+		}
 	} else {
 		/* right edge */
 		if (newx + c->geom.w + c->resize_e_geom.w <= sw ||
 		    newx + c->geom.w + c->resize_e_geom.w > sw +
-		    opt_edge_resist)
+		    opt_edge_resist) {
 			c->geom.x = newx;
+		} else {
+			c->geom.x = sw - c->geom.w - c->resize_e_geom.w;
+		}
 	}
 
 	if (y1 < y0) {
@@ -841,14 +847,21 @@ recalc_move(client_t *c, geom_t orig, int x0, int y0, int x1, int y1,
 		if (newy - c->resize_n_geom.h - c->titlebar_geom.h >=
 		    (long)s->top ||
 		    newy - c->resize_n_geom.h - c->titlebar_geom.h <
-		    (long)s->top - opt_edge_resist)
+		    (long)s->top - opt_edge_resist) {
 			c->geom.y = newy;
+		} else {
+			c->geom.y = (long)s->top + c->resize_n_geom.h +
+				    c->titlebar_geom.h;
+		}
 	} else {
 		/* bottom edge */
 		if (newy + c->geom.h + c->resize_s_geom.h <= sh ||
 		    newy + c->geom.h + c->resize_s_geom.h > sh +
-		    opt_edge_resist)
+		    opt_edge_resist) {
 			c->geom.y = newy;
+		} else {
+			c->geom.y = sh - c->geom.h - c->resize_s_geom.h;
+		}
 	}
 
 	recalc_frame(c);
