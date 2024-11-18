@@ -477,14 +477,12 @@ handle_property_change(XPropertyEvent *e)
 				zoom_client(c);
 			else if (c->state & STATE_FULLSCREEN)
 				fullscreen_client(c);
-			else {
-				if (was_state & STATE_ZOOMED)
-					unzoom_client(c);
-				else if (was_state & STATE_ICONIFIED)
-					uniconify_client(c);
-				else if (was_state & STATE_FULLSCREEN)
-					unfullscreen_client(c);
-			}
+			else if (was_state & STATE_ZOOMED)
+				unzoom_client(c);
+			else if (was_state & STATE_ICONIFIED)
+				uniconify_client(c);
+			else if (was_state & STATE_FULLSCREEN)
+				unfullscreen_client(c);
 		}
 	} else if (e->atom == net_wm_desk) {
 		if (get_atoms(c->win, net_wm_desk, XA_CARDINAL, 0,
