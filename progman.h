@@ -152,6 +152,7 @@ enum {
 	STATE_DOCK = (1 << 5),
 	STATE_ABOVE = (1 << 6),
 	STATE_BELOW = (1 << 7),
+	STATE_ICONIFIED_ZOOMED = (1 << 8)
 };
 
 /* client_t frame_style */

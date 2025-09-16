@@ -364,7 +364,12 @@ iconify_client(client_t *c)
 
 void
 do_iconify(client_t *c)
-{
+{	
+
+	if (c->state & STATE_ZOOMED) {
+	   unzoom_client(c);
+	   c->state |= STATE_ICONIFIED_ZOOMED; }
+	
 	XSetWindowAttributes attrs = { 0 };
 	XGCValues gv;
 
@@ -427,18 +432,19 @@ uniconify_client(client_t *c)
 	XMapRaised(dpy, c->frame);
 	c->state &= ~STATE_ICONIFIED;
 	set_wm_state(c, NormalState);
-
+	c->ignore_unmap++;
 	XDestroyWindow(dpy, c->icon);
 	c->icon = None;
-	
+	c->ignore_unmap++;
 	if (c->icon_xftdraw) {
-	    XftDrawDestroy(c->icon_xftdraw);
-	    c->icon_xftdraw = None;
+		XftDrawDestroy(c->icon_xftdraw);
+		c->icon_xftdraw = None;
 	}
-	
 	XDestroyWindow(dpy, c->icon_label);
 	c->icon_label = None;
-
+	if (c->state & STATE_ICONIFIED_ZOOMED) {
+			c->state &= ~STATE_ICONIFIED_ZOOMED;
+			zoom_client(c); }
 	focus_client(c, FOCUS_FORCE);
 }
 
