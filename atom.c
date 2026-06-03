@@ -407,13 +407,16 @@ get_strut(Window w, strut_t *s)
 	    XA_CARDINAL, &real_type, &real_format, &items_read, &bytes_left,
 	    &data);
 
-	if (!(real_format == 32 && items_read >= 12))
+	if (!(real_format == 32 && items_read >= 12)) {
+		if (data != NULL)
+			XFree(data);
 		XGetWindowProperty(dpy, w, net_wm_strut, 0, 4, False,
 		    XA_CARDINAL, &real_type, &real_format, &items_read,
 		    &bytes_left, &data);
+	}
 
 	if (real_format == 32 && items_read >= 4) {
-		strut_data = (unsigned long *) data;
+		strut_data = (unsigned long *)data;
 		s->left = strut_data[0];
 		s->right = strut_data[1];
 		s->top = strut_data[2];
