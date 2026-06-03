@@ -709,10 +709,10 @@ map_if_desk(client_t *c)
 		XUnmapWindow(dpy, c->frame);
 }
 
-static XEvent sweepev;
 void
 sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
+	static XEvent sweepev;
 	geom_t orig = (c->state & STATE_ICONIFIED ? c->icon_geom : c->geom);
 	client_t *ec;
 	strut_t as = { 0 };
