@@ -180,9 +180,7 @@ void
 focus_client(client_t *c, int style)
 {
 	client_t *prevfocused = NULL;
-	client_t *trans[10] = { NULL };
 	client_t *p;
-	int transcount = 0;
 
 	if (!c) {
 		warnx("%s with no c", __func__);
@@ -218,20 +216,13 @@ focus_client(client_t *c, int style)
 	adjust_client_order(c, ORDER_TOP);
 
 	/* raise any transients of this window */
-	for (p = focused; p; p = p->next) {
+	for (p = c->next; p; p = p->next) {
 		if (p->trans == c->win) {
-			trans[transcount++] = p;
-			if (transcount == sizeof(trans) / (sizeof(trans[0])))
-				break;
-		}
-	}
-	if (transcount != 0) {
-		for (transcount--; transcount >= 0; transcount--) {
 #ifdef DEBUG
-			dump_name(c, __func__, "transient",
-			    trans[transcount]->name);
+			dump_name(c, __func__, "transient", p->name);
 #endif
-			adjust_client_order(trans[transcount], ORDER_TOP);
+			adjust_client_order(p, ORDER_TOP);
+			p = c;
 		}
 	}
 
