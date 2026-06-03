@@ -62,6 +62,7 @@
 #define DEF_NDESKS 5
 
 #define DOUBLE_CLICK_MSEC 250
+#define EDGE_FLIP_MSEC 1000
 
 #define BUF_SIZE 2048
 
@@ -71,8 +72,6 @@
 #define ButtonMask (ButtonPressMask|ButtonReleaseMask)
 #define MouseMask (ButtonMask|PointerMotionMask)
 
-#define GRAV(c) ((c->size.flags & PWinGravity) ? c->size.win_gravity : \
-    NorthWestGravity)
 #define CAN_PLACE_SELF(t) ((t) == net_wm_type_dock || \
     (t) == net_wm_type_menu || (t) == net_wm_type_splash || \
     (t) == net_wm_type_desk || (t) == net_wm_type_notif)
