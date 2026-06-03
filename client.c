@@ -1569,8 +1569,8 @@ redraw_icon(client_t *c, Window only)
 	c->icon_label_geom.w = label_pad;
 
 	for (x = 0; x < nlines; x++) {
-		struct xft_line_t *line = xft_lines +
-		    (sizeof(struct xft_line_t) * x);
+		struct xft_line *line = xft_lines +
+		    (sizeof(struct xft_line) * x);
 		int w = label_pad + line->xft_width + label_pad;
 		if (w > c->icon_label_geom.w)
 			c->icon_label_geom.w = w;
@@ -1587,8 +1587,8 @@ redraw_icon(client_t *c, Window only)
 
 	int ly = label_pad;
 	for (x = 0; x < nlines; x++) {
-		struct xft_line_t *line = xft_lines +
-		    (sizeof(struct xft_line_t) * x);
+		struct xft_line *line = xft_lines +
+		    (sizeof(struct xft_line) * x);
 		int lx = ((c->icon_label_geom.w - line->xft_width) / 2);
 
 		ly += iconfont->ascent;
@@ -1774,13 +1774,13 @@ void *
 word_wrap_xft(char *str, char delim, XftFont *font, int width, int *nlines)
 {
 	XGlyphInfo extents;
-	struct xft_line_t *lines = NULL;
+	struct xft_line *lines = NULL;
 	char *curstr;
 	int x, lastdelim;
 	int alloced = 10;
 	int nline;
 
-	lines = realloc(lines, alloced * sizeof(struct xft_line_t));
+	lines = realloc(lines, alloced * sizeof(struct xft_line));
 	if (lines == NULL)
 		err(1, "realloc");
 
@@ -1790,7 +1790,7 @@ start_wrap:
 	curstr = str;
 
 	for (x = 0; ; x++) {
-		struct xft_line_t *line = &lines[nline];
+		struct xft_line *line = &lines[nline];
 		int tx;
 
 		if (curstr[x] != delim && curstr[x] != '\n' &&
@@ -1844,7 +1844,7 @@ start_wrap:
 		if (nline == alloced) {
 			alloced += 10;
 			lines = realloc(lines,
-			    alloced * sizeof(struct xft_line_t));
+			    alloced * sizeof(struct xft_line));
 			if (lines == NULL)
 				err(1, "realloc");
 		}

@@ -228,8 +228,7 @@ struct client {
 	int old_bw;
 };
 
-typedef struct xft_line xft_line_t;
-struct xft_line_t {
+struct xft_line {
 	char *str;
 	unsigned int len;
 	unsigned int xft_width;
