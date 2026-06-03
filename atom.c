@@ -165,7 +165,7 @@ find_supported_atoms(void)
 
 	net_wm_type_notif = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION",
 	    False);
-	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_utility, 1);
+	append_atoms(root, net_supported, XA_ATOM, &net_wm_type_notif, 1);
 
 	net_wm_type_splash = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH",
 	    False);
