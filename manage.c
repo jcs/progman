@@ -21,6 +21,7 @@
  */
 
 #include <err.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -704,10 +705,13 @@ void
 sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 {
 	static XEvent sweepev;
-	geom_t orig = (c->state & STATE_ICONIFIED ? c->icon_geom : c->geom);
+	geom_t orig;
+	struct timespec edge_time = { 0, 0 }, now;
+	struct pollfd pfd;
+	long elapsed;
 	client_t *ec;
 	strut_t as = { 0 };
-	int x0, y0, done = 0;
+	int x0, y0, done = 0, edge_side = 0, sw, timeout, new_side;
 
 	get_pointer(&x0, &y0);
 	collect_struts(c, &as);
@@ -717,9 +721,34 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 	    GrabModeAsync, root, curs, CurrentTime) != GrabSuccess)
 		return;
 
+	orig = (c->state & STATE_ICONIFIED ? c->icon_geom : c->geom);
 	cb(c, orig, x0, y0, x0, y0, s, cb_arg);
 
+	sw = DisplayWidth(dpy, screen);
+	pfd.fd = ConnectionNumber(dpy);
+	pfd.events = POLLIN;
+
 	while (!done) {
+		timeout = -1;
+		if (cb == recalc_move && !(c->state & STATE_ICONIFIED) &&
+		    edge_side != 0) {
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			elapsed = (now.tv_sec - edge_time.tv_sec) * 1000 +
+			    (now.tv_nsec - edge_time.tv_nsec) / 1000000;
+			if (elapsed >= opt_edge_wait_flip) {
+				if ((edge_side < 0 && cur_desk > 0) ||
+				    (edge_side > 0 && cur_desk < ndesks - 1))
+					goto_desk(cur_desk +
+					    (edge_side < 0 ? -1 : 1));
+				edge_side = 0;
+				continue;
+			}
+			timeout = opt_edge_wait_flip - (int)elapsed;
+		}
+
+		if (!XPending(dpy) && poll(&pfd, 1, timeout) <= 0)
+			continue;
+
 		XMaskEvent(dpy, ExposureMask | MouseMask | PointerMotionMask |
 		    StructureNotifyMask | SubstructureNotifyMask |
 		    KeyPressMask | KeyReleaseMask, &sweepev);
@@ -735,6 +764,22 @@ sweep(client_t *c, Cursor curs, sweep_func cb, void *cb_arg, strut_t *s)
 		case MotionNotify:
 			cb(c, orig, x0, y0, sweepev.xmotion.x,
 			    sweepev.xmotion.y, s, cb_arg);
+			if (cb == recalc_move &&
+			    !(c->state & STATE_ICONIFIED)) {
+				if (sweepev.xmotion.x <= 0)
+					new_side = -1;
+				else if (sweepev.xmotion.x >= sw - 1)
+					new_side = 1;
+				else
+					new_side = 0;
+
+				if (new_side != edge_side) {
+					edge_side = new_side;
+					if (new_side != 0)
+						clock_gettime(CLOCK_MONOTONIC,
+						    &edge_time);
+				}
+			}
 			break;
 		case ButtonRelease:
 			done = 1;

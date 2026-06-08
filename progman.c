@@ -146,6 +146,7 @@ int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
 int opt_edge_resist = DEF_EDGE_RES;
+int opt_edge_wait_flip = DEF_EDGE_WAIT_FLIP;
 int opt_scale = DEF_SCALE;
 int icon_size = ICON_SIZE_MULT * DEF_SCALE;
 int opt_drag_button = 0;

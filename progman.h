@@ -56,13 +56,13 @@
 #define DEF_PAD 6
 #define DEF_BW 3
 #define DEF_EDGE_RES 80
+#define DEF_EDGE_WAIT_FLIP 1000
 #define DEF_SCALE 2
 #define ICON_SIZE_MULT 32
 
 #define DEF_NDESKS 5
 
 #define DOUBLE_CLICK_MSEC 250
-#define EDGE_FLIP_MSEC 1000
 
 #define BUF_SIZE 2048
 
@@ -338,6 +338,7 @@ extern int opt_bevel;
 extern int opt_bw;
 extern int opt_pad;
 extern int opt_edge_resist;
+extern int opt_edge_wait_flip;
 extern int opt_scale;
 extern int opt_drag_button;
 extern int opt_drag_mod;
