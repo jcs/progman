@@ -344,12 +344,16 @@ void
 iconify_client(client_t *c)
 {
 	client_t *p;
+	client_t *old_focused = focused;
 
 	for (p = focused; p; p = p->next)
 		if (p->trans == c->win)
 			do_iconify(p);
 
 	do_iconify(c);
+
+	if (old_focused && old_focused != focused)
+		redraw_frame(old_focused, None);
 
 	focus_client(focused, FOCUS_FORCE);
 }
@@ -1215,34 +1219,18 @@ adjust_client_order(client_t *c, int where)
 		}
 		c->next = NULL;
 
+		/* find the first iconified client, if any */
 		p = focused; pp = NULL;
-		while (p && p->next) {
-			if (!(p->state & STATE_ICONIFIED)) {
-				pp = p;
-				p = p->next;
-				continue;
-			}
-
-			if (pp)
-				/* place ahead of this first iconfied client */
-				pp->next = c;
-			else
-				/* no previous non-iconified clients */
-				focused = c;
-
-			if (c != p)
-				c->next = p;
-			break;
+		while (p && !(p->state & STATE_ICONIFIED)) {
+			pp = p;
+			p = p->next;
 		}
 
-		if (!c->next) {
-			/* no iconified clients, place at the bottom */
-			if (p)
-				p->next = c;
-			else
-				focused = c;
-			c->next = NULL;
-		}
+		if (pp)
+			pp->next = c;
+		else
+			focused = c;
+		c->next = p;
 		break;
 	case ORDER_BOTTOM:
 		for (p = focused; p && p->next; p = p->next) {
