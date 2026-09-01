@@ -226,6 +226,7 @@ struct client {
 #define MAX_WIN_TYPE_ATOMS 5
 	Atom win_type[MAX_WIN_TYPE_ATOMS];
 	int old_bw;
+	Bool cycle_visited;
 };
 
 struct xft_line {

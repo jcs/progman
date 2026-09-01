@@ -176,25 +176,45 @@ take_action(action_t *action)
 	switch (action->action) {
 	case ACTION_CYCLE:
 	case ACTION_REVERSE_CYCLE:
-		if (!cycle_head) {
-			if (!focused)
-				return;
+		if (!focused)
+			return;
 
+		if (!cycle_head) {
+			for (p = focused; p; p = p->next)
+				p->cycle_visited = False;
+			focused->cycle_visited = True;
 			cycle_head = focused;
 		}
 
-		if ((next = next_client_for_focus(cycle_head)))
+		next = NULL;
+		for (p = focused; p; p = p->next) {
+			if (p == focused || p->cycle_visited)
+				continue;
+			if (IS_ON_CUR_DESK(p) && !(p->state & STATE_DOCK)) {
+				next = p;
+				break;
+			}
+		}
+
+		if (!next) {
+			/* made the rounds already, wrap and start over */
+			for (p = focused; p; p = p->next)
+				p->cycle_visited = False;
+			focused->cycle_visited = True;
+			for (p = focused; p; p = p->next) {
+				if (p == focused)
+					continue;
+				if (IS_ON_CUR_DESK(p) &&
+				    !(p->state & STATE_DOCK)) {
+					next = p;
+					break;
+				}
+			}
+		}
+
+		if (next) {
+			next->cycle_visited = True;
 			focus_client(next, FOCUS_FORCE);
-		else {
-			/* probably at the end of the list, invert it */
-			p = focused;
-			adjust_client_order(NULL, ORDER_INVERT);
-
-			if (p)
-				/* p should now not be focused */
-				redraw_frame(p, None);
-
-			focus_client(cycle_head, FOCUS_FORCE);
 		}
 		break;
 	case ACTION_DESK:
