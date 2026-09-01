@@ -55,7 +55,7 @@
 #define DEF_BEVEL 2
 #define DEF_PAD 6
 #define DEF_BW 3
-#define DEF_EDGE_RES 80
+#define DEF_EDGE_RESIST 80
 #define DEF_EDGE_WAIT_FLIP 1000
 #define DEF_SCALE 2
 #define ICON_SIZE_MULT 32

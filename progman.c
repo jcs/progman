@@ -145,7 +145,7 @@ char *opt_root_bg = DEF_ROOTBG;
 int opt_bw = DEF_BW;
 int opt_pad = DEF_PAD;
 int opt_bevel = DEF_BEVEL;
-int opt_edge_resist = DEF_EDGE_RES;
+int opt_edge_resist = DEF_EDGE_RESIST;
 int opt_edge_wait_flip = DEF_EDGE_WAIT_FLIP;
 int opt_scale = DEF_SCALE;
 int icon_size = ICON_SIZE_MULT * DEF_SCALE;
@@ -259,11 +259,12 @@ read_config(void)
 					    "title_padding");
 					opt_pad = DEF_PAD;
 				}
-			} else if (strcmp(key, "edgeresist") == 0) {
+			} else if (strcmp(key, "edge_resist") == 0 ||
+			    strcmp(key, "edgeresist") == 0 /* legacy */) {
 				opt_edge_resist = atoi(val);
 				if (opt_edge_resist < 0) {
-					warnx("invalid value for edgeresist");
-					opt_edge_resist = DEF_EDGE_RES;
+					warnx("invalid value for edge_resist");
+					opt_edge_resist = DEF_EDGE_RESIST;
 				}
 			} else if (strcmp(key, "scale") == 0) {
 				opt_scale = atoi(val);
