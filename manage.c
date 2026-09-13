@@ -552,6 +552,8 @@ fullscreen_client(client_t *c)
 	c->geom.w = screen_x;
 	c->geom.h = screen_y;
 	c->state |= STATE_FULLSCREEN;
+
+	append_atoms(c->win, net_wm_state, XA_ATOM, &net_wm_state_fs, 1);
 	redraw_frame(c, None);
 	send_config(c);
 	flush_expose_client(c);
@@ -570,6 +572,7 @@ unfullscreen_client(client_t *c)
 	c->geom = c->save;
 	c->state &= ~STATE_FULLSCREEN;
 
+	remove_atom(c->win, net_wm_state, XA_ATOM, net_wm_state_fs);
 	recalc_frame(c);
 	redraw_frame(c, None);
 	send_config(c);

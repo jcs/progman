@@ -454,6 +454,8 @@ setup_display(void)
 	set_string_atom(supporting_wm_win, net_wm_name,
 	    (unsigned char *)"progman", 7);
 	set_atoms(root, net_supporting_wm, XA_WINDOW, &supporting_wm_win, 1);
+	set_atoms(supporting_wm_win, net_supporting_wm, XA_WINDOW,
+	    &supporting_wm_win, 1);
 }
 
 void
