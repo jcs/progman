@@ -21,6 +21,7 @@ default.
 - Window shading by right-clicking on a window titlebar
 - Window moving by holding down `Alt` (configurable) and clicking anywhere on a
   window
+- Window cycling with `Alt+Tab` and `Shift+Alt+Tab` (both configurable)
 - Built-in keyboard binding support by adding items to the `[keyboard]`
   section of `~/.config/progman/progman.ini` such as `Win+L = exec xlock`
 - Built-in mouse button binding on the desktop by adding items to the
@@ -29,8 +30,9 @@ default.
   configurable launcher menu containing programs listed in the `[launcher]`
   section of `progman.ini`
 - Virtual desktops with keyboard shortcuts for switching between them bound
-  to `Alt+1` through `Alt+0` by default, and using the mouse wheel on the
+  to `Alt+1` through `Alt+0` (by default), and using the mouse wheel on the
   desktop to scroll through virtual desktops
-- Window cycling with `Alt+Tab` and `Shift+Alt+Tab`
+- Dragging a window to the left or right screen edge will automatically advance
+  to the previous or next virtual desktop
 - [Theme support](https://github.com/jcs/progman/tree/master/themes)
 - Optional HiDPI scaling support to magnify icons and buttons
