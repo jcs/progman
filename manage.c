@@ -364,6 +364,11 @@ do_iconify(client_t *c)
 	XSetWindowAttributes attrs = { 0 };
 	XGCValues gv;
 
+	if (c->state & STATE_ZOOMED) {
+		unzoom_client(c);
+		c->state |= STATE_ICONIFIED_ZOOMED;
+	}
+
 	adjust_client_order(c, ORDER_ICONIFIED_TOP);
 
 	if (!c->ignore_unmap)
@@ -432,6 +437,11 @@ uniconify_client(client_t *c)
 	}
 	XDestroyWindow(dpy, c->icon_label);
 	c->icon_label = None;
+
+	if (c->state & STATE_ICONIFIED_ZOOMED) {
+		c->state &= ~STATE_ICONIFIED_ZOOMED;
+		zoom_client(c);
+	}
 
 	focus_client(c, FOCUS_FORCE);
 }
